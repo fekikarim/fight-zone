@@ -1,36 +1,85 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Fight Zone — Gym Platform
 
-## Getting Started
+Production foundation and marketing website for **Fight Zone**, a boxing / kickboxing gym coached by **Seif Dridi**.
 
-First, run the development server:
+Built with **Next.js 16** (App Router, Turbopack) + **Supabase** (Postgres, RLS, auth, storage).
+
+## Stack
+
+- **Next.js 16** — App Router, server components, server actions, `proxy.ts` (replaces `middleware.ts`) for session refresh
+- **Supabase** — Postgres schema, Row Level Security, Supabase Auth, Storage
+- **React Hook Form + Zod** — form validation (client + server)
+- **Tailwind CSS 4** — dark "arena" theme (bg `#0a0a0a`, accent `rose-600`), Oswald display + Geist
+
+## Getting started
 
 ```bash
+npm install
+cp .env.local.example .env.local   # fill in your Supabase credentials
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+### Local database (optional, requires Docker)
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+The Supabase schema lives in `supabase/migrations/` and demo data in `supabase/seed.sql`. To run a full local stack:
 
-## Learn More
+```bash
+npm run db:start    # supabase start (local Postgres + Studio + auth)
+npm run db:reset    # supabase db reset --local (apply migrations + seed)
+```
 
-To learn more about Next.js, take a look at the following resources:
+The seed creates demo users:
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+| Email | Password | Roles |
+| --- | --- | --- |
+| `coach@fightzone.example` | `Coach-1234` | ADMIN, COACH |
+| `member@fightzone.example` | `Member-1234` | MEMBER |
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+### Remote project
 
-## Deploy on Vercel
+The linked remote project is `jdbythhwikqvqenxyuqw` (eu-west-1). Useful scripts:
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+```bash
+npm run db:push     # push local migrations to the remote database
+npm run db:types    # regenerate types/database.types.ts from remote
+```
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+## Project layout
+
+```
+app/
+  (marketing)/       Public site: /, about, services, events, news, contact
+  (auth)/            sign-in, sign-up, forgot-password, reset-password
+  member/            Member dashboard (/member, requires sign-in)
+  admin/             Admin/coach area (/admin, requires ADMIN or COACH)
+components/
+  marketing/         Public site sections, page hero, contact form
+  dashboard/         Shared member/admin shell
+  ui/                Button, Badge, Card, Input, reveal, etc.
+lib/
+  supabase/          client / server / admin clients + config + typed queries
+  actions/           Server actions: auth, contact
+  auth/guards.ts     requireUser / requireRole (DB-backed roles)
+  validations/       Zod schemas
+supabase/migrations/ Schema, RLS, storage — applied & versioned
+types/database.types.ts  Generated Supabase types
+```
+
+## Auth & authorization
+
+- Auth flows are server actions in `lib/actions/auth.ts` (sign-in, sign-up, password reset via email recovery codes).
+- Role checks use **database-backed roles** via `user_role_assignments` — never client input.
+- `proxy.ts` refreshes the Supabase session on matched routes; `lib/supabase/server.ts` reads the server session.
+
+## Database / security notes
+
+- All tables are behind RLS (see `supabase/migrations/20260815000500_rls.sql`).
+- Anonymous visitors can read public content (`sessions`, `achievements`, `events`, `news`, `media`, `coach_profiles`) and submit the contact form; private tables are denied.
+- Public helper function `get_public_coach()` is exposed for anonymous reads.
+
+## Known gaps / next steps
+
+- Admin CRUD modules (bookings, messages, content) are placeholders behind the guard.
+- Remote database has no seed content yet; the public site shows branded empty states until data is added via the admin area.
