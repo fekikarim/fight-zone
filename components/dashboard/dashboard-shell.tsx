@@ -29,11 +29,26 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
     .join("")
     .toUpperCase();
 
+  // A link is active when its href matches the path exactly or is the longest
+  // matching ancestor segment — e.g. /admin stays out of the way while
+  // /admin/bookings is active, instead of both highlighting at once.
+  const isActive = (href: string) => {
+    if (pathname === href) return true;
+    const rest = pathname.slice(href.length);
+    if (!rest.startsWith("/")) return false;
+    return !nav.some(
+      (other) =>
+        other.href !== href &&
+        other.href.length > href.length &&
+        (pathname === other.href || pathname.startsWith(`${other.href}/`)),
+    );
+  };
+
   return (
     <div className="flex min-h-dvh flex-col">
       <header className="sticky top-0 z-30 border-b border-ink-border bg-background/90 backdrop-blur">
         <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <Logo variant="full" tone="light" className="[&_img]:!h-8 [&_img]:!w-auto" />
+          <Logo variant="full" className="[&_img]:!h-8" />
           <div className="flex items-center gap-3">
             <div className="hidden items-center gap-3 sm:flex">
               <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-white">
@@ -53,7 +68,7 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
         <aside className="hidden w-56 shrink-0 border-r border-ink-border bg-ink-soft/30 md:block">
           <nav className="sticky top-16 flex flex-col gap-1 p-4">
             {nav.map((item) => {
-              const active = pathname === item.href;
+              const active = isActive(item.href);
               return (
                 <Link
                   key={item.href}
@@ -77,7 +92,7 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
 
       <nav className="sticky bottom-0 z-30 flex border-t border-ink-border bg-background/90 backdrop-blur md:hidden">
         {nav.map((item) => {
-          const active = pathname === item.href;
+          const active = isActive(item.href);
           return (
             <Link
               key={item.href}

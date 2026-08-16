@@ -6,7 +6,7 @@ import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { getPublicCoach } from "@/lib/supabase/queries";
+import { getPublicCoach, resolveOrFallback } from "@/lib/supabase/queries";
 
 const highlights = [
   { icon: Award, label: "Champion athlete" },
@@ -15,7 +15,7 @@ const highlights = [
 ];
 
 export async function AboutPreview() {
-  const coach = await getPublicCoach();
+  const coach = await resolveOrFallback(() => getPublicCoach(), null);
 
   return (
     <section className="py-20 lg:py-28">

@@ -47,7 +47,7 @@ export function Navbar() {
       )}
     >
       <Container className="flex h-16 items-center justify-between gap-4 sm:h-20">
-        <Logo variant="full" tone="light" className="max-w-[140px] sm:max-w-[190px]" />
+        <Logo variant="full" className="h-9 sm:h-10" />
 
         <nav aria-label="Main" className="hidden items-center gap-7 lg:flex">
           {siteConfig.nav.public.map((link) => {

@@ -4,7 +4,7 @@ import { Logo } from "@/components/logo";
 export default function NotFound() {
   return (
     <div className="flex min-h-dvh flex-col items-center justify-center gap-8 bg-background px-6 text-center">
-      <Logo variant="full" tone="light" />
+      <Logo variant="full" />
       <div className="flex flex-col items-center gap-3">
         <p className="font-display text-7xl font-bold text-primary">404</p>
         <h1 className="font-display text-2xl font-bold uppercase tracking-tight">

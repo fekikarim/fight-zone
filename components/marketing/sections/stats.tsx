@@ -1,13 +1,13 @@
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
-import { getAchievements, getActiveSessions, getPublicCoach, getPublicEvents } from "@/lib/supabase/queries";
+import { getAchievements, getActiveSessions, getPublicCoach, getPublicEvents, resolveOrFallback } from "@/lib/supabase/queries";
 
 async function StatsStrip() {
   const [coach, achievements, sessions, events] = await Promise.all([
-    getPublicCoach(),
-    getAchievements(),
-    getActiveSessions(),
-    getPublicEvents(),
+    resolveOrFallback(() => getPublicCoach(), null),
+    resolveOrFallback(() => getAchievements(), []),
+    resolveOrFallback(() => getActiveSessions(), []),
+    resolveOrFallback(() => getPublicEvents(), []),
   ]);
 
   const stats = [

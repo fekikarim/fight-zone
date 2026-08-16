@@ -12,7 +12,7 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
 
       <header className="relative z-10 py-6">
         <Container className="flex items-center justify-between">
-          <Logo variant="full" tone="light" />
+          <Logo variant="full" />
           <Link
             href="/"
             className="inline-flex items-center gap-1.5 text-sm font-medium text-muted transition-colors hover:text-primary"

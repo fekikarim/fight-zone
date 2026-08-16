@@ -223,7 +223,10 @@ enable_signup = true
 # addresses. If disabled, only the new email is required to confirm.
 double_confirm_changes = true
 # If enabled, users need to confirm their email address before signing in.
-enable_confirmations = false
+# Required for the production email-verification gate: an unverified user is
+# never issued a session. NOTE: mirror this setting in the Supabase dashboard
+# (Auth > Providers > Email > "Confirm email") for the remote project.
+enable_confirmations = true
 # If enabled, users will need to reauthenticate or have logged in recently to change their password.
 secure_password_change = false
 # Controls the minimum amount of time that must pass before sending another signup confirmation or password reset email.

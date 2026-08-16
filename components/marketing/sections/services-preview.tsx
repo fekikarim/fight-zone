@@ -5,10 +5,10 @@ import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { SessionCard, SessionCardSkeleton, type SessionItem } from "@/components/marketing/session-card";
-import { getActiveSessions } from "@/lib/supabase/queries";
+import { getActiveSessions, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function ServicesPreview() {
-  const sessions = await getActiveSessions();
+  const sessions = await resolveOrFallback(() => getActiveSessions(), []);
 
   return (
     <section className="relative border-y border-ink-border bg-ink-soft/30 py-20 lg:py-28">

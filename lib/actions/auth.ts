@@ -5,7 +5,9 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/supabase/config";
+import { getCurrentUser } from "@/lib/auth/guards";
 import {
+  emailSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   signInSchema,
@@ -44,6 +46,14 @@ export async function signIn(
 
   if (error) {
     logError("Sign-in failed", error);
+    // Shown only to someone who already entered the address; does not enable
+    // email enumeration beyond what the generic failure already allows.
+    if (error.code === "email_not_confirmed") {
+      return {
+        ok: false,
+        message: "Please verify your email address first. Check your inbox for the verification link.",
+      };
+    }
     return { ok: false, message: "Invalid email or password." };
   }
 
@@ -69,7 +79,7 @@ export async function signUp(
     password: parsed.data.password,
     options: {
       data: { full_name: parsed.data.fullName },
-      emailRedirectTo: `${getSiteUrl()}/sign-in`,
+      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
     },
   });
 
@@ -81,16 +91,15 @@ export async function signUp(
     };
   }
 
+  // Email confirmation enabled: no session is issued until the user verifies.
+  // Transition straight to the verification gate — never a message on the form.
   if (data.session) {
     revalidatePath("/", "layout");
     redirect("/member");
   }
 
-  return {
-    ok: true,
-    message:
-      "Account created! Check your email to confirm your address, then sign in.",
-  };
+  revalidatePath("/", "layout");
+  redirect(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);
 }
 
 export async function signOut(): Promise<void> {
@@ -98,6 +107,57 @@ export async function signOut(): Promise<void> {
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/");
+}
+
+/**
+ * Authoritative email-verification check for the "I've verified my email"
+ * action. Verification state comes from Supabase Auth (`email_confirmed_at`),
+ * never from a client-side flag. Redirects to the app when verified.
+ */
+export async function checkEmailVerification(): Promise<AuthActionState> {
+  const user = await getCurrentUser();
+  if (user?.emailConfirmedAt) {
+    revalidatePath("/", "layout");
+    redirect("/member");
+  }
+
+  return {
+    ok: false,
+    message:
+      "Your email hasn't been verified yet. Please click the verification link in your inbox and try again.",
+  };
+}
+
+/**
+ * Resends the signup confirmation email. Returns a generic outcome — it never
+ * reveals whether an address is registered, already confirmed, or rate-limited
+ * (Supabase's own email frequency/rate limits are the backstop).
+ */
+export async function resendVerificationEmail(email: string): Promise<AuthActionState> {
+  const parsed = emailSchema.safeParse(email);
+  if (!parsed.success) return { ok: false, message: "Please enter a valid email address." };
+
+  const supabase = await createClient();
+  const { error } = await supabase.auth.resend({
+    type: "signup",
+    email: parsed.data,
+    options: {
+      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
+    },
+  });
+
+  if (error) {
+    logError("Resend verification email failed", error);
+    return {
+      ok: false,
+      message: "We could not resend the email right now. Please try again shortly.",
+    };
+  }
+
+  return {
+    ok: true,
+    message: "Verification email sent. Check your inbox and spam folder.",
+  };
 }
 
 export async function forgotPassword(

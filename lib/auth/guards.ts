@@ -11,6 +11,8 @@ export interface CurrentUser {
   fullName: string | null;
   avatarUrl: string | null;
   roles: string[];
+  /** Authoritative Supabase email-confirmation timestamp (null when unverified). */
+  emailConfirmedAt: string | null;
 }
 
 export interface CurrentUserContext {
@@ -87,6 +89,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     fullName: profile?.full_name ?? null,
     avatarUrl: profile?.avatar_url ?? null,
     roles,
+    emailConfirmedAt: user.email_confirmed_at ?? null,
   };
 });
 
@@ -129,10 +132,19 @@ export const getCurrentUserContext = cache(async (): Promise<CurrentUserContext>
   };
 });
 
-/** Redirects unauthenticated visitors to the sign-in page. */
+/**
+ * Redirects unauthenticated visitors to the sign-in page.
+ * An authenticated-but-unverified user is treated as a restricted session and
+ * redirected to the email-verification gate — never given application access.
+ * Verification state is authoritative Supabase Auth data (`email_confirmed_at`),
+ * never a client-side flag.
+ */
 export async function requireUser(): Promise<CurrentUser> {
   const user = await getCurrentUser();
   if (!user) redirect("/sign-in");
+  if (!user.emailConfirmedAt) {
+    redirect(`/verify-email?email=${encodeURIComponent(user.email)}`);
+  }
   return user;
 }
 

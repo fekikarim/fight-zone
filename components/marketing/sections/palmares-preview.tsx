@@ -6,10 +6,10 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { AchievementCard, type AchievementItem } from "@/components/marketing/achievement-card";
-import { getAchievements } from "@/lib/supabase/queries";
+import { getAchievements, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function PalmaresPreview() {
-  const achievements = await getAchievements(3);
+  const achievements = await resolveOrFallback(() => getAchievements(3), []);
 
   return (
     <section className="py-20 lg:py-28">

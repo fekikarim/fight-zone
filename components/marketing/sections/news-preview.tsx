@@ -6,10 +6,10 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { NewsCard, type NewsItem } from "@/components/marketing/news-card";
-import { getPublishedNews } from "@/lib/supabase/queries";
+import { getPublishedNews, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function NewsPreview() {
-  const articles = await getPublishedNews(3);
+  const articles = await resolveOrFallback(() => getPublishedNews(3), []);
 
   return (
     <section className="border-t border-ink-border bg-ink-soft/30 py-20 lg:py-28">

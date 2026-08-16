@@ -2,7 +2,12 @@ import type { ReactNode } from "react";
 import { requireUser } from "@/lib/auth/guards";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
-const memberNav = [{ href: "/member", label: "Overview" }];
+const memberNav = [
+  { href: "/member", label: "Overview" },
+  { href: "/member/sessions", label: "Sessions" },
+  { href: "/member/bookings", label: "My Bookings" },
+  { href: "/member/profile", label: "Profile" },
+];
 
 export default async function MemberLayout({ children }: { children: ReactNode }) {
   const user = await requireUser();

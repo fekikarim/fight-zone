@@ -4,10 +4,10 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PlaceholderImage } from "@/components/ui/placeholder-image";
-import { getPublicMedia } from "@/lib/supabase/queries";
+import { getPublicMedia, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function GalleryPreview() {
-  const media = await getPublicMedia(6);
+  const media = await resolveOrFallback(() => getPublicMedia(6), []);
 
   return (
     <section className="border-y border-ink-border bg-ink-soft/30 py-20 lg:py-28">

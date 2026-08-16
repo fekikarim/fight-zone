@@ -47,7 +47,7 @@ export function Footer() {
     <footer className="border-t border-ink-border bg-ink-soft/40">
       <Container className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
         <div className="flex flex-col gap-4">
-          <Logo variant="full" tone="light" className="max-w-[180px]" />
+          <Logo variant="full" className="h-10" />
           <p className="max-w-xs text-sm leading-relaxed text-muted">
             Professional boxing, kickboxing and fitness coaching with Coach Seif
             Dridi. Train hard, fight smart.

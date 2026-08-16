@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useActionState, useTransition, useState } from "react";
+import { startTransition, useEffect, useActionState, useTransition, useState } from "react";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -54,7 +54,9 @@ export function ResetPasswordForm({ code }: ResetPasswordFormProps) {
   const onSubmit = (values: ResetPasswordInput) => {
     const formData = new FormData();
     formData.set("password", values.password);
-    passwordAction(formData);
+    startTransition(() => {
+      passwordAction(formData);
+    });
   };
 
   if (isVerifying) {

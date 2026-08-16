@@ -6,10 +6,10 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventCard, type EventItem } from "@/components/marketing/event-card";
-import { getPublicEvents } from "@/lib/supabase/queries";
+import { getPublicEvents, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function EventsPreview() {
-  const events = await getPublicEvents(3);
+  const events = await resolveOrFallback(() => getPublicEvents(3), []);
 
   return (
     <section className="py-20 lg:py-28">
