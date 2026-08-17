@@ -11,6 +11,8 @@ import type { CurrentUser } from "@/lib/auth/guards";
 export interface DashboardNavLink {
   href: string;
   label: string;
+  /** Optional count rendered as a pill (e.g. unread messages). */
+  badge?: number;
 }
 
 interface DashboardShellProps {
@@ -74,13 +76,21 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
                   key={item.href}
                   href={item.href}
                   className={cn(
-                    "rounded-md px-3 py-2 text-sm font-medium transition-colors",
+                    "flex items-center justify-between gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors",
                     active
                       ? "bg-primary-soft text-primary"
                       : "text-muted hover:bg-ink-soft hover:text-foreground",
                   )}
                 >
                   {item.label}
+                  {item.badge ? (
+                    <span
+                      className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
+                      aria-label={`${item.badge} unread`}
+                    >
+                      {item.badge > 99 ? "99+" : item.badge}
+                    </span>
+                  ) : null}
                 </Link>
               );
             })}
@@ -103,6 +113,14 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
               )}
             >
               {item.label}
+              {item.badge ? (
+                <span
+                  className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"
+                  aria-label={`${item.badge} unread`}
+                >
+                  {item.badge > 99 ? "99+" : item.badge}
+                </span>
+              ) : null}
             </Link>
           );
         })}

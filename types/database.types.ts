@@ -223,6 +223,42 @@ export type Database = {
           },
         ]
       }
+      conversations: {
+        Row: {
+          coach_id: string
+          created_at: string
+          id: string
+          member_id: string
+        }
+        Insert: {
+          coach_id: string
+          created_at?: string
+          id?: string
+          member_id: string
+        }
+        Update: {
+          coach_id?: string
+          created_at?: string
+          id?: string
+          member_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "conversations_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "conversations_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       event_participants: {
         Row: {
           event_id: string
@@ -540,6 +576,48 @@ export type Database = {
           },
         ]
       }
+      messages: {
+        Row: {
+          body: string
+          conversation_id: string
+          created_at: string
+          id: string
+          sender_id: string
+          status: Database["public"]["Enums"]["message_status"]
+        }
+        Insert: {
+          body: string
+          conversation_id: string
+          created_at?: string
+          id?: string
+          sender_id: string
+          status?: Database["public"]["Enums"]["message_status"]
+        }
+        Update: {
+          body?: string
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          sender_id?: string
+          status?: Database["public"]["Enums"]["message_status"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "messages_sender_id_fkey"
+            columns: ["sender_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       news: {
         Row: {
           content: string | null
@@ -811,6 +889,33 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      get_conversation_messages: {
+        Args: {
+          p_before_id?: string
+          p_conversation_id: string
+          p_limit?: number
+        }
+        Returns: {
+          body: string
+          created_at: string
+          id: string
+          sender_id: string
+          status: Database["public"]["Enums"]["message_status"]
+        }[]
+      }
+      get_my_conversations: {
+        Args: never
+        Returns: {
+          conversation_id: string
+          last_message_at: string | null
+          last_message_body: string | null
+          last_sender_id: string | null
+          other_avatar_url: string | null
+          other_full_name: string | null
+          other_participant_id: string
+          unread_count: number
+        }[]
+      }
       get_public_coach: {
         Args: never
         Returns: {
@@ -823,8 +928,18 @@ export type Database = {
           specialization: string
         }[]
       }
+      get_unread_message_count: {
+        Args: never
+        Returns: number
+      }
       has_role: { Args: { role_name: string }; Returns: boolean }
       is_admin_or_coach: { Args: never; Returns: boolean }
+      mark_conversation_read: {
+        Args: {
+          p_conversation_id: string
+        }
+        Returns: number
+      }
     }
     Enums: {
       achievement_type: "TITLE" | "TROPHY" | "MEDAL" | "CERTIFICATE" | "RANKING"

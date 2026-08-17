@@ -1,8 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { ArrowUpRight, Bell, CalendarDays, TrendingUp } from "lucide-react";
+import { ArrowUpRight, Bell, CalendarDays, MessageSquare, TrendingUp } from "lucide-react";
 import { requireRole } from "@/lib/auth/guards";
-import { getBookingManagementStats, getAdminBookings, getCurrentUserNotifications } from "@/lib/supabase/queries";
+import { getBookingManagementStats, getAdminBookings, getCurrentUserNotifications, getUnreadMessageCount } from "@/lib/supabase/queries";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { BookingStatsCards } from "@/components/admin/booking-stats-cards";
@@ -20,11 +20,12 @@ export default async function AdminPage() {
   const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
-  const [{ count: unreadMessages }, stats, recent, notifications] = await Promise.all([
+  const [{ count: unreadMessages }, unreadChat, stats, recent, notifications] = await Promise.all([
     supabase
       .from("contact_messages")
       .select("*", { count: "exact", head: true })
       .eq("status", "UNREAD"),
+    getUnreadMessageCount(),
     getBookingManagementStats(),
     getAdminBookings({ pageSize: 5 }),
     getCurrentUserNotifications(5),
@@ -154,10 +155,22 @@ export default async function AdminPage() {
       </div>
 
       <div className="grid gap-6 sm:grid-cols-3">
+        <Link
+          href="/admin/messages"
+          className="rounded-xl border border-ink-border bg-ink-soft/50 p-6 transition-colors hover:border-primary/40"
+        >
+          <div className="flex items-center gap-2">
+            <MessageSquare className="h-4 w-4 text-primary" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-widest text-muted">
+              Unread chat
+            </span>
+          </div>
+          <p className="mt-2 font-display text-4xl font-bold text-primary">{unreadChat ?? 0}</p>
+        </Link>
         <div className="rounded-xl border border-ink-border bg-ink-soft/50 p-6">
           <p className="font-display text-4xl font-bold text-primary">{unreadMessages ?? 0}</p>
           <p className="mt-1 text-xs font-semibold uppercase tracking-widest text-muted">
-            Unread messages
+            Unread contact messages
           </p>
         </div>
       </div>

@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import { requireRole } from "@/lib/auth/guards";
+import { getUnreadMessageCount } from "@/lib/supabase/queries";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 const adminNav = [
@@ -10,9 +11,12 @@ const adminNav = [
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {
-  const user = await requireRole(["ADMIN", "COACH"]);
+  const [user, unread] = await Promise.all([requireRole(["ADMIN", "COACH"]), getUnreadMessageCount()]);
+  const nav = adminNav.map((item) =>
+    item.href === "/admin/messages" ? { ...item, badge: unread } : item,
+  );
   return (
-    <DashboardShell user={user} nav={adminNav}>
+    <DashboardShell user={user} nav={nav}>
       {children}
     </DashboardShell>
   );

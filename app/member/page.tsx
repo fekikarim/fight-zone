@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarDays,
   ChevronRight,
+  MessageSquare,
   ShieldCheck,
 } from "lucide-react";
 import { requireUser, getCurrentUserContext } from "@/lib/auth/guards";
@@ -19,6 +20,7 @@ import {
   getCurrentUserBookings,
   getMemberBookingStats,
   getMemberNotifications,
+  getUnreadMessageCount,
 } from "@/lib/supabase/queries";
 import { formatDate, formatPrice } from "@/lib/utils";
 import type { Database } from "@/types/database.types";
@@ -41,11 +43,12 @@ const notificationTypeLabel: Record<
 
 export default async function MemberDashboardPage() {
   const user = await requireUser();
-  const [stats, recentBookings, notifications, context] = await Promise.all([
+  const [stats, recentBookings, notifications, context, unreadMessages] = await Promise.all([
     getMemberBookingStats(),
     getCurrentUserBookings(5),
     getMemberNotifications(4),
     getCurrentUserContext(),
+    getUnreadMessageCount(),
   ]);
 
   const firstName = user.fullName?.split(" ")[0] ?? "Member";
@@ -64,10 +67,10 @@ export default async function MemberDashboardPage() {
       href: "/member/bookings",
     },
     {
-      label: "Total bookings",
-      value: stats.total,
-      icon: CalendarDays,
-      href: "/member/bookings",
+      label: "Unread messages",
+      value: unreadMessages,
+      icon: MessageSquare,
+      href: "/member/messages",
     },
   ];
 

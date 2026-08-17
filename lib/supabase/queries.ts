@@ -10,6 +10,11 @@ import {
   logError,
 } from "@/lib/errors";
 import type { Database } from "@/types/database.types";
+import type {
+  ConversationMessage,
+  ConversationSummary,
+  MessagingRecipient,
+} from "@/lib/types/messaging";
 
 /**
  * Server-only data access for public/marketing content.
@@ -501,3 +506,120 @@ export const getCurrentUserNotifications = cache(async (limit = 5) => {
 
 /** The member's own notifications (read-only surface), unread first. */
 export const getMemberNotifications = getCurrentUserNotifications;
+
+// ---------------------------------------------------------------------------
+// Messaging (member + coach/admin inboxes)
+// ---------------------------------------------------------------------------
+
+/**
+ * The current user's conversations (participant-only), newest activity first,
+ * with the other participant and per-conversation unread counts. The RPC is
+ * SECURITY DEFINER but re-checks participant membership; it raises 42501 for
+ * anonymous callers, so an empty result is the authenticated user's real list.
+ */
+export const getMyConversations = cache(async (): Promise<ConversationSummary[]> => {
+  const user = await getCurrentUser();
+  if (!user) throw new AuthenticationError();
+  const supabase = await createClient();
+  const result = await supabase.rpc("get_my_conversations");
+  if (result.error) {
+    // Pre-push / migration not yet applied: the function may not exist on
+    // remote.  The inbox page renders an EmptyState for zero rows, which is
+    // the correct fallback.  A real auth failure (42501) is still thrown.
+    if (result.error.code !== "42501") return [];
+    throw new DatabaseError(undefined, { cause: result.error });
+  }
+  return result.data ?? [];
+});
+
+/**
+ * Total unread messages across the user's conversations, for the nav badge.
+ * Decorative: failures degrade to 0 rather than breaking the dashboard shell.
+ */
+export const getUnreadMessageCount = cache(async (): Promise<number> => {
+  const user = await getCurrentUser();
+  if (!user) return 0;
+  const supabase = await createClient();
+  const result = await supabase.rpc("get_unread_message_count");
+  if (result.error) return 0;
+  return result.data ?? 0;
+});
+
+/**
+ * A page of a conversation's history, newest first. The first page is loaded
+ * server-side here; older pages are fetched by the client through the
+ * `loadOlderMessages` server action (same RPC). A foreign or nonexistent
+ * conversation surfaces as a 404; an invalid cursor yields an empty page.
+ */
+export const getConversationMessages = cache(
+  async (conversationId: string, beforeId?: string, limit = 50): Promise<ConversationMessage[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+    const supabase = await createClient();
+    const result = await supabase.rpc("get_conversation_messages", {
+      p_conversation_id: conversationId,
+      p_before_id: beforeId ?? undefined,
+      p_limit: limit,
+    });
+    if (result.error) {
+      logError("Query failed: conversation messages", result.error, { conversationId });
+      if (result.error.code === "42501") throw new NotFoundError();
+      throw new DatabaseError(undefined, { cause: result.error });
+    }
+    return result.data ?? [];
+  },
+);
+
+/**
+ * People the current user is authorized to start a conversation with — the
+ * coaches a member has booked with, or the members who have booked a coach.
+ * Mirrors the bookings relationship the RLS INSERT policy requires, so the
+ * recipient picker can never offer an invalid target.
+ */
+export const getAuthorizedMessagingRecipients = cache(async (): Promise<MessagingRecipient[]> => {
+  const user = await getCurrentUser();
+  if (!user) return [];
+  const supabase = await createClient();
+
+  const isMember = user.roles.includes("MEMBER");
+
+  let result: { data: RecipientRow[] | null; error: unknown };
+  if (isMember) {
+    result = await supabase
+      .from("bookings")
+      .select("coach_profiles(id, profiles(id, full_name, avatar_url))")
+      .eq("member_id", user.id);
+  } else {
+    result = await supabase
+      .from("bookings")
+      .select("member_profiles(id, profiles(id, full_name, avatar_url))")
+      .eq("coach_id", user.id);
+  }
+
+  if (result.error) {
+    logError("Query failed: messaging recipients", result.error);
+    throw new DatabaseError(undefined, { cause: result.error });
+  }
+
+  const recipients = new Map<string, MessagingRecipient>();
+  for (const row of result.data ?? []) {
+    const profile = row.coach_profiles?.profiles ?? row.member_profiles?.profiles;
+    if (!profile?.id) continue;
+    recipients.set(profile.id, {
+      id: profile.id,
+      full_name: profile.full_name ?? null,
+      avatar_url: profile.avatar_url ?? null,
+      role: isMember ? "coach" : "member",
+    });
+  }
+  return [...recipients.values()];
+});
+
+interface RecipientRow {
+  coach_profiles?: {
+    profiles: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  } | null;
+  member_profiles?: {
+    profiles: { id: string; full_name: string | null; avatar_url: string | null } | null;
+  } | null;
+}
