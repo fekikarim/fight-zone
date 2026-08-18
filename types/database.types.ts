@@ -671,6 +671,8 @@ export type Database = {
           created_at: string
           id: string
           is_read: boolean
+          resource_id: string | null
+          resource_type: string | null
           title: string
           type: Database["public"]["Enums"]["notification_type"]
           user_id: string
@@ -680,6 +682,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          resource_id?: string | null
+          resource_type?: string | null
           title: string
           type?: Database["public"]["Enums"]["notification_type"]
           user_id: string
@@ -689,6 +693,8 @@ export type Database = {
           created_at?: string
           id?: string
           is_read?: boolean
+          resource_id?: string | null
+          resource_type?: string | null
           title?: string
           type?: Database["public"]["Enums"]["notification_type"]
           user_id?: string

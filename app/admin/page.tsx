@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { ArrowUpRight, Bell, CalendarDays, MessageSquare, TrendingUp } from "lucide-react";
 import { requireRole } from "@/lib/auth/guards";
-import { getBookingManagementStats, getAdminBookings, getCurrentUserNotifications, getUnreadMessageCount } from "@/lib/supabase/queries";
+import { getBookingManagementStats, getAdminBookings, getCurrentUserNotifications, getUnreadMessageCount, getUnreadNotificationCount } from "@/lib/supabase/queries";
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { BookingStatsCards } from "@/components/admin/booking-stats-cards";
@@ -20,16 +20,18 @@ export default async function AdminPage() {
   const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
-  const [{ count: unreadMessages }, unreadChat, stats, recent, notifications] = await Promise.all([
-    supabase
-      .from("contact_messages")
-      .select("*", { count: "exact", head: true })
-      .eq("status", "UNREAD"),
-    getUnreadMessageCount(),
-    getBookingManagementStats(),
-    getAdminBookings({ pageSize: 5 }),
-    getCurrentUserNotifications(5),
-  ]);
+  const [{ count: unreadMessages }, unreadChat, stats, recent, notifications, unreadNotifications] =
+    await Promise.all([
+      supabase
+        .from("contact_messages")
+        .select("*", { count: "exact", head: true })
+        .eq("status", "UNREAD"),
+      getUnreadMessageCount(),
+      getBookingManagementStats(),
+      getAdminBookings({ pageSize: 5 }),
+      getCurrentUserNotifications(5),
+      getUnreadNotificationCount(),
+    ]);
 
   return (
     <Container className="flex max-w-none flex-col gap-10 px-0">
@@ -117,10 +119,17 @@ export default async function AdminPage() {
           aria-label="Notifications"
           className="flex flex-col gap-4 rounded-xl border border-ink-border bg-ink-soft/50 p-5 sm:p-6"
         >
-          <h2 className="flex items-center gap-2 font-display text-lg font-bold uppercase tracking-wide">
-            <Bell className="h-5 w-5 text-primary" aria-hidden />
-            Notifications
-          </h2>
+          <div className="flex items-center justify-between gap-4">
+            <h2 className="flex items-center gap-2 font-display text-lg font-bold uppercase tracking-wide">
+              <Bell className="h-5 w-5 text-primary" aria-hidden />
+              Notifications
+            </h2>
+            {notifications.length > 0 ? (
+              <Button asChild variant="ghost" size="sm">
+                <Link href="/admin/notifications">View all</Link>
+              </Button>
+            ) : null}
+          </div>
 
           {notifications.length > 0 ? (
             <ul className="flex flex-col gap-4">
@@ -166,6 +175,18 @@ export default async function AdminPage() {
             </span>
           </div>
           <p className="mt-2 font-display text-4xl font-bold text-primary">{unreadChat ?? 0}</p>
+        </Link>
+        <Link
+          href="/admin/notifications"
+          className="rounded-xl border border-ink-border bg-ink-soft/50 p-6 transition-colors hover:border-primary/40"
+        >
+          <div className="flex items-center gap-2">
+            <Bell className="h-4 w-4 text-primary" aria-hidden />
+            <span className="text-xs font-semibold uppercase tracking-widest text-muted">
+              Unread notifications
+            </span>
+          </div>
+          <p className="mt-2 font-display text-4xl font-bold text-primary">{unreadNotifications}</p>
         </Link>
         <div className="rounded-xl border border-ink-border bg-ink-soft/50 p-6">
           <p className="font-display text-4xl font-bold text-primary">{unreadMessages ?? 0}</p>

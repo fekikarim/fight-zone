@@ -7,6 +7,7 @@ import {
   AuthenticationError,
   DatabaseError,
   NotFoundError,
+  ValidationError,
   logError,
 } from "@/lib/errors";
 import type { Database } from "@/types/database.types";
@@ -15,6 +16,7 @@ import type {
   ConversationSummary,
   MessagingRecipient,
 } from "@/lib/types/messaging";
+import type { NotificationPage, NotificationRow } from "@/lib/types/notifications";
 
 /**
  * Server-only data access for public/marketing content.
@@ -496,7 +498,7 @@ export const getCurrentUserNotifications = cache(async (limit = 5) => {
 
   const result = await supabase
     .from("notifications")
-    .select("id, type, title, content, is_read, created_at")
+    .select("id, type, title, content, is_read, created_at, resource_type, resource_id")
     .eq("user_id", user.id)
     .order("is_read", { ascending: true })
     .order("created_at", { ascending: false })
@@ -623,3 +625,101 @@ interface RecipientRow {
     profiles: { id: string; full_name: string | null; avatar_url: string | null } | null;
   } | null;
 }
+
+// ---------------------------------------------------------------------------
+// Notification Center
+// ---------------------------------------------------------------------------
+
+/**
+ * Total unread notifications for the current user, for nav badge + dashboard
+ * stat.  Decorative: returns 0 on failure so the dashboard shell never breaks.
+ */
+export const getUnreadNotificationCount = cache(async (): Promise<number> => {
+  const user = await getCurrentUser();
+  if (!user) return 0;
+  const supabase = await createClient();
+  const { count, error } = await supabase
+    .from("notifications")
+    .select("*", { count: "exact", head: true })
+    .eq("is_read", false);
+
+  if (error) return 0;
+  return count ?? 0;
+});
+
+/**
+ * Parses a base-64-encoded keyset cursor into (created_at, id).
+ * Format:  base64url(`${createdAt}|${id}`)
+ */
+function decodeCursor(cursor: string): [string, string] {
+  const raw = Buffer.from(cursor, "base64url").toString("utf-8");
+  const sep = raw.indexOf("|");
+  if (sep < 1) throw new ValidationError("Invalid cursor.");
+  const createdAt = raw.slice(0, sep);
+  const id = raw.slice(sep + 1);
+  if (!createdAt || !id) throw new ValidationError("Invalid cursor.");
+  return [createdAt, id];
+}
+
+function encodeCursor(createdAt: string, id: string): string {
+  return Buffer.from(`${createdAt}|${id}`).toString("base64url");
+}
+
+/**
+ * Paginated notification center query.  Keyset pagination on
+ * `(created_at DESC, id DESC)` — the index the migration creates.
+ *
+ * Fetches `pageSize + 1` rows; if the extra row exists, `hasMore` is true
+ * and the last row is trimmed.  The cursor is derived from the last
+ * returned item's `(created_at, id)`.
+ *
+ * @param filters.type      — filter by notification_type enum
+ * @param filters.unreadOnly — if true, only unread notifications
+ * @param filters.cursor    — base64url-encoded keyset cursor from prior page
+ */
+export const getNotificationCenter = cache(
+  async (
+    filters: { type?: string; unreadOnly?: boolean; cursor?: string } = {},
+  ): Promise<NotificationPage> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const PAGE_SIZE = 20;
+
+    let query = supabase
+      .from("notifications")
+      .select(
+        "id, type, title, content, is_read, created_at, resource_type, resource_id",
+      )
+      .eq("user_id", user.id)
+      .order("created_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(PAGE_SIZE + 1);
+
+    if (filters.type) query = query.eq("type", filters.type as Database["public"]["Enums"]["notification_type"]);
+    if (filters.unreadOnly) query = query.eq("is_read", false);
+
+    if (filters.cursor) {
+      const [cursorCreatedAt, cursorId] = decodeCursor(filters.cursor);
+      query = query.or(
+        `created_at.lt.${cursorCreatedAt},and(created_at.eq.${cursorCreatedAt},id.lt.${cursorId})`,
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      logError("Query failed: notification center", error, { filters });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = (data ?? []) as NotificationRow[];
+    const hasMore = rows.length > PAGE_SIZE;
+    const items = hasMore ? rows.slice(0, PAGE_SIZE) : rows;
+    const lastItem = items[items.length - 1];
+    const nextCursor = hasMore && lastItem ? encodeCursor(lastItem.created_at, lastItem.id) : null;
+
+    return { items, nextCursor, hasMore };
+  },
+);
+

@@ -21,6 +21,7 @@ import {
   getMemberBookingStats,
   getMemberNotifications,
   getUnreadMessageCount,
+  getUnreadNotificationCount,
 } from "@/lib/supabase/queries";
 import { formatDate, formatPrice } from "@/lib/utils";
 import type { Database } from "@/types/database.types";
@@ -43,13 +44,15 @@ const notificationTypeLabel: Record<
 
 export default async function MemberDashboardPage() {
   const user = await requireUser();
-  const [stats, recentBookings, notifications, context, unreadMessages] = await Promise.all([
-    getMemberBookingStats(),
-    getCurrentUserBookings(5),
-    getMemberNotifications(4),
-    getCurrentUserContext(),
-    getUnreadMessageCount(),
-  ]);
+  const [stats, recentBookings, notifications, context, unreadMessages, unreadNotifications] =
+    await Promise.all([
+      getMemberBookingStats(),
+      getCurrentUserBookings(5),
+      getMemberNotifications(4),
+      getCurrentUserContext(),
+      getUnreadMessageCount(),
+      getUnreadNotificationCount(),
+    ]);
 
   const firstName = user.fullName?.split(" ")[0] ?? "Member";
 
@@ -72,6 +75,12 @@ export default async function MemberDashboardPage() {
       icon: MessageSquare,
       href: "/member/messages",
     },
+    {
+      label: "Unread notifications",
+      value: unreadNotifications,
+      icon: Bell,
+      href: "/member/notifications",
+    },
   ];
 
   return (
@@ -92,7 +101,7 @@ export default async function MemberDashboardPage() {
         </p>
       </div>
 
-      <div className="grid gap-6 sm:grid-cols-3">
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
         {statCards.map((card) => (
           <Link
             key={card.label}
@@ -193,11 +202,21 @@ export default async function MemberDashboardPage() {
         </section>
 
         <section className="flex flex-col gap-4">
-          <div className="flex items-center gap-2">
-            <Bell className="h-4 w-4 text-primary" aria-hidden />
-            <h2 className="font-display text-xl font-bold uppercase tracking-wide">
-              Notifications
-            </h2>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Bell className="h-4 w-4 text-primary" aria-hidden />
+              <h2 className="font-display text-xl font-bold uppercase tracking-wide">
+                Notifications
+              </h2>
+            </div>
+            {notifications.length > 0 ? (
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/member/notifications">
+                  View all
+                  <ChevronRight className="h-4 w-4" aria-hidden />
+                </Link>
+              </Button>
+            ) : null}
           </div>
 
           {notifications.length > 0 ? (

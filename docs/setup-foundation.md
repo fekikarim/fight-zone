@@ -20,6 +20,8 @@ Applied via versioned migrations in `supabase/migrations/`:
 | `20260816000000_auth_hardening.sql` | **Prompt #2 fix:** `coach_profiles` INSERT/UPDATE restricted to ADMIN/COACH (was open to any authenticated user) |
 | `20260817000000_member_booking_rules.sql` | **Prompt #3:** duplicate-active-booking prevention (partial unique index), member-initiated booking status enforcement (only CANCELLED for an active future booking), SECURITY DEFINER triggers that create coach/member notifications on booking lifecycle events |
 | `20260818000000_booking_lifecycle.sql` | **Prompt #4:** DB-authoritative booking state machine (`enforce_booking_transition` trigger for every role), coach-ownership RLS (`coach_id = auth.uid()` for COACH, admin-wide, member-own), lifecycle notifications (`notify_on_booking_status_change`), `is_admin()` helper, admin list composite indexes |
+| `20260819000000_messaging.sql` | **Prompt #5:** `conversations`, `messages` tables, participant-only RLS (no admin-wide read), cursor-based pagination RPCs, message notification trigger (`notify_on_message_insert`), indexes |
+| `20260820000000_notifications.sql` | **Prompt #6:** `resource_type`/`resource_id` columns on notifications, keyset-pagination index `(user_id, created_at DESC, id DESC)`, narrowed UPDATE RLS (mark-read only), trigger functions updated via `CREATE OR REPLACE` to include resource columns |
 
 ## 2. Role model
 
@@ -351,3 +353,45 @@ message. `lib/actions/member.ts` `cancelBooking` uses the same atomic guard.
 (anonymous isolation, member/coach/admin matrix, coach-ownership, invalid and
 terminal transitions, notification generation, concurrent stale writes).
 See `docs/booking-management.md` for the full design and run instructions.
+
+---
+
+## 16. Notification Center (Prompt #6)
+
+### Architecture
+
+The notification center is a production-grade read + mark-read interface for
+members and coaches/admins.  Key design decisions:
+
+- **No RPCs for mark-read**: server actions + atomic PostgREST UPDATE + narrowed
+  RLS policy.  Cleaner, follows the messaging patterns established in Prompt #5.
+- **CREATE OR REPLACE trigger functions**: no trigger drops; existing trigger rows
+  continue to fire with the updated function bodies.  Each INSERT now includes
+  `resource_type` and `resource_id` for deep-linking.
+- **Keyset pagination**: `(created_at DESC, id DESC)` index, base64url-encoded
+  cursor.  Bounded 20-row pages with `hasMore` detection (fetches PAGE_SIZE + 1).
+- **URL search params for filters**: `?filter=unread&type=BOOKING` — deterministic,
+  shareable, no client state for filter management.
+- **Graceful degradation**: if `resource_id` references a deleted entity, the
+  notification renders without a deep link.
+
+### Schema additions
+
+`resource_type text` (nullable) and `resource_id uuid` (nullable) on
+`notifications`.  Index `(user_id, created_at DESC, id DESC)` for keyset
+pagination.  Narrow UPDATE policy replacing the old broad one.
+
+### Files
+
+| File | Purpose |
+| --- | --- |
+| `supabase/migrations/20260820000000_notifications.sql` | Migration: columns, index, RLS, trigger updates |
+| `lib/types/notifications.ts` | Shared types + `getResourceHref` helper |
+| `lib/validations/notifications.ts` | Zod schemas for mark-read + filters |
+| `lib/actions/notifications.ts` | `markNotificationRead`, `markAllNotificationsRead` |
+| `lib/supabase/queries.ts` | `getNotificationCenter`, `getUnreadNotificationCount` |
+| `components/notifications/*.tsx` | 5 UI components (item, list, filters, mark-all, load-more) |
+| `app/member/notifications/` | Member notification center page + loading |
+| `app/admin/notifications/` | Admin notification center page + loading |
+| `supabase/tests/notifications_rls.sql` | 21 security test cases |
+| `docs/notifications.md` | Full architecture documentation |
