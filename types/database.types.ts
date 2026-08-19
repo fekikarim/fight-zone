@@ -818,9 +818,11 @@ export type Database = {
           coach_id: string
           created_at: string
           description: string | null
+          discipline: string | null
           duration_min: number
           id: string
           is_active: boolean
+          level: Database["public"]["Enums"]["skill_level"] | null
           price: number
           title: string
           type: Database["public"]["Enums"]["session_type"]
@@ -830,9 +832,11 @@ export type Database = {
           coach_id: string
           created_at?: string
           description?: string | null
+          discipline?: string | null
           duration_min: number
           id?: string
           is_active?: boolean
+          level?: Database["public"]["Enums"]["skill_level"] | null
           price?: number
           title: string
           type?: Database["public"]["Enums"]["session_type"]
@@ -842,9 +846,11 @@ export type Database = {
           coach_id?: string
           created_at?: string
           description?: string | null
+          discipline?: string | null
           duration_min?: number
           id?: string
           is_active?: boolean
+          level?: Database["public"]["Enums"]["skill_level"] | null
           price?: number
           title?: string
           type?: Database["public"]["Enums"]["session_type"]

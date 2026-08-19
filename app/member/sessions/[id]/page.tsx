@@ -9,6 +9,12 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { BookingRequestForm } from "@/components/member/booking-request-form";
 import { formatPrice } from "@/lib/utils";
+import {
+  sessionTypeLabel,
+  skillLevelLabel,
+  disciplineLabel,
+  type Discipline,
+} from "@/lib/types/services";
 
 type Params = Promise<{ id: string }>;
 
@@ -21,18 +27,11 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   };
 }
 
-const sessionTypeLabel: Record<string, string> = {
-  PERSONAL: "Personal",
-  TECHNICAL: "Technical",
-  PHYSICAL: "Physical",
-  STRATEGY: "Strategy",
-  COMBO: "Combo",
-};
-
 export default async function SessionDetailPage({ params }: { params: Params }) {
   const { id } = await params;
-  const session = await getSessionById(id);
-  if (!session) notFound();
+  const rawSession = await getSessionById(id);
+  if (!rawSession) notFound();
+  const session = rawSession as typeof rawSession & { discipline?: string | null; level?: string | null };
 
   const coach = session.coach_profiles;
 
@@ -52,6 +51,14 @@ export default async function SessionDetailPage({ params }: { params: Params }) 
               <Badge variant="neutral">
                 {sessionTypeLabel[session.type] ?? session.type}
               </Badge>
+              {session.level ? (
+                <Badge variant="default">{skillLevelLabel[session.level] ?? session.level}</Badge>
+              ) : null}
+              {session.discipline ? (
+                <Badge variant="neutral">
+                  {disciplineLabel[session.discipline as Discipline] ?? session.discipline}
+                </Badge>
+              ) : null}
               <span className="font-display text-3xl font-bold text-primary">
                 {formatPrice(Number(session.price))}
               </span>

@@ -445,3 +445,55 @@ INTERESTED ──→ JOINED ──→ ATTENDED (terminal)
 | `app/admin/events/` | Admin event list + detail + create form |
 | `supabase/tests/events_rls.sql` | 24 security test cases |
 | `docs/events.md` | Full architecture documentation |
+
+## 18. Coaching Services & Coach Directory (Prompt #8)
+
+### Schema
+
+Extended in `supabase/migrations/20260822000000_coaching_services.sql` (additive only):
+
+| Table | Changes |
+| --- | --- |
+| `sessions` | Added `discipline text` (nullable), `level skill_level` (nullable) |
+
+Added indexes:
+- `sessions_discipline_idx` — partial (WHERE is_active = true)
+- `sessions_level_idx` — partial (WHERE is_active = true)
+- `sessions_discipline_level_idx` — composite partial
+- `sessions_active_coach_idx` — for admin listing
+
+### Canonical disciplines
+
+Defined as constants in `lib/types/services.ts`:
+
+| Value | Display |
+| --- | --- |
+| `English Boxing` | English Boxing |
+| `Kick Boxing` | Kick Boxing |
+| `Fitness & Strength Training` | Fitness & Strength |
+
+### File map
+
+| Path | Description |
+| --- | --- |
+| `supabase/migrations/20260822000000_coaching_services.sql` | Migration: discipline + level columns, indexes, backfill |
+| `lib/types/services.ts` | Discipline constants, labels, session/coach domain types |
+| `lib/validations/services.ts` | Zod schemas for session filters, create, update, toggle |
+| `lib/actions/services.ts` | Server actions (create, update, toggle active) |
+| `lib/supabase/queries.ts` | Queries: getPublicSessionById, getFilteredSessions, getPublicCoaches, getPublicCoachById, getAdminSessions, getAdminSessionById, getCoachBookings |
+| `components/services/session-filters.tsx` | Client-side discipline/level/type filter pills |
+| `components/services/session-create-form.tsx` | Admin session create form |
+| `components/services/session-edit-form.tsx` | Admin session edit form |
+| `components/marketing/session-card.tsx` | Updated: discipline/level badges, link to /services/[id] |
+| `components/member/session-card.tsx` | Updated: discipline/level badges |
+| `app/(marketing)/services/page.tsx` | Upgraded: filter pills + query params |
+| `app/(marketing)/services/[id]/page.tsx` | New: public session detail with coach info + booking CTA |
+| `app/(marketing)/coaches/page.tsx` | New: public coach directory |
+| `app/(marketing)/coaches/[id]/page.tsx` | New: coach profile with achievements + sessions |
+| `app/admin/services/page.tsx` | New: admin session list |
+| `app/admin/services/[id]/page.tsx` | New: admin session edit |
+| `app/admin/services/new/page.tsx` | New: admin session create |
+| `app/admin/layout.tsx` | Updated: added "Services" nav item |
+| `lib/site.ts` | Updated: added "Coaches" to public nav |
+| `app/member/sessions/[id]/page.tsx` | Updated: discipline/level badges |
+| `types/database.types.ts` | Updated: discipline + level on sessions Row/Insert/Update |

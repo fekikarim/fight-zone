@@ -5,25 +5,31 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { formatPrice } from "@/lib/utils";
 import type { Database } from "@/types/database.types";
+import {
+  sessionTypeLabel,
+  skillLevelLabel,
+  disciplineLabel,
+  type Discipline,
+} from "@/lib/types/services";
 
 export type MemberSessionItem = Pick<
   Database["public"]["Tables"]["sessions"]["Row"],
   "id" | "title" | "description" | "type" | "duration_min" | "price" | "is_active"
->;
-
-const sessionTypeLabel: Record<string, string> = {
-  PERSONAL: "Personal",
-  TECHNICAL: "Technical",
-  PHYSICAL: "Physical",
-  STRATEGY: "Strategy",
-  COMBO: "Combo",
+> & {
+  discipline?: string | null;
+  level?: string | null;
 };
 
 export function MemberSessionCard({ session }: { session: MemberSessionItem }) {
   return (
     <Card className="group flex h-full flex-col overflow-hidden border-ink-border transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10">
       <div className="flex items-start justify-between gap-3 p-5 pb-3">
-        <Badge variant="neutral">{sessionTypeLabel[session.type] ?? session.type}</Badge>
+        <div className="flex flex-wrap gap-1.5">
+          <Badge variant="neutral">{sessionTypeLabel[session.type] ?? session.type}</Badge>
+          {session.level ? (
+            <Badge variant="default">{skillLevelLabel[session.level] ?? session.level}</Badge>
+          ) : null}
+        </div>
         <span className="font-display text-2xl font-bold text-primary">
           {formatPrice(Number(session.price))}
         </span>
@@ -32,6 +38,11 @@ export function MemberSessionCard({ session }: { session: MemberSessionItem }) {
         <h3 className="font-display text-lg font-semibold uppercase tracking-wide">
           {session.title}
         </h3>
+        {session.discipline ? (
+          <p className="text-xs font-medium uppercase tracking-wider text-primary/80">
+            {disciplineLabel[session.discipline as Discipline] ?? session.discipline}
+          </p>
+        ) : null}
         <p className="flex items-center gap-2 text-sm text-muted">
           <Clock className="h-4 w-4 text-primary" />
           {session.duration_min} minutes

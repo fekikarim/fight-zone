@@ -5,6 +5,7 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 
 const adminNav = [
   { href: "/admin", label: "Overview" },
+  { href: "/admin/services", label: "Services" },
   { href: "/admin/events", label: "Events" },
   { href: "/admin/bookings", label: "Bookings" },
   { href: "/admin/messages", label: "Messages" },

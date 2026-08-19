@@ -121,9 +121,30 @@ function describeCause(cause: unknown): unknown {
   if (cause === undefined || cause === null) return undefined;
   if (cause instanceof Error) {
     // Strip the error's own message unless it is already a safe AppError.
-    return { name: cause.name, message: cause instanceof AppError ? cause.userMessage : "hidden" };
+    const safe: Record<string, unknown> =
+      cause instanceof AppError
+        ? { name: cause.name, message: cause.userMessage }
+        : { name: cause.name, message: "hidden" };
+    // Include PostgREST / Supabase error details if present.
+    const props = cause as unknown as Record<string, unknown>;
+    if (typeof props.code === "string") safe.code = props.code;
+    if (typeof props.details === "string") safe.details = props.details;
+    if (typeof props.hint === "string") safe.hint = props.hint;
+    if (typeof props.message === "string" && !(cause instanceof AppError))
+      safe.remoteMessage = props.message;
+    return safe;
   }
-  return "non-error cause";
+  if (typeof cause === "object" && cause !== null) {
+    // Supabase PostgREST errors are plain objects with { message, code, details, hint }
+    const obj = cause as Record<string, unknown>;
+    const out: Record<string, unknown> = {};
+    if (typeof obj.message === "string") out.message = obj.message;
+    if (typeof obj.code === "string") out.code = obj.code;
+    if (typeof obj.details === "string") out.details = obj.details;
+    if (typeof obj.hint === "string") out.hint = obj.hint;
+    return Object.keys(out).length > 0 ? out : cause;
+  }
+  return cause;
 }
 
 /** Converts any thrown value into a typed AppError (never throws). */

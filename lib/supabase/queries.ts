@@ -18,6 +18,7 @@ import type {
 } from "@/lib/types/messaging";
 import type { NotificationPage, NotificationRow } from "@/lib/types/notifications";
 import type { EventDetail, EventParticipant, EventSummary, ScheduleItem } from "@/lib/types/events";
+import type { SessionDetail, CoachSummary, CoachDetail } from "@/lib/types/services";
 
 /**
  * Server-only data access for public/marketing content.
@@ -1031,6 +1032,241 @@ export const getMemberSchedule = cache(
     );
 
     return all.slice(0, 50);
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Services / Coaching (public + member + admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Public session detail with full coach info.  Returns null for
+ * inactive or nonexistent sessions.
+ */
+export const getPublicSessionById = cache(
+  async (sessionId: string): Promise<SessionDetail | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("sessions")
+      .select(
+        `id, title, description, type, duration_min, price, is_active, created_at, updated_at,
+         coach_id, coach_profiles ( id, experience_years, specialization, biography, is_available, profiles ( full_name, avatar_url ) )`,
+      )
+      .eq("id", sessionId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (error) {
+      logError("Query failed: public session detail", error, { sessionId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data as SessionDetail | null;
+  },
+);
+
+/**
+ * Sessions with optional discipline/level/type filtering.
+ * Used by the public /services page and member sessions page.
+ */
+export const getFilteredSessions = cache(
+  async (filters: { discipline?: string; level?: string; type?: string } = {}) => {
+    const supabase = await createClient();
+    let query = supabase
+      .from("sessions")
+      .select("id, title, description, type, duration_min, price, is_active")
+      .eq("is_active", true)
+      .order("price", { ascending: true });
+
+    if (filters.discipline) query = query.eq("discipline", filters.discipline);
+    if (filters.level) query = query.eq("level", filters.level as Database["public"]["Enums"]["skill_level"]);
+    if (filters.type) query = query.eq("type", filters.type as Database["public"]["Enums"]["session_type"]);
+
+    return unwrap("sessions", await query);
+  },
+);
+
+/**
+ * All coaches with profile info.  Public — no auth required.
+ * Returns coach profiles with their full_name and avatar from profiles.
+ */
+export const getPublicCoaches = cache(
+  async (): Promise<CoachSummary[]> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("coach_profiles")
+      .select(
+        `id, experience_years, specialization, biography, is_available, created_at,
+         profiles ( id, full_name, avatar_url )`,
+      )
+      .eq("is_available", true)
+      .order("experience_years", { ascending: false });
+
+    if (error) {
+      logError("Query failed: public coaches", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as CoachSummary[];
+  },
+);
+
+/**
+ * Single coach detail with achievements and sessions.  Public.
+ * Returns null if coach not found or not available.
+ */
+export const getPublicCoachById = cache(
+  async (coachId: string): Promise<CoachDetail | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("coach_profiles")
+      .select(
+        `id, experience_years, specialization, biography, is_available, created_at,
+         profiles ( id, full_name, avatar_url, email ),
+         achievements ( id, title, description, type, date, image_url ),
+         sessions ( id, title, description, type, duration_min, price, is_active )`,
+      )
+      .eq("id", coachId)
+      .maybeSingle();
+
+    if (error) {
+      logError("Query failed: public coach detail", error, { coachId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    if (!data) return null;
+
+    const { achievements, sessions, ...coach } = data;
+    return {
+      ...coach,
+      achievements: achievements ?? [],
+      sessions: (sessions ?? []).filter(
+        (s: { is_active: boolean }) => s.is_active,
+      ),
+    } as CoachDetail;
+  },
+);
+
+/**
+ * All sessions for admin management (including inactive).
+ */
+export const getAdminSessions = cache(
+  async (): Promise<
+    Array<{
+      id: string;
+      title: string;
+      description: string | null;
+      type: string;
+      duration_min: number;
+      price: number;
+      is_active: boolean;
+      created_at: string;
+      coach_profiles: { profiles: { full_name: string | null } | null } | null;
+    }>
+  > => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("sessions")
+      .select(
+        `id, title, description, type, duration_min, price, is_active, created_at,
+         coach_profiles ( profiles ( full_name ) )`,
+      )
+      .order("is_active", { ascending: false })
+      .order("title", { ascending: true });
+
+    if (error) {
+      logError("Query failed: admin sessions", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data ?? [];
+  },
+);
+
+/**
+ * Single session for admin (including inactive).  Returns null if not found.
+ */
+export const getAdminSessionById = cache(
+  async (sessionId: string) => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("sessions")
+      .select(
+        `id, title, description, type, duration_min, price, is_active, created_at, updated_at,
+         coach_id, coach_profiles ( id, experience_years, specialization, biography, is_available, profiles ( full_name, avatar_url ) )`,
+      )
+      .eq("id", sessionId)
+      .maybeSingle();
+
+    if (error) {
+      logError("Query failed: admin session detail", error, { sessionId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data;
+  },
+);
+
+/**
+ * Bookings for a specific coach (used by coach-scoped views).
+ * Paginated with keyset on scheduled_at DESC, id DESC.
+ */
+export const getCoachBookings = cache(
+  async (
+    coachId: string,
+    cursor?: string,
+    limit = 20,
+  ): Promise<{
+    items: Array<{
+      id: string;
+      member_id: string;
+      session_id: string;
+      coach_id: string;
+      scheduled_at: string;
+      status: string;
+      notes: string | null;
+      created_at: string;
+      sessions: { title: string; duration_min: number } | null;
+      member_profiles: { profiles: { full_name: string | null; avatar_url: string | null } | null } | null;
+    }>;
+    nextCursor: string | null;
+    hasMore: boolean;
+  }> => {
+    const supabase = await createClient();
+    let query = supabase
+      .from("bookings")
+      .select(
+        `id, member_id, session_id, coach_id, scheduled_at, status, notes, created_at,
+         sessions ( title, duration_min ),
+         member_profiles ( profiles ( full_name, avatar_url ) )`,
+      )
+      .eq("coach_id", coachId)
+      .order("scheduled_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(limit + 1);
+
+    if (cursor) {
+      const [cursorScheduledAt, cursorId] = decodeCursor(cursor);
+      query = query.or(
+        `scheduled_at.lt.${cursorScheduledAt},and(scheduled_at.eq.${cursorScheduledAt},id.lt.${cursorId})`,
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      logError("Query failed: coach bookings", error, { coachId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = data ?? [];
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const lastItem = items[items.length - 1];
+    const nextCursor =
+      hasMore && lastItem ? encodeCursor(lastItem.scheduled_at, lastItem.id) : null;
+
+    return { items, nextCursor, hasMore };
   },
 );
 

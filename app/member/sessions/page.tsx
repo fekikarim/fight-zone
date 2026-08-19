@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { MemberSessionCard } from "@/components/member/session-card";
+import { MemberSessionCard, type MemberSessionItem } from "@/components/member/session-card";
 import { EmptyState } from "@/components/empty-state";
 import { getActiveSessions } from "@/lib/supabase/queries";
 import { CalendarDays } from "lucide-react";
@@ -27,7 +27,7 @@ export default async function MemberSessionsPage() {
       {sessions.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
           {sessions.map((session) => (
-            <MemberSessionCard key={session.id} session={session} />
+            <MemberSessionCard key={session.id} session={session as MemberSessionItem} />
           ))}
         </div>
       ) : (
