@@ -9,7 +9,7 @@ import { EventCard, type EventItem } from "@/components/marketing/event-card";
 import { getPublicEvents, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function EventsPreview() {
-  const events = await resolveOrFallback(() => getPublicEvents(3), []);
+  const events = await resolveOrFallback(() => getPublicEvents({ limit: 3 }), []);
 
   return (
     <section className="py-20 lg:py-28">

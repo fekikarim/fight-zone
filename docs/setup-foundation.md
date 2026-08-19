@@ -22,6 +22,7 @@ Applied via versioned migrations in `supabase/migrations/`:
 | `20260818000000_booking_lifecycle.sql` | **Prompt #4:** DB-authoritative booking state machine (`enforce_booking_transition` trigger for every role), coach-ownership RLS (`coach_id = auth.uid()` for COACH, admin-wide, member-own), lifecycle notifications (`notify_on_booking_status_change`), `is_admin()` helper, admin list composite indexes |
 | `20260819000000_messaging.sql` | **Prompt #5:** `conversations`, `messages` tables, participant-only RLS (no admin-wide read), cursor-based pagination RPCs, message notification trigger (`notify_on_message_insert`), indexes |
 | `20260820000000_notifications.sql` | **Prompt #6:** `resource_type`/`resource_id` columns on notifications, keyset-pagination index `(user_id, created_at DESC, id DESC)`, narrowed UPDATE RLS (mark-read only), trigger functions updated via `CREATE OR REPLACE` to include resource columns |
+| `20260821000000_events.sql` | **Prompt #7:** `max_participants` on events, `participation_status` expansion (ATTENDED, NO_SHOW), capacity enforcement trigger (`enforce_event_registration`), state-machine trigger (`enforce_participation_transitions`), notification triggers (`notify_event_registration`, `notify_event_cancellation`), indexes |
 
 ## 2. Role model
 
@@ -395,3 +396,52 @@ pagination.  Narrow UPDATE policy replacing the old broad one.
 | `app/admin/notifications/` | Admin notification center page + loading |
 | `supabase/tests/notifications_rls.sql` | 21 security test cases |
 | `docs/notifications.md` | Full architecture documentation |
+
+## 17. Events, Competition & Training Schedule (Prompt #7)
+
+### Schema
+
+Extended in `supabase/migrations/20260821000000_events.sql` (additive only):
+
+| Table | Changes |
+| --- | --- |
+| `events` | Added `max_participants integer` (nullable = unlimited) |
+| `event_participants` | Expanded `participation_status` enum with `ATTENDED`, `NO_SHOW` |
+
+### Trigger functions
+
+| Trigger | When | Purpose |
+| --- | --- | --- |
+| `enforce_event_registration` | BEFORE INSERT on `event_participants` | Blocks registration when: event not public, event already started (deadline), capacity reached (counts non-CANCELLED participants atomically) |
+| `enforce_participation_transitions` | BEFORE UPDATE of `status` on `event_participants` | State machine: INTERESTED→JOINED/CANCELLED; JOINED→CANCELLED/ATTENDED/NO_SHOW; terminal states CANCELLED, ATTENDED, NO_SHOW. Members cannot self-mark ATTENDED/NO_SHOW |
+| `notify_event_registration` | AFTER INSERT on `event_participants` | Creates notification for member on registration |
+| `notify_event_cancellation` | AFTER UPDATE of status to CANCELLED | Creates cancellation notification for member |
+
+### Registration state machine
+
+```
+INTERESTED ──→ JOINED ──→ ATTENDED (terminal)
+     │              │
+     │              ├──→ NO_SHOW (terminal)
+     │              │
+     │              └──→ CANCELLED (terminal)
+     │
+     └──→ CANCELLED (terminal)
+```
+
+### File map
+
+| Path | Description |
+| --- | --- |
+| `supabase/migrations/20260821000000_events.sql` | Migration: schema, triggers, indexes |
+| `lib/types/events.ts` | Shared types + helper functions |
+| `lib/validations/events.ts` | Zod schemas |
+| `lib/actions/events.ts` | Server actions (register, cancel, create, update, update participant) |
+| `lib/supabase/queries.ts` | Event queries (public, member, admin, schedule) |
+| `components/events/*.tsx` | 5 UI components (detail, register-button, filters, participant-list, schedule-list) |
+| `app/(marketing)/events/` | Public events list + detail page |
+| `app/member/events/` | Member events list + detail with registration |
+| `app/member/schedule/` | Combined bookings + events schedule |
+| `app/admin/events/` | Admin event list + detail + create form |
+| `supabase/tests/events_rls.sql` | 24 security test cases |
+| `docs/events.md` | Full architecture documentation |

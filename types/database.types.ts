@@ -308,6 +308,7 @@ export type Database = {
           id: string
           is_public: boolean
           location: string | null
+          max_participants: number | null
           start_at: string
           title: string
           updated_at: string
@@ -321,6 +322,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           location?: string | null
+          max_participants?: number | null
           start_at: string
           title: string
           updated_at?: string
@@ -334,6 +336,7 @@ export type Database = {
           id?: string
           is_public?: boolean
           location?: string | null
+          max_participants?: number | null
           start_at?: string
           title?: string
           updated_at?: string
@@ -960,7 +963,7 @@ export type Database = {
       media_type: "IMAGE" | "VIDEO" | "DOCUMENT"
       message_status: "UNREAD" | "READ" | "REPLIED"
       notification_type: "BOOKING" | "SESSION" | "EVENT" | "MESSAGE" | "SYSTEM"
-      participation_status: "JOINED" | "INTERESTED" | "CANCELLED"
+      participation_status: "JOINED" | "INTERESTED" | "CANCELLED" | "ATTENDED" | "NO_SHOW"
       payment_method: "CASH" | "BANK_TRANSFER" | "ONLINE" | "OTHER"
       payment_status: "PENDING" | "PAID" | "FAILED" | "REFUNDED"
       session_type: "PERSONAL" | "TECHNICAL" | "PHYSICAL" | "STRATEGY" | "COMBO"
@@ -1109,7 +1112,7 @@ export const Constants = {
       media_type: ["IMAGE", "VIDEO", "DOCUMENT"],
       message_status: ["UNREAD", "READ", "REPLIED"],
       notification_type: ["BOOKING", "SESSION", "EVENT", "MESSAGE", "SYSTEM"],
-      participation_status: ["JOINED", "INTERESTED", "CANCELLED"],
+      participation_status: ["JOINED", "INTERESTED", "CANCELLED", "ATTENDED", "NO_SHOW"],
       payment_method: ["CASH", "BANK_TRANSFER", "ONLINE", "OTHER"],
       payment_status: ["PENDING", "PAID", "FAILED", "REFUNDED"],
       session_type: ["PERSONAL", "TECHNICAL", "PHYSICAL", "STRATEGY", "COMBO"],

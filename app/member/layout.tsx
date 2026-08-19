@@ -6,7 +6,9 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 const memberNav = [
   { href: "/member", label: "Overview" },
   { href: "/member/sessions", label: "Sessions" },
+  { href: "/member/schedule", label: "Schedule" },
   { href: "/member/bookings", label: "My Bookings" },
+  { href: "/member/events", label: "Events" },
   { href: "/member/messages", label: "Messages" },
   { href: "/member/notifications", label: "Notifications" },
   { href: "/member/profile", label: "Profile" },

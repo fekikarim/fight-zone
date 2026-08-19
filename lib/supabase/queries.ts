@@ -17,6 +17,7 @@ import type {
   MessagingRecipient,
 } from "@/lib/types/messaging";
 import type { NotificationPage, NotificationRow } from "@/lib/types/notifications";
+import type { EventDetail, EventParticipant, EventSummary, ScheduleItem } from "@/lib/types/events";
 
 /**
  * Server-only data access for public/marketing content.
@@ -79,7 +80,7 @@ export const getActiveSessions = cache(async () => {
   return unwrap("sessions", result);
 });
 
-export const getPublicEvents = cache(async (limit?: number) => {
+export const getPublicEvents = cache(async (filters: { type?: string; limit?: number } = {}) => {
   const supabase = await createClient();
   let query = supabase
     .from("events")
@@ -87,7 +88,8 @@ export const getPublicEvents = cache(async (limit?: number) => {
     .eq("is_public", true)
     .gte("start_at", new Date().toISOString())
     .order("start_at", { ascending: true });
-  if (limit) query = query.limit(limit);
+  if (filters.type) query = query.eq("event_type", filters.type as Database["public"]["Enums"]["event_type"]);
+  if (filters.limit) query = query.limit(filters.limit);
   return unwrap("events", await query);
 });
 
@@ -720,6 +722,315 @@ export const getNotificationCenter = cache(
     const nextCursor = hasMore && lastItem ? encodeCursor(lastItem.created_at, lastItem.id) : null;
 
     return { items, nextCursor, hasMore };
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Events & Schedule (public + member + admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Public event detail with participant count.  The count is derived via a
+ * lateral join — no separate query needed.  Returns null for non-public
+ * or nonexistent events (used by the public detail page).
+ */
+export const getPublicEventById = cache(
+  async (eventId: string): Promise<EventDetail | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("events")
+      .select(
+        `id, title, description, start_at, end_at, location, event_type,
+         is_public, created_at, created_by,
+         event_participants!inner ( id )`,
+      )
+      .eq("id", eventId)
+      .eq("is_public", true)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      logError("Query failed: public event detail", error, { eventId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = data.event_participants ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- discard event_participants from rest spread
+    const { event_participants: _, ...event } = data;
+    return { ...event, participant_count: rows.length } as EventDetail;
+  },
+);
+
+/**
+ * Event detail for staff (includes non-public events).  Returns null if
+ * the event does not exist.
+ */
+export const getStaffEventById = cache(
+  async (eventId: string): Promise<EventDetail | null> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("events")
+      .select(
+        `id, title, description, start_at, end_at, location, event_type,
+         is_public, created_at, created_by,
+         event_participants!inner ( id )`,
+      )
+      .eq("id", eventId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      logError("Query failed: staff event detail", error, { eventId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = data.event_participants ?? [];
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- discard event_participants from rest spread
+    const { event_participants: _, ...event } = data;
+    return { ...event, participant_count: rows.length } as EventDetail;
+  },
+);
+
+/**
+ * Member's registration for a specific event.  Returns null if not registered.
+ */
+export const getMemberEventRegistration = cache(
+  async (
+    eventId: string,
+  ): Promise<{ id: string; status: string; joined_at: string } | null> => {
+    const user = await getCurrentUser();
+    if (!user) return null;
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("event_participants")
+      .select("id, status, joined_at")
+      .eq("event_id", eventId)
+      .eq("member_id", user.id)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      logError("Query failed: member event registration", error, { eventId });
+      return null;
+    }
+    return data;
+  },
+);
+
+/**
+ * All events a member is registered for (upcoming first).  Used by the
+ * member events page and the combined schedule.
+ */
+export const getMemberRegisteredEvents = cache(
+  async (): Promise<
+    Array<{
+      event_id: string;
+      status: string;
+      joined_at: string;
+      events: EventSummary;
+    }>
+  > => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("event_participants")
+      .select(
+        `event_id, status, joined_at,
+         events ( id, title, description, start_at, end_at, location, event_type, is_public, created_at )`,
+      )
+      .eq("member_id", user.id)
+      .order("joined_at", { ascending: false });
+
+    if (error) {
+      logError("Query failed: member registered events", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as Array<{
+      event_id: string;
+      status: string;
+      joined_at: string;
+      events: EventSummary;
+    }>;
+  },
+);
+
+/**
+ * Members registered for a specific event (admin/coach view).
+ * Paginated with keyset on joined_at DESC, id DESC.
+ */
+export const getEventParticipants = cache(
+  async (
+    eventId: string,
+    cursor?: string,
+    limit = 20,
+  ): Promise<{ items: EventParticipant[]; nextCursor: string | null; hasMore: boolean }> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    let query = supabase
+      .from("event_participants")
+      .select(
+        `id, event_id, member_id, status, joined_at,
+         member_profiles ( profiles ( full_name, avatar_url ) )`,
+      )
+      .eq("event_id", eventId)
+      .order("joined_at", { ascending: false })
+      .order("id", { ascending: false })
+      .limit(limit + 1);
+
+    if (cursor) {
+      const [cursorJoinedAt, cursorId] = decodeCursor(cursor);
+      query = query.or(
+        `joined_at.lt.${cursorJoinedAt},and(joined_at.eq.${cursorJoinedAt},id.lt.${cursorId})`,
+      );
+    }
+
+    const { data, error } = await query;
+    if (error) {
+      logError("Query failed: event participants", error, { eventId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = ((data ?? []) as Array<{
+      id: string;
+      event_id: string;
+      member_id: string;
+      status: string;
+      joined_at: string;
+      member_profiles: { profiles: { full_name: string | null; avatar_url: string | null } | null } | null;
+    }>).map((r) => ({
+      id: r.id,
+      event_id: r.event_id,
+      member_id: r.member_id,
+      status: r.status as EventParticipant["status"],
+      joined_at: r.joined_at,
+      member_name: r.member_profiles?.profiles?.full_name ?? null,
+      member_avatar: r.member_profiles?.profiles?.avatar_url ?? null,
+    }));
+
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const lastItem = items[items.length - 1];
+    const nextCursor = hasMore && lastItem ? encodeCursor(lastItem.joined_at, lastItem.id) : null;
+
+    return { items, nextCursor, hasMore };
+  },
+);
+
+/**
+ * Admin event list with participant counts.  Includes both public and
+ * private events.  Ordered by start_at DESC (upcoming first).
+ */
+export const getAdminEvents = cache(
+  async (): Promise<
+    Array<EventSummary & { participant_count: number }>
+  > => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("events")
+      .select(
+        `id, title, description, start_at, end_at, location, event_type,
+         is_public, created_at,
+         event_participants!inner ( id )`,
+      )
+      .order("start_at", { ascending: false });
+
+    if (error) {
+      logError("Query failed: admin events", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    return (data ?? []).map((row) => {
+      const count = row.event_participants?.length ?? 0;
+      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- discard event_participants from rest spread
+      const { event_participants: _, ...event } = row;
+      return { ...event, participant_count: count } as EventSummary & { participant_count: number };
+    });
+  },
+);
+
+/**
+ * Combined member schedule: upcoming confirmed bookings + registered events,
+ * ordered chronologically.  Bounded to 50 items total.
+ */
+export const getMemberSchedule = cache(
+  async (): Promise<ScheduleItem[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+
+    const [bookingsResult, eventsResult] = await Promise.all([
+      supabase
+        .from("bookings")
+        .select(
+          `id, scheduled_at, status,
+           sessions ( title ),
+           coach_profiles ( profiles ( full_name ) )`,
+        )
+        .eq("member_id", user.id)
+        .in("status", ["PENDING", "CONFIRMED"])
+        .gte("scheduled_at", new Date().toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(25),
+      supabase
+        .from("event_participants")
+        .select(
+          `event_id, status,
+           events ( id, title, start_at, end_at, location )`,
+        )
+        .eq("member_id", user.id)
+        .in("status", ["JOINED", "INTERESTED"])
+        .order("joined_at", { ascending: false })
+        .limit(25),
+    ]);
+
+    if (bookingsResult.error) {
+      logError("Query failed: member schedule (bookings)", bookingsResult.error);
+      throw new DatabaseError(undefined, { cause: bookingsResult.error });
+    }
+    if (eventsResult.error) {
+      logError("Query failed: member schedule (events)", eventsResult.error);
+      throw new DatabaseError(undefined, { cause: eventsResult.error });
+    }
+
+    const bookingItems: ScheduleItem[] = (bookingsResult.data ?? []).map((b) => ({
+      kind: "booking" as const,
+      id: b.id,
+      title: b.sessions?.title ?? "Session",
+      start_at: b.scheduled_at,
+      end_at: null,
+      location: null,
+      status: b.status,
+    }));
+
+    const eventItems: ScheduleItem[] = (eventsResult.data ?? [])
+      .filter((e) => e.events)
+      .map((e) => ({
+        kind: "event" as const,
+        id: e.event_id,
+        title: e.events!.title,
+        start_at: e.events!.start_at,
+        end_at: e.events!.end_at,
+        location: e.events!.location,
+        status: e.status,
+      }));
+
+    const all = [...bookingItems, ...eventItems].sort(
+      (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
+    );
+
+    return all.slice(0, 50);
   },
 );
 
