@@ -497,3 +497,32 @@ Defined as constants in `lib/types/services.ts`:
 | `lib/site.ts` | Updated: added "Coaches" to public nav |
 | `app/member/sessions/[id]/page.tsx` | Updated: discipline/level badges |
 | `types/database.types.ts` | Updated: discipline + level on sessions Row/Insert/Update |
+
+## 19. Content Engine & CMS Platform
+
+Centralized admin content management. See `docs/content-engine.md` for full details.
+
+| File | Description |
+|------|-------------|
+| `lib/types/content.ts` | New: domain types for news, media, achievements + labels |
+| `lib/validations/content.ts` | New: Zod schemas for CRUD operations |
+| `lib/actions/content.ts` | New: 9 server actions (create/update/delete × 3) |
+| `lib/supabase/queries.ts` | Updated: getAdminNews, getAdminNewsById, getAdminMedia, getAdminAchievements |
+| `app/admin/content/page.tsx` | New: admin hub with section counts |
+| `app/admin/content/news/page.tsx` | New: news list |
+| `app/admin/content/news/new/page.tsx` | New: create article |
+| `app/admin/content/news/[id]/page.tsx` | New: edit article |
+| `app/admin/content/media/page.tsx` | New: media upload + library |
+| `app/admin/content/achievements/page.tsx` | New: achievements manager |
+| `components/content/news-create-form.tsx` | New: article creation form |
+| `components/content/news-edit-form.tsx` | New: article edit form + delete |
+| `components/content/media-upload-zone.tsx` | New: client-side upload to Supabase Storage |
+| `components/content/media-manager.tsx` | New: media grid with visibility toggle |
+| `components/content/achievement-manager.tsx` | New: achievement create form + list |
+| `app/admin/content/loading.tsx` | New: hub loading skeleton |
+| `app/admin/content/news/loading.tsx` | New: news list loading |
+| `app/admin/content/news/new/loading.tsx` | New: create loading |
+| `app/admin/content/news/[id]/loading.tsx` | New: edit loading |
+| `app/admin/content/media/loading.tsx` | New: media loading |
+| `app/admin/content/achievements/loading.tsx` | New: achievements loading |
+| `docs/content-engine.md` | New: content engine documentation |

@@ -19,6 +19,7 @@ import type {
 import type { NotificationPage, NotificationRow } from "@/lib/types/notifications";
 import type { EventDetail, EventParticipant, EventSummary, ScheduleItem } from "@/lib/types/events";
 import type { SessionDetail, CoachSummary, CoachDetail } from "@/lib/types/services";
+import type { AdminNewsItem, AdminMediaItem, AdminAchievementItem } from "@/lib/types/content";
 
 /**
  * Server-only data access for public/marketing content.
@@ -1267,6 +1268,105 @@ export const getCoachBookings = cache(
       hasMore && lastItem ? encodeCursor(lastItem.scheduled_at, lastItem.id) : null;
 
     return { items, nextCursor, hasMore };
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Content / CMS (admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * All news articles for admin management (including drafts).
+ * Ordered by created_at DESC.
+ */
+export const getAdminNews = cache(
+  async (): Promise<AdminNewsItem[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("news")
+      .select("id, title, slug, is_published, published_at, created_at, updated_at")
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      logError("Query failed: admin news", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data ?? [];
+  },
+);
+
+/**
+ * Single news article for admin edit. Returns null if not found.
+ */
+export const getAdminNewsById = cache(
+  async (articleId: string) => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("news")
+      .select(
+        "id, title, slug, content, cover_image_url, is_published, published_at, created_at, updated_at, created_by",
+      )
+      .eq("id", articleId)
+      .maybeSingle();
+
+    if (error) {
+      logError("Query failed: admin news by id", error, { articleId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data;
+  },
+);
+
+/**
+ * All media items for admin management.
+ * Ordered by uploaded_at DESC.
+ */
+export const getAdminMedia = cache(
+  async (): Promise<AdminMediaItem[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("media")
+      .select("id, url, type, title, description, is_public, uploaded_at, created_at")
+      .order("uploaded_at", { ascending: false });
+
+    if (error) {
+      logError("Query failed: admin media", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data ?? [];
+  },
+);
+
+/**
+ * All achievements for admin management.
+ * Ordered by date DESC (nulls last), then created_at DESC.
+ */
+export const getAdminAchievements = cache(
+  async (): Promise<AdminAchievementItem[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("achievements")
+      .select("id, title, description, type, date, image_url, created_at, updated_at")
+      .order("date", { ascending: false, nullsFirst: false })
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      logError("Query failed: admin achievements", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data ?? [];
   },
 );
 
