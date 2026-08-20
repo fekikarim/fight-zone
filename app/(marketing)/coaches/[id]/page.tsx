@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
 import Link from "next/link";
-import { User, Award, ArrowLeft, Calendar, Clock } from "lucide-react";
+import { User, Award, ArrowLeft, Calendar, Clock, Star } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { PageHero } from "@/components/marketing/page-hero";
-import { getPublicCoachById } from "@/lib/supabase/queries";
+import { getPublicCoachById, getApprovedReviews, resolveOrFallback } from "@/lib/supabase/queries";
 import { formatDate, formatPrice } from "@/lib/utils";
 import {
   sessionTypeLabel,
@@ -35,7 +35,10 @@ export async function generateMetadata({ params }: CoachDetailPageProps): Promis
 
 export default async function CoachDetailPage({ params }: CoachDetailPageProps) {
   const { id } = await params;
-  const coach = await getPublicCoachById(id);
+  const [coach, reviews] = await Promise.all([
+    getPublicCoachById(id),
+    resolveOrFallback(() => getApprovedReviews({ coachId: id, limit: 6 }), []),
+  ]);
   if (!coach) notFound();
 
   const profile = coach.profiles;
@@ -169,6 +172,46 @@ export default async function CoachDetailPage({ params }: CoachDetailPageProps) 
                           </CardContent>
                         </Card>
                       </Link>
+                    ))}
+                  </div>
+                </Reveal>
+              ) : null}
+
+              {/* Reviews */}
+              {reviews.length > 0 ? (
+                <Reveal delay={200}>
+                  <SectionHeading
+                    eyebrow="Testimonials"
+                    title="What members say"
+                    description={`Reviews from athletes who train with ${profile?.full_name?.split(" ")[0] ?? "this coach"}.`}
+                  />
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    {reviews.map((review) => (
+                      <div
+                        key={review.id}
+                        className="rounded-xl border border-ink-border bg-ink-soft/50 p-4"
+                      >
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3.5 w-3.5 ${
+                                i < review.rating
+                                  ? "fill-primary text-primary"
+                                  : "text-ink-border"
+                              }`}
+                              aria-hidden
+                            />
+                          ))}
+                        </div>
+                        <h4 className="mt-2 text-sm font-semibold">{review.title}</h4>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted">
+                          {review.content}
+                        </p>
+                        <p className="mt-2 text-xs text-muted">
+                          — {review.member_profiles?.profiles?.full_name ?? "Member"}
+                        </p>
+                      </div>
                     ))}
                   </div>
                 </Reveal>

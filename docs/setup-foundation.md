@@ -526,3 +526,74 @@ Centralized admin content management. See `docs/content-engine.md` for full deta
 | `app/admin/content/media/loading.tsx` | New: media loading |
 | `app/admin/content/achievements/loading.tsx` | New: achievements loading |
 | `docs/content-engine.md` | New: content engine documentation |
+
+## 20. Membership Plans, Subscriptions & Billing (Prompt #10)
+
+Core monetization layer. See `docs/memberships.md` for full details.
+
+| File | Description |
+|------|-------------|
+| `supabase/migrations/20260824000000_memberships_and_billing.sql` | New: membership_plans + member_subscriptions tables, payments ALTER, RLS |
+| `supabase/tests/memberships_rls.sql` | New: 10 RLS test cases |
+| `lib/types/memberships.ts` | New: domain types, tier/interval/status labels, helpers |
+| `lib/validations/memberships.ts` | New: 7 Zod schemas for plan CRUD, subscribe, cancel, payment |
+| `lib/actions/memberships.ts` | New: 7 server actions |
+| `lib/supabase/queries.ts` | Updated: 10 new queries (public, member, admin) |
+| `app/(marketing)/pricing/page.tsx` | New: public pricing with comparison matrix + FAQ |
+| `app/(marketing)/pricing/loading.tsx` | New: pricing page skeleton |
+| `components/memberships/pricing-card.tsx` | New: pricing card component |
+| `components/memberships/pricing-toggle.tsx` | New: billing interval toggle |
+| `components/memberships/plan-create-form.tsx` | New: admin plan creation form |
+| `components/memberships/plan-edit-form.tsx` | New: admin plan edit form + toggle active |
+| `components/marketing/sections/pricing-preview.tsx` | New: home page pricing preview |
+| `app/member/subscription/page.tsx` | New: member subscription view + history |
+| `app/member/payments/page.tsx` | New: member payment history |
+| `app/member/subscription/loading.tsx` | New: subscription page skeleton |
+| `app/member/payments/loading.tsx` | New: payments page skeleton |
+| `app/admin/memberships/page.tsx` | New: admin plan catalog + billing stats |
+| `app/admin/memberships/new/page.tsx` | New: create plan |
+| `app/admin/memberships/[id]/page.tsx` | New: edit plan |
+| `app/admin/memberships/subscriptions/page.tsx` | New: subscription management |
+| `app/admin/memberships/payments/page.tsx` | New: payment management |
+| `app/admin/memberships/loading.tsx` | New: plans catalog skeleton |
+| `app/admin/memberships/new/loading.tsx` | New: create plan skeleton |
+| `app/admin/memberships/[id]/loading.tsx` | New: edit plan skeleton |
+| `app/admin/memberships/subscriptions/loading.tsx` | New: subscriptions skeleton |
+| `app/admin/memberships/payments/loading.tsx` | New: payments skeleton |
+| `app/member/layout.tsx` | Updated: added Membership + Payments nav links |
+| `app/admin/layout.tsx` | Updated: added Memberships nav link |
+| `app/member/page.tsx` | Updated: membership status card + CTA |
+| `lib/site.ts` | Updated: added Pricing to public nav |
+| `docs/memberships.md` | New: memberships documentation |
+
+## 21. Member Reviews, Before/After Transformations & Social Proof (Prompt #11)
+
+Social proof and community engagement platform. See `docs/reviews-and-social-proof.md` for full details.
+
+| File | Description |
+|------|-------------|
+| `supabase/migrations/20260825000000_billing_hardening.sql` | New: corrective RLS for Prompt #10 (member self-subscribe) |
+| `supabase/migrations/20260826000000_reviews_and_transformations.sql` | New: enums, reviews + transformation_stories tables, RLS, triggers |
+| `supabase/tests/reviews_rls.sql` | New: 10 RLS test cases |
+| `types/database.types.ts` | Updated: new enums + table types |
+| `lib/types/reviews.ts` | New: domain types, label maps, renderStars, computeWeightChange |
+| `lib/validations/reviews.ts` | New: 5 Zod schemas for reviews + transformations |
+| `lib/actions/reviews.ts` | New: 6 server actions |
+| `lib/supabase/queries.ts` | Updated: 8 new review queries |
+| `components/reviews/review-form-modal.tsx` | New: interactive star rating + review form |
+| `components/reviews/moderate-review-form.tsx` | New: admin approve/reject/feature |
+| `components/reviews/moderate-transformation-form.tsx` | New: admin publish/feature |
+| `app/member/reviews/page.tsx` | New: member review list |
+| `app/member/reviews/loading.tsx` | New: reviews skeleton |
+| `app/admin/reviews/page.tsx` | New: admin moderation queue |
+| `app/admin/reviews/loading.tsx` | New: moderation queue skeleton |
+| `app/admin/reviews/transformations/page.tsx` | New: transformation management |
+| `app/admin/reviews/transformations/loading.tsx` | New: transformations skeleton |
+| `components/marketing/sections/testimonials-section.tsx` | New: dynamic testimonials grid |
+| `components/marketing/sections/transformations-preview.tsx` | New: Before/After transformation cards |
+| `app/(marketing)/page.tsx` | Updated: added Testimonials + Transformations |
+| `app/(marketing)/about/page.tsx` | Updated: added TestimonialsSection |
+| `app/(marketing)/coaches/[id]/page.tsx` | Updated: added coach-specific reviews |
+| `app/(marketing)/services/[id]/page.tsx` | Updated: added session-specific reviews |
+| `app/member/layout.tsx` | Updated: added "My Reviews" nav link |
+| `app/admin/layout.tsx` | Updated: added "Reviews" nav link |

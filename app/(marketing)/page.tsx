@@ -13,6 +13,10 @@ import {
   ServicesPreviewSkeleton,
 } from "@/components/marketing/sections/services-preview";
 import {
+  PricingPreview,
+  PricingPreviewSkeleton,
+} from "@/components/marketing/sections/pricing-preview";
+import {
   PalmaresPreview,
   PalmaresPreviewSkeleton,
 } from "@/components/marketing/sections/palmares-preview";
@@ -28,6 +32,14 @@ import {
   NewsPreview,
   NewsPreviewSkeleton,
 } from "@/components/marketing/sections/news-preview";
+import {
+  TestimonialsSection,
+  TestimonialsSectionSkeleton,
+} from "@/components/marketing/sections/testimonials-section";
+import {
+  TransformationsPreview,
+  TransformationsPreviewSkeleton,
+} from "@/components/marketing/sections/transformations-preview";
 import { CtaBanner } from "@/components/marketing/sections/cta";
 
 export default function HomePage() {
@@ -43,6 +55,9 @@ export default function HomePage() {
       <Suspense fallback={<ServicesPreviewSkeleton />}>
         <ServicesPreview />
       </Suspense>
+      <Suspense fallback={<PricingPreviewSkeleton />}>
+        <PricingPreview />
+      </Suspense>
       <Suspense fallback={<PalmaresPreviewSkeleton />}>
         <PalmaresPreview />
       </Suspense>
@@ -54,6 +69,12 @@ export default function HomePage() {
       </Suspense>
       <Suspense fallback={<NewsPreviewSkeleton />}>
         <NewsPreview />
+      </Suspense>
+      <Suspense fallback={<TestimonialsSectionSkeleton />}>
+        <TestimonialsSection />
+      </Suspense>
+      <Suspense fallback={<TransformationsPreviewSkeleton />}>
+        <TransformationsPreview />
       </Suspense>
       <CtaBanner />
     </>

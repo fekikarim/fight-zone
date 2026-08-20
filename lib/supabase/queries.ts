@@ -20,6 +20,8 @@ import type { NotificationPage, NotificationRow } from "@/lib/types/notification
 import type { EventDetail, EventParticipant, EventSummary, ScheduleItem } from "@/lib/types/events";
 import type { SessionDetail, CoachSummary, CoachDetail } from "@/lib/types/services";
 import type { AdminNewsItem, AdminMediaItem, AdminAchievementItem } from "@/lib/types/content";
+import type { MembershipPlan, MemberSubscriptionWithPlan, PaymentRecord } from "@/lib/types/memberships";
+import type { ReviewItem, ReviewWithAuthor, TransformationItem, ReviewStats } from "@/lib/types/reviews";
 
 /**
  * Server-only data access for public/marketing content.
@@ -244,7 +246,7 @@ export const getMemberBookingStats = cache(async () => {
   if (!user) return { pending: 0, upcoming: 0, total: 0 };
 
   const now = new Date().toISOString();
-  const base = supabase.from("bookings").select("*", { count: "exact", head: true });
+  const base = supabase.from("bookings").select("id", { count: "exact", head: true });
   const [pendingResult, upcomingResult, totalResult] = await Promise.all([
     base.eq("member_id", user.id).eq("status", "PENDING"),
     base.eq("member_id", user.id).eq("status", "CONFIRMED").gte("scheduled_at", now),
@@ -437,7 +439,7 @@ export const getBookingManagementStats = cache(async (): Promise<BookingManageme
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
-  const base = supabase.from("bookings").select("*", { count: "exact", head: true });
+  const base = supabase.from("bookings").select("id", { count: "exact", head: true });
   const scope = (query: ReturnType<typeof base.eq>) =>
     staff.isAdmin ? query : query.eq("coach_id", staff.userId);
 
@@ -644,7 +646,7 @@ export const getUnreadNotificationCount = cache(async (): Promise<number> => {
   const supabase = await createClient();
   const { count, error } = await supabase
     .from("notifications")
-    .select("*", { count: "exact", head: true })
+    .select("id", { count: "exact", head: true })
     .eq("is_read", false);
 
   if (error) return 0;
@@ -1367,6 +1369,619 @@ export const getAdminAchievements = cache(
       throw new DatabaseError(undefined, { cause: error });
     }
     return data ?? [];
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Membership Plans, Subscriptions & Billing (public + member + admin)
+// ---------------------------------------------------------------------------
+
+/**
+ * Checks if a Supabase error means the table/relation doesn't exist yet
+ * (migration not deployed). Uses String() on all properties for robustness
+ * against different error object shapes.
+ */
+function isTableMissingError(err: unknown): boolean {
+  const s = String(err ?? "");
+  if (s.includes("does not exist") || s.includes("relation") || s.includes("42P01") || s.includes("PGRST205")) {
+    return true;
+  }
+  if (typeof err === "object" && err !== null) {
+    const obj = err as Record<string, unknown>;
+    const combined = `${String(obj.code ?? "")} ${String(obj.message ?? "")} ${String(obj.details ?? "")}`;
+    if (combined.includes("does not exist") || combined.includes("42P01") || combined.includes("PGRST205")) {
+      return true;
+    }
+  }
+  return false;
+}
+
+/**
+ * All active membership plans, ordered by sort_order.
+ * Used on the public /pricing page.
+ */
+export const getPublicMembershipPlans = cache(
+  async (): Promise<MembershipPlan[]> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("membership_plans")
+      .select("id, name, slug, description, tier, billing_interval, price, currency, session_credits, features, is_popular, is_active, sort_order, created_at, updated_at")
+      .eq("is_active", true)
+      .order("sort_order", { ascending: true });
+
+    if (error) {
+      if (isTableMissingError(error)) return [];
+      logError("Query failed: public membership plans", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as MembershipPlan[];
+  },
+);
+
+/**
+ * Single membership plan by slug.
+ */
+export const getPublicMembershipPlanBySlug = cache(
+  async (slug: string): Promise<MembershipPlan | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("membership_plans")
+      .select("id, name, slug, description, tier, billing_interval, price, currency, session_credits, features, is_popular, is_active, sort_order, created_at, updated_at")
+      .eq("slug", slug)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (error) {
+      if (isTableMissingError(error)) return null;
+      logError("Query failed: public membership plan by slug", error, { slug });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data as MembershipPlan | null;
+  },
+);
+
+/**
+ * Current user's active or most recent subscription, joined with plan.
+ */
+export const getCurrentMemberSubscription = cache(
+  async (): Promise<MemberSubscriptionWithPlan | null> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("member_subscriptions")
+      .select("*, membership_plans(*)")
+      .eq("member_id", user.id)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (error) {
+      if (isTableMissingError(error)) return null;
+      logError("Query failed: current member subscription", error, { userId: user.id });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return data as MemberSubscriptionWithPlan | null;
+  },
+);
+
+/**
+ * All subscriptions for the current member.
+ */
+export const getMemberSubscriptionHistory = cache(
+  async (): Promise<MemberSubscriptionWithPlan[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("member_subscriptions")
+      .select("*, membership_plans(*)")
+      .eq("member_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      if (isTableMissingError(error)) return [];
+      logError("Query failed: member subscription history", error, { userId: user.id });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as MemberSubscriptionWithPlan[];
+  },
+);
+
+/**
+ * Payment history for the current member.
+ */
+export const getMemberPayments = cache(
+  async (): Promise<PaymentRecord[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("payments")
+      .select(
+        "*, member_subscriptions(id, membership_plans(name, tier))",
+      )
+      .eq("member_id", user.id)
+      .order("paid_at", { ascending: false });
+
+    if (error) {
+      if (isTableMissingError(error)) return [];
+      logError("Query failed: member payments", error, { userId: user.id });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as unknown as PaymentRecord[];
+  },
+);
+
+/**
+ * All membership plans for admin (including inactive).
+ */
+export const getAdminMembershipPlans = cache(
+  async (): Promise<MembershipPlan[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("membership_plans")
+      .select("id, name, slug, description, tier, billing_interval, price, currency, session_credits, features, is_popular, is_active, sort_order, created_at, updated_at")
+      .order("sort_order", { ascending: true });
+
+    if (error) {
+      if (isTableMissingError(error)) return [];
+      logError("Query failed: admin membership plans", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as MembershipPlan[];
+  },
+);
+
+interface AdminSubscriptionsFilters {
+  status?: Database["public"]["Enums"]["subscription_status"];
+  cursor?: string;
+  pageSize?: number;
+}
+
+/**
+ * Paginated subscriptions for admin with member & plan details.
+ */
+export const getAdminSubscriptions = cache(
+  async (filters: AdminSubscriptionsFilters = {}) => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const limit = filters.pageSize ?? 20;
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("member_subscriptions")
+      .select(
+        "*, membership_plans(name, tier, billing_interval), member_profiles(profiles(full_name, email))",
+      )
+      .order("created_at", { ascending: false })
+      .limit(limit + 1);
+
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
+
+    if (filters.cursor) {
+      const cursorDate = decodeURIComponent(filters.cursor);
+      query = query.lt("created_at", cursorDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isTableMissingError(error)) {
+        return { items: [], nextCursor: null, hasMore: false };
+      }
+      logError("Query failed: admin subscriptions", error, { status: filters.status });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = (data ?? []) as unknown as MemberSubscriptionWithPlan[];
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const lastItem = items[items.length - 1];
+    const nextCursor = hasMore && lastItem
+      ? encodeURIComponent(lastItem.created_at)
+      : null;
+
+    return { items, nextCursor, hasMore };
+  },
+);
+
+interface AdminPaymentsFilters {
+  status?: Database["public"]["Enums"]["payment_status"];
+  cursor?: string;
+  pageSize?: number;
+}
+
+/**
+ * Paginated payment records for admin.
+ */
+export const getAdminPayments = cache(
+  async (filters: AdminPaymentsFilters = {}) => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const limit = filters.pageSize ?? 20;
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("payments")
+      .select(
+        "*, member_subscriptions(id, membership_plans(name, tier)), member_profiles(profiles(full_name, email))",
+      )
+      .order("paid_at", { ascending: false })
+      .limit(limit + 1);
+
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
+
+    if (filters.cursor) {
+      const cursorDate = decodeURIComponent(filters.cursor);
+      query = query.lt("paid_at", cursorDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isTableMissingError(error)) {
+        return { items: [], nextCursor: null, hasMore: false };
+      }
+      logError("Query failed: admin payments", error, { status: filters.status });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = (data ?? []) as unknown as PaymentRecord[];
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const lastItem = items[items.length - 1];
+    const nextCursor = hasMore && lastItem
+      ? encodeURIComponent(lastItem.paid_at ?? lastItem.created_at)
+      : null;
+
+    return { items, nextCursor, hasMore };
+  },
+);
+
+/**
+ * Admin billing summary statistics.
+ */
+export const getAdminBillingStats = cache(
+  async () => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+
+    const [activeSubscriptions, totalPayments, pendingPayments] = await Promise.all([
+      supabase
+        .from("member_subscriptions")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "ACTIVE"),
+      supabase
+        .from("payments")
+        .select("amount", { count: "exact" })
+        .eq("status", "COMPLETED"),
+      supabase
+        .from("payments")
+        .select("id", { count: "exact", head: true })
+        .eq("status", "PENDING"),
+    ]);
+
+    if (activeSubscriptions.error && !isTableMissingError(activeSubscriptions.error)) {
+      logError("Query failed: admin billing stats (active subs)", activeSubscriptions.error);
+    }
+    if (totalPayments.error && !isTableMissingError(totalPayments.error)) {
+      logError("Query failed: admin billing stats (total payments)", totalPayments.error);
+    }
+    if (pendingPayments.error && !isTableMissingError(pendingPayments.error)) {
+      logError("Query failed: admin billing stats (pending payments)", pendingPayments.error);
+    }
+
+    const totalRevenue = totalPayments.data?.reduce((sum, p) => sum + (p.amount ?? 0), 0) ?? 0;
+
+    return {
+      activeSubscriptions: activeSubscriptions.count ?? 0,
+      totalRevenue,
+      pendingPayments: pendingPayments.count ?? 0,
+    };
+  },
+);
+
+// ---------------------------------------------------------------------------
+// Reviews & Transformation Stories
+// ---------------------------------------------------------------------------
+
+const REVIEW_COLUMNS =
+  "id, member_id, coach_id, session_id, target_type, rating, title, content, status, is_featured, created_at, updated_at";
+
+const REVIEW_WITH_AUTHOR_COLUMNS =
+  "id, member_id, coach_id, session_id, target_type, rating, title, content, status, is_featured, created_at, updated_at, member_profiles(profiles(full_name, avatar_url))";
+
+const TRANSFORMATION_COLUMNS =
+  "id, member_id, title, story, before_image_url, after_image_url, starting_weight, current_weight, timeframe_months, discipline, is_featured, is_published, created_at, updated_at";
+
+const isReviewTableMissing = isTableMissingError;
+
+/**
+ * Approved reviews with optional filters for coach or session.
+ */
+export const getApprovedReviews = cache(
+  async (options?: { limit?: number; coachId?: string; sessionId?: string }): Promise<ReviewWithAuthor[]> => {
+    const limit = options?.limit ?? 20;
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("reviews")
+      .select(REVIEW_WITH_AUTHOR_COLUMNS)
+      .eq("status", "APPROVED")
+      .order("is_featured", { ascending: false })
+      .order("created_at", { ascending: false })
+      .limit(limit);
+
+    if (options?.coachId) {
+      query = query.eq("coach_id", options.coachId);
+    }
+    if (options?.sessionId) {
+      query = query.eq("session_id", options.sessionId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isReviewTableMissing(error)) return [];
+      logError("Query failed: approved reviews", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as unknown as ReviewWithAuthor[];
+  },
+);
+
+/**
+ * Featured reviews for the home page testimonials section.
+ */
+export const getFeaturedReviews = cache(
+  async (): Promise<ReviewWithAuthor[]> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("reviews")
+      .select(REVIEW_WITH_AUTHOR_COLUMNS)
+      .eq("status", "APPROVED")
+      .eq("is_featured", true)
+      .order("created_at", { ascending: false })
+      .limit(6);
+
+    if (error) {
+      if (isReviewTableMissing(error)) return [];
+      logError("Query failed: featured reviews", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as unknown as ReviewWithAuthor[];
+  },
+);
+
+/**
+ * Public transformation stories (published only).
+ */
+export const getPublicTransformations = cache(
+  async (): Promise<TransformationItem[]> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("transformation_stories")
+      .select(TRANSFORMATION_COLUMNS)
+      .eq("is_published", true)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      if (isReviewTableMissing(error)) return [];
+      logError("Query failed: public transformations", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as TransformationItem[];
+  },
+);
+
+/**
+ * Featured transformation stories for the home page.
+ */
+export const getFeaturedTransformations = cache(
+  async (): Promise<TransformationItem[]> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("transformation_stories")
+      .select(TRANSFORMATION_COLUMNS)
+      .eq("is_published", true)
+      .eq("is_featured", true)
+      .order("created_at", { ascending: false })
+      .limit(4);
+
+    if (error) {
+      if (isReviewTableMissing(error)) return [];
+      logError("Query failed: featured transformations", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as TransformationItem[];
+  },
+);
+
+/**
+ * Reviews submitted by the current member.
+ */
+export const getMemberReviews = cache(
+  async (): Promise<ReviewItem[]> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("reviews")
+      .select(REVIEW_COLUMNS)
+      .eq("member_id", user.id)
+      .order("created_at", { ascending: false });
+
+    if (error) {
+      if (isReviewTableMissing(error)) return [];
+      logError("Query failed: member reviews", error, { userId: user.id });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+    return (data ?? []) as ReviewItem[];
+  },
+);
+
+interface AdminReviewsFilters {
+  status?: Database["public"]["Enums"]["review_status"];
+  cursor?: string;
+  pageSize?: number;
+}
+
+/**
+ * Paginated reviews for admin moderation queue.
+ */
+export const getAdminReviews = cache(
+  async (filters: AdminReviewsFilters = {}) => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const limit = filters.pageSize ?? 20;
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("reviews")
+      .select(REVIEW_WITH_AUTHOR_COLUMNS)
+      .order("created_at", { ascending: false })
+      .limit(limit + 1);
+
+    if (filters.status) {
+      query = query.eq("status", filters.status);
+    }
+
+    if (filters.cursor) {
+      const cursorDate = decodeURIComponent(filters.cursor);
+      query = query.lt("created_at", cursorDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isReviewTableMissing(error)) {
+        return { items: [], nextCursor: null, hasMore: false };
+      }
+      logError("Query failed: admin reviews", error, { status: filters.status });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = (data ?? []) as unknown as ReviewWithAuthor[];
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const lastItem = items[items.length - 1];
+    const nextCursor = hasMore && lastItem
+      ? encodeURIComponent(lastItem.created_at)
+      : null;
+
+    return { items, nextCursor, hasMore };
+  },
+);
+
+interface AdminTransformationsFilters {
+  cursor?: string;
+  pageSize?: number;
+}
+
+/**
+ * Paginated transformation stories for admin management.
+ */
+export const getAdminTransformations = cache(
+  async (filters: AdminTransformationsFilters = {}) => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const limit = filters.pageSize ?? 20;
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("transformation_stories")
+      .select(TRANSFORMATION_COLUMNS)
+      .order("created_at", { ascending: false })
+      .limit(limit + 1);
+
+    if (filters.cursor) {
+      const cursorDate = decodeURIComponent(filters.cursor);
+      query = query.lt("created_at", cursorDate);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isReviewTableMissing(error)) {
+        return { items: [], nextCursor: null, hasMore: false };
+      }
+      logError("Query failed: admin transformations", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = (data ?? []) as TransformationItem[];
+    const hasMore = rows.length > limit;
+    const items = hasMore ? rows.slice(0, limit) : rows;
+    const lastItem = items[items.length - 1];
+    const nextCursor = hasMore && lastItem
+      ? encodeURIComponent(lastItem.created_at)
+      : null;
+
+    return { items, nextCursor, hasMore };
+  },
+);
+
+/**
+ * Review statistics: average rating, total count, and distribution.
+ */
+export const getReviewStats = cache(
+  async (options?: { coachId?: string; sessionId?: string }): Promise<ReviewStats> => {
+    const supabase = await createClient();
+
+    let query = supabase
+      .from("reviews")
+      .select("rating")
+      .eq("status", "APPROVED");
+
+    if (options?.coachId) {
+      query = query.eq("coach_id", options.coachId);
+    }
+    if (options?.sessionId) {
+      query = query.eq("session_id", options.sessionId);
+    }
+
+    const { data, error } = await query;
+
+    if (error) {
+      if (isReviewTableMissing(error)) {
+        return { averageRating: 0, totalReviews: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
+      }
+      logError("Query failed: review stats", error);
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const rows = (data ?? []) as { rating: number }[];
+    const totalReviews = rows.length;
+    const distribution: Record<1 | 2 | 3 | 4 | 5, number> = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+
+    for (const row of rows) {
+      const r = Math.min(5, Math.max(1, Math.round(row.rating))) as 1 | 2 | 3 | 4 | 5;
+      distribution[r]++;
+    }
+
+    const averageRating = totalReviews > 0
+      ? Math.round((rows.reduce((sum, r) => sum + r.rating, 0) / totalReviews) * 10) / 10
+      : 0;
+
+    return { averageRating, totalReviews, distribution };
   },
 );
 

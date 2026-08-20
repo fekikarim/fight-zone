@@ -9,6 +9,7 @@ import { AchievementCard, type AchievementItem } from "@/components/marketing/ac
 import { PageHero } from "@/components/marketing/page-hero";
 import { getAchievements, getPublicCoach } from "@/lib/supabase/queries";
 import { formatDate } from "@/lib/utils";
+import { TestimonialsSection } from "@/components/marketing/sections/testimonials-section";
 
 export const metadata: Metadata = {
   title: "About Coach Seif Dridi",
@@ -177,6 +178,8 @@ export default async function AboutPage() {
           </Reveal>
         </Container>
       </section>
+
+      <TestimonialsSection />
     </>
   );
 }

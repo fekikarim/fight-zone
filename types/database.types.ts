@@ -579,6 +579,120 @@ export type Database = {
           },
         ]
       }
+      membership_plans: {
+        Row: {
+          billing_interval: Database["public"]["Enums"]["billing_interval"]
+          created_at: string
+          currency: string
+          description: string | null
+          features: string[]
+          id: string
+          is_active: boolean
+          is_popular: boolean
+          name: string
+          price: number
+          session_credits: number | null
+          slug: string
+          sort_order: number
+          tier: Database["public"]["Enums"]["plan_tier"]
+          updated_at: string
+        }
+        Insert: {
+          billing_interval?: Database["public"]["Enums"]["billing_interval"]
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: string[]
+          id?: string
+          is_active?: boolean
+          is_popular?: boolean
+          name: string
+          price: number
+          session_credits?: number | null
+          slug: string
+          sort_order?: number
+          tier?: Database["public"]["Enums"]["plan_tier"]
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: Database["public"]["Enums"]["billing_interval"]
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: string[]
+          id?: string
+          is_active?: boolean
+          is_popular?: boolean
+          name?: string
+          price?: number
+          session_credits?: number | null
+          slug?: string
+          sort_order?: number
+          tier?: Database["public"]["Enums"]["plan_tier"]
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      member_subscriptions: {
+        Row: {
+          auto_renew: boolean
+          created_at: string
+          ends_at: string
+          id: string
+          member_id: string
+          notes: string | null
+          plan_id: string
+          remaining_credits: number
+          renews_at: string | null
+          starts_at: string
+          status: Database["public"]["Enums"]["subscription_status"]
+          updated_at: string
+        }
+        Insert: {
+          auto_renew?: boolean
+          created_at?: string
+          ends_at: string
+          id?: string
+          member_id: string
+          notes?: string | null
+          plan_id: string
+          remaining_credits?: number
+          renews_at?: string | null
+          starts_at?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Update: {
+          auto_renew?: boolean
+          created_at?: string
+          ends_at?: string
+          id?: string
+          member_id?: string
+          notes?: string | null
+          plan_id?: string
+          remaining_credits?: number
+          renews_at?: string | null
+          starts_at?: string
+          status?: Database["public"]["Enums"]["subscription_status"]
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "member_subscriptions_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "member_subscriptions_plan_id_fkey"
+            columns: ["plan_id"]
+            isOneToOne: false
+            referencedRelation: "membership_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       messages: {
         Row: {
           body: string
@@ -715,37 +829,43 @@ export type Database = {
       payments: {
         Row: {
           amount: number
-          booking_id: string
+          booking_id: string | null
           created_at: string
           currency: string
           id: string
-          method: Database["public"]["Enums"]["payment_method"]
+          member_id: string | null
           paid_at: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
           status: Database["public"]["Enums"]["payment_status"]
+          subscription_id: string | null
           transaction_ref: string | null
           updated_at: string
         }
         Insert: {
           amount: number
-          booking_id: string
+          booking_id?: string | null
           created_at?: string
           currency?: string
           id?: string
-          method?: Database["public"]["Enums"]["payment_method"]
+          member_id?: string | null
           paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           status?: Database["public"]["Enums"]["payment_status"]
+          subscription_id?: string | null
           transaction_ref?: string | null
           updated_at?: string
         }
         Update: {
           amount?: number
-          booking_id?: string
+          booking_id?: string | null
           created_at?: string
           currency?: string
           id?: string
-          method?: Database["public"]["Enums"]["payment_method"]
+          member_id?: string | null
           paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           status?: Database["public"]["Enums"]["payment_status"]
+          subscription_id?: string | null
           transaction_ref?: string | null
           updated_at?: string
         }
@@ -753,8 +873,89 @@ export type Database = {
           {
             foreignKeyName: "payments_booking_id_fkey"
             columns: ["booking_id"]
-            isOneToOne: true
+            isOneToOne: false
             referencedRelation: "bookings"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "payments_subscription_id_fkey"
+            columns: ["subscription_id"]
+            isOneToOne: false
+            referencedRelation: "member_subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      reviews: {
+        Row: {
+          content: string
+          created_at: string
+          coach_id: string | null
+          id: string
+          is_featured: boolean
+          member_id: string
+          rating: number
+          session_id: string | null
+          status: Database["public"]["Enums"]["review_status"]
+          target_type: Database["public"]["Enums"]["review_target_type"]
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          coach_id?: string | null
+          id?: string
+          is_featured?: boolean
+          member_id: string
+          rating: number
+          session_id?: string | null
+          status?: Database["public"]["Enums"]["review_status"]
+          target_type?: Database["public"]["Enums"]["review_target_type"]
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          coach_id?: string | null
+          id?: string
+          is_featured?: boolean
+          member_id?: string
+          rating?: number
+          session_id?: string | null
+          status?: Database["public"]["Enums"]["review_status"]
+          target_type?: Database["public"]["Enums"]["review_target_type"]
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "reviews_coach_id_fkey"
+            columns: ["coach_id"]
+            isOneToOne: false
+            referencedRelation: "coach_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "reviews_session_id_fkey"
+            columns: ["session_id"]
+            isOneToOne: false
+            referencedRelation: "sessions"
             referencedColumns: ["id"]
           },
         ]
@@ -866,6 +1067,65 @@ export type Database = {
           },
         ]
       }
+      transformation_stories: {
+        Row: {
+          after_image_url: string
+          before_image_url: string
+          created_at: string
+          current_weight: number | null
+          discipline: string | null
+          id: string
+          is_featured: boolean
+          is_published: boolean
+          member_id: string | null
+          starting_weight: number | null
+          story: string
+          timeframe_months: number | null
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          after_image_url: string
+          before_image_url: string
+          created_at?: string
+          current_weight?: number | null
+          discipline?: string | null
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          member_id?: string | null
+          starting_weight?: number | null
+          story: string
+          timeframe_months?: number | null
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          after_image_url?: string
+          before_image_url?: string
+          created_at?: string
+          current_weight?: number | null
+          discipline?: string | null
+          id?: string
+          is_featured?: boolean
+          is_published?: boolean
+          member_id?: string | null
+          starting_weight?: number | null
+          story?: string
+          timeframe_months?: number | null
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "transformation_stories_member_id_fkey"
+            columns: ["member_id"]
+            isOneToOne: false
+            referencedRelation: "member_profiles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_role_assignments: {
         Row: {
           assigned_at: string
@@ -958,6 +1218,7 @@ export type Database = {
     }
     Enums: {
       achievement_type: "TITLE" | "TROPHY" | "MEDAL" | "CERTIFICATE" | "RANKING"
+      billing_interval: "MONTHLY" | "QUARTERLY" | "ANNUAL" | "CUSTOM"
       booking_status:
         | "PENDING"
         | "CONFIRMED"
@@ -970,10 +1231,14 @@ export type Database = {
       message_status: "UNREAD" | "READ" | "REPLIED"
       notification_type: "BOOKING" | "SESSION" | "EVENT" | "MESSAGE" | "SYSTEM"
       participation_status: "JOINED" | "INTERESTED" | "CANCELLED" | "ATTENDED" | "NO_SHOW"
-      payment_method: "CASH" | "BANK_TRANSFER" | "ONLINE" | "OTHER"
-      payment_status: "PENDING" | "PAID" | "FAILED" | "REFUNDED"
+      payment_method: "CASH" | "BANK_TRANSFER" | "ONLINE" | "OTHER" | "CARD"
+      payment_status: "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "COMPLETED"
+      plan_tier: "STUDENT" | "ADULT" | "KIDS" | "FAMILY" | "PRO_FIGHTER" | "UNLIMITED"
+      review_status: "PENDING" | "APPROVED" | "REJECTED"
+      review_target_type: "COACH" | "SESSION" | "CLUB"
       session_type: "PERSONAL" | "TECHNICAL" | "PHYSICAL" | "STRATEGY" | "COMBO"
       skill_level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "PROFESSIONAL"
+      subscription_status: "ACTIVE" | "PAST_DUE" | "CANCELLED" | "EXPIRED" | "TRIAL"
       user_role: "ADMIN" | "COACH" | "MEMBER"
     }
     CompositeTypes: {

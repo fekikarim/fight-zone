@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import Image from "next/image";
-import { Clock, DollarSign, User, ArrowLeft, Dumbbell } from "lucide-react";
+import { Clock, DollarSign, User, ArrowLeft, Dumbbell, Star } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -9,7 +9,7 @@ import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { PageHero } from "@/components/marketing/page-hero";
-import { getPublicSessionById } from "@/lib/supabase/queries";
+import { getPublicSessionById, getApprovedReviews, resolveOrFallback } from "@/lib/supabase/queries";
 import { formatPrice } from "@/lib/utils";
 import {
   sessionTypeLabel,
@@ -35,7 +35,10 @@ export async function generateMetadata({ params }: SessionDetailPageProps): Prom
 
 export default async function SessionDetailPage({ params }: SessionDetailPageProps) {
   const { id } = await params;
-  const session = await getPublicSessionById(id);
+  const [session, reviews] = await Promise.all([
+    getPublicSessionById(id),
+    resolveOrFallback(() => getApprovedReviews({ sessionId: id, limit: 6 }), []),
+  ]);
   if (!session) notFound();
 
   const coach = session.coach_profiles;
@@ -155,6 +158,46 @@ export default async function SessionDetailPage({ params }: SessionDetailPagePro
                       </div>
                     </CardContent>
                   </Card>
+                </Reveal>
+              ) : null}
+
+              {/* Reviews for this session */}
+              {reviews.length > 0 ? (
+                <Reveal delay={280}>
+                  <SectionHeading
+                    eyebrow="Testimonials"
+                    title="Member reviews"
+                    description="What athletes say about this session."
+                  />
+                  <div className="mt-4 grid gap-4 sm:grid-cols-2">
+                    {reviews.map((review) => (
+                      <div
+                        key={review.id}
+                        className="rounded-xl border border-ink-border bg-ink-soft/50 p-4"
+                      >
+                        <div className="flex items-center gap-0.5">
+                          {Array.from({ length: 5 }).map((_, i) => (
+                            <Star
+                              key={i}
+                              className={`h-3.5 w-3.5 ${
+                                i < review.rating
+                                  ? "fill-primary text-primary"
+                                  : "text-ink-border"
+                              }`}
+                              aria-hidden
+                            />
+                          ))}
+                        </div>
+                        <h4 className="mt-2 text-sm font-semibold">{review.title}</h4>
+                        <p className="mt-1 line-clamp-2 text-xs text-muted">
+                          {review.content}
+                        </p>
+                        <p className="mt-2 text-xs text-muted">
+                          — {review.member_profiles?.profiles?.full_name ?? "Member"}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </Reveal>
               ) : null}
             </div>

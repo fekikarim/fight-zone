@@ -2,18 +2,30 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname } from "next/navigation";
-import { Menu, X, LogIn } from "lucide-react";
+import { Menu, X, LogIn, User, LayoutDashboard, LogOut } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
-export function Navbar() {
+interface NavbarProps {
+  user: {
+    id: string;
+    email: string;
+    fullName: string | null;
+    avatarUrl: string | null;
+    roles: string[];
+  } | null;
+}
+
+export function NavbarClient({ user }: NavbarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const [accountMenuOpen, setAccountMenuOpen] = useState(false);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -27,6 +39,7 @@ export function Navbar() {
   if (prevPathname !== pathname) {
     setPrevPathname(pathname);
     setOpen(false);
+    setAccountMenuOpen(false);
   }
 
   // Lock body scroll while the mobile menu is open.
@@ -36,6 +49,16 @@ export function Navbar() {
       document.body.style.overflow = "";
     };
   }, [open]);
+
+  const getInitials = (name: string | null) => {
+    if (!name) return "U";
+    return name
+      .split(" ")
+      .map((n) => n[0])
+      .join("")
+      .slice(0, 2)
+      .toUpperCase();
+  };
 
   return (
     <header
@@ -70,15 +93,77 @@ export function Navbar() {
         </nav>
 
         <div className="hidden items-center gap-3 lg:flex">
-          <Button variant="ghost" size="sm" asChild>
-            <Link href="/sign-in">
-              <LogIn className="h-4 w-4" />
-              Sign in
-            </Link>
-          </Button>
-          <Button variant="primary" size="sm" asChild>
-            <Link href="/sign-up">Join the gym</Link>
-          </Button>
+          {user ? (
+            <div className="relative">
+              <button
+                type="button"
+                onClick={() => setAccountMenuOpen((v) => !v)}
+                className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-ink-soft"
+              >
+                <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
+                  {user.avatarUrl ? (
+                    <div className="relative h-8 w-8 rounded-full bg-ink-soft overflow-hidden">
+                      <Image
+                        src={user.avatarUrl}
+                        alt={user.fullName || "User"}
+                        fill
+                        sizes="32px"
+                        className="object-cover"
+                      />
+                    </div>
+                  ) : (
+                    getInitials(user.fullName)
+                  )}
+                </div>
+                <span className="text-foreground">{user.fullName || "Member"}</span>
+              </button>
+
+              {accountMenuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-ink-border bg-ink shadow-lg">
+                  <div className="p-2">
+                    <Link
+                      href="/member/dashboard"
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                      onClick={() => setAccountMenuOpen(false)}
+                    >
+                      <LayoutDashboard className="h-4 w-4" />
+                      Dashboard
+                    </Link>
+                    <Link
+                      href="/member/profile"
+                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                      onClick={() => setAccountMenuOpen(false)}
+                    >
+                      <User className="h-4 w-4" />
+                      Profile
+                    </Link>
+                    <hr className="my-2 border-ink-border" />
+                    <form action="/sign-out" method="POST">
+                      <button
+                        type="submit"
+                        className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                      >
+                        <LogOut className="h-4 w-4" />
+                        Sign out
+                      </button>
+                    </form>
+                  </div>
+                </div>
+              )}
+            </div>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" asChild>
+                <Link href="/sign-in">
+                  <LogIn className="h-4 w-4" />
+                  Sign in
+                </Link>
+              </Button>
+              <Button variant="primary" size="sm" asChild>
+                <Link href="/sign-up">Join the gym</Link>
+              </Button>
+            </>
+          )}
         </div>
 
         <button
@@ -118,14 +203,43 @@ export function Navbar() {
               </Link>
             );
           })}
-          <div className="mt-3 grid grid-cols-2 gap-3">
-            <Button variant="outline" asChild>
-              <Link href="/sign-in">Sign in</Link>
-            </Button>
-            <Button variant="primary" asChild>
-              <Link href="/sign-up">Join the gym</Link>
-            </Button>
-          </div>
+          {user ? (
+            <>
+              <hr className="my-2 border-ink-border" />
+              <Link
+                href="/member/dashboard"
+                className="flex items-center gap-2 rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+              >
+                <LayoutDashboard className="h-5 w-5" />
+                Dashboard
+              </Link>
+              <Link
+                href="/member/profile"
+                className="flex items-center gap-2 rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+              >
+                <User className="h-5 w-5" />
+                Profile
+              </Link>
+              <form action="/sign-out" method="POST">
+                <button
+                  type="submit"
+                  className="flex w-full items-center gap-2 rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                >
+                  <LogOut className="h-5 w-5" />
+                  Sign out
+                </button>
+              </form>
+            </>
+          ) : (
+            <div className="mt-3 grid grid-cols-2 gap-3">
+              <Button variant="outline" asChild>
+                <Link href="/sign-in">Sign in</Link>
+              </Button>
+              <Button variant="primary" asChild>
+                <Link href="/sign-up">Join the gym</Link>
+              </Button>
+            </div>
+          )}
         </Container>
       </div>
     </header>

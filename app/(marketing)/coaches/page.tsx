@@ -11,9 +11,9 @@ import { SectionHeading } from "@/components/ui/section-heading";
 import { getPublicCoaches } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = {
-  title: "Our Coaches",
+  title: "Your Coach",
   description:
-    "Meet the coaching team at Fight Zone — experienced professionals in boxing, kickboxing and fitness.",
+    "Meet Coach Seif Dridi — the head coach and founder of Fight Zone, bringing years of professional boxing and fitness expertise.",
 };
 
 export default async function CoachesPage() {
@@ -22,17 +22,17 @@ export default async function CoachesPage() {
   return (
     <>
       <PageHero
-        eyebrow="Team"
-        title="Meet our coaches"
-        description="Experienced professionals dedicated to helping you reach your goals."
+        eyebrow="Head Coach"
+        title="Meet Seif Dridi"
+        description="Professional boxing coach and founder of Fight Zone, dedicated to helping you achieve your fighting and fitness goals."
         image="/components/coach-seif-dridi-illustration-at-the-gym-1024x1037.jpeg"
       />
 
       <section className="py-16 lg:py-24">
         <Container>
           <SectionHeading
-            eyebrow="Coaches"
-            title="The team behind your training"
+            eyebrow="Coaching"
+            title="Your personal coach"
           />
 
           <div className="mt-10 grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -94,7 +94,7 @@ export default async function CoachesPage() {
 
           {coaches.length === 0 ? (
             <p className="rounded-xl border border-ink-border bg-ink-soft/40 px-6 py-14 text-center text-muted">
-              Coach profiles are being prepared — check back soon.
+              Coach profile is being prepared — check back soon.
             </p>
           ) : null}
         </Container>

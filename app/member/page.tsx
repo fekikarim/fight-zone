@@ -7,6 +7,7 @@ import {
   CalendarClock,
   CalendarDays,
   ChevronRight,
+  Crown,
   MessageSquare,
   ShieldCheck,
 } from "lucide-react";
@@ -22,8 +23,10 @@ import {
   getMemberNotifications,
   getUnreadMessageCount,
   getUnreadNotificationCount,
+  getCurrentMemberSubscription,
 } from "@/lib/supabase/queries";
 import { formatDate, formatPrice } from "@/lib/utils";
+import { subscriptionStatusLabel, daysUntilExpiry } from "@/lib/types/memberships";
 import type { Database } from "@/types/database.types";
 
 export const metadata: Metadata = {
@@ -44,7 +47,7 @@ const notificationTypeLabel: Record<
 
 export default async function MemberDashboardPage() {
   const user = await requireUser();
-  const [stats, recentBookings, notifications, context, unreadMessages, unreadNotifications] =
+  const [stats, recentBookings, notifications, context, unreadMessages, unreadNotifications, subscription] =
     await Promise.all([
       getMemberBookingStats(),
       getCurrentUserBookings(5),
@@ -52,6 +55,7 @@ export default async function MemberDashboardPage() {
       getCurrentUserContext(),
       getUnreadMessageCount(),
       getUnreadNotificationCount(),
+      getCurrentMemberSubscription(),
     ]);
 
   const firstName = user.fullName?.split(" ")[0] ?? "Member";
@@ -140,6 +144,61 @@ export default async function MemberDashboardPage() {
             </Link>
           </Button>
         </div>
+      ) : null}
+
+      {/* Membership status card */}
+      {subscription && subscription.status === "ACTIVE" ? (
+        <Link
+          href="/member/subscription"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-primary/30 bg-gradient-to-r from-primary/10 to-ink-soft/50 px-6 py-5 transition-colors hover:border-primary/50"
+        >
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
+              <Crown className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-display text-base font-semibold uppercase tracking-wide">
+                {subscription.membership_plans?.name ?? "Membership"}
+              </p>
+              <p className="text-xs text-muted">
+                {daysUntilExpiry(subscription.ends_at)} days remaining · Expires{" "}
+                {formatDate(subscription.ends_at)}
+              </p>
+            </div>
+          </div>
+          <div className="flex items-center gap-2">
+            <Badge variant="solid">
+              {subscriptionStatusLabel[subscription.status]}
+            </Badge>
+            {subscription.membership_plans?.session_credits !== null && subscription.membership_plans?.session_credits !== undefined ? (
+              <span className="text-xs font-semibold text-primary">
+                {subscription.remaining_credits} credits
+              </span>
+            ) : null}
+            <ChevronRight className="h-4 w-4 text-muted" aria-hidden />
+          </div>
+        </Link>
+      ) : !subscription ? (
+        <Link
+          href="/pricing"
+          className="flex flex-wrap items-center justify-between gap-4 rounded-xl border border-ink-border border-dashed bg-ink-soft/30 px-6 py-5 transition-colors hover:border-primary/30"
+        >
+          <div className="flex items-center gap-3">
+            <Crown className="h-5 w-5 text-muted" aria-hidden />
+            <div>
+              <p className="font-display text-base font-semibold uppercase tracking-wide">
+                Join Fight Zone
+              </p>
+              <p className="text-sm text-muted">
+                Choose a membership plan to start training.
+              </p>
+            </div>
+          </div>
+          <Button size="sm">
+            View plans
+            <ArrowRight className="h-4 w-4" aria-hidden />
+          </Button>
+        </Link>
       ) : null}
 
       <div className="grid gap-6 lg:grid-cols-3">
