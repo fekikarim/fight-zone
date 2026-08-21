@@ -1,27 +1,25 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect } from "react";
-import { AppError, logError } from "@/lib/errors";
+import { AppError } from "@/lib/errors";
 
-interface ErrorPageProps {
+interface MemberErrorPageProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
 
-export default function ErrorPage({ error, reset }: ErrorPageProps) {
-  useEffect(() => {
-    logError("Route error boundary caught", error, { digest: error.digest });
-  }, [error]);
+export default function MemberErrorPage({ error, reset }: MemberErrorPageProps) {
   const message =
-    error instanceof AppError ? error.userMessage : "Something went wrong on this page.";
+    error instanceof AppError
+      ? error.userMessage
+      : "Something went wrong loading your dashboard.";
 
   return (
-    <div className="flex min-h-dvh flex-col items-center justify-center gap-6 bg-background px-6 text-center">
+    <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 bg-background px-6 text-center">
       <p className="font-display text-6xl font-bold text-primary">Oops</p>
       <div className="flex flex-col gap-2">
         <h1 className="font-display text-2xl font-bold uppercase tracking-tight">
-          Something went wrong
+          Member area unavailable
         </h1>
         <p className="max-w-md text-sm text-muted">{message}</p>
       </div>
@@ -34,10 +32,10 @@ export default function ErrorPage({ error, reset }: ErrorPageProps) {
           Try again
         </button>
         <Link
-          href="/"
+          href="/member"
           className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-ink-border px-7 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
         >
-          Back home
+          Back to dashboard
         </Link>
       </div>
     </div>

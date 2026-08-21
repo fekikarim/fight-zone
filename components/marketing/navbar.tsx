@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -26,6 +26,26 @@ export function NavbarClient({ user }: NavbarProps) {
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
   const [accountMenuOpen, setAccountMenuOpen] = useState(false);
+  const accountMenuRef = useRef<HTMLDivElement>(null);
+
+  // Close account menu on outside click or Escape
+  useEffect(() => {
+    if (!accountMenuOpen) return;
+    const handleClick = (e: MouseEvent) => {
+      if (accountMenuRef.current && !accountMenuRef.current.contains(e.target as Node)) {
+        setAccountMenuOpen(false);
+      }
+    };
+    const handleKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setAccountMenuOpen(false);
+    };
+    document.addEventListener("mousedown", handleClick);
+    document.addEventListener("keydown", handleKey);
+    return () => {
+      document.removeEventListener("mousedown", handleClick);
+      document.removeEventListener("keydown", handleKey);
+    };
+  }, [accountMenuOpen]);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 8);
@@ -94,10 +114,12 @@ export function NavbarClient({ user }: NavbarProps) {
 
         <div className="hidden items-center gap-3 lg:flex">
           {user ? (
-            <div className="relative">
+            <div className="relative" ref={accountMenuRef}>
               <button
                 type="button"
                 onClick={() => setAccountMenuOpen((v) => !v)}
+                aria-haspopup="true"
+                aria-expanded={accountMenuOpen}
                 className="flex items-center gap-2 rounded-md px-3 py-2 text-sm font-medium transition-colors hover:bg-ink-soft"
               >
                 <div className="flex h-8 w-8 items-center justify-center rounded-full bg-primary/10 text-sm font-bold text-primary">
@@ -122,7 +144,7 @@ export function NavbarClient({ user }: NavbarProps) {
                 <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-ink-border bg-ink shadow-lg">
                   <div className="p-2">
                     <Link
-                      href="/member/dashboard"
+                      href="/member"
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
                       onClick={() => setAccountMenuOpen(false)}
                     >
@@ -170,6 +192,7 @@ export function NavbarClient({ user }: NavbarProps) {
           type="button"
           aria-label={open ? "Close menu" : "Open menu"}
           aria-expanded={open}
+          aria-controls="mobile-menu-panel"
           onClick={() => setOpen((v) => !v)}
           className="inline-flex h-10 w-10 items-center justify-center rounded-md border border-ink-border text-foreground transition-colors hover:border-primary hover:text-primary lg:hidden"
         >
@@ -179,6 +202,11 @@ export function NavbarClient({ user }: NavbarProps) {
 
       {/* Mobile menu */}
       <div
+        id="mobile-menu-panel"
+        role="region"
+        aria-label="Mobile navigation"
+        aria-hidden={!open}
+        inert={!open || undefined}
         className={cn(
           "overflow-hidden border-t border-ink-border bg-ink transition-[max-height] duration-300 lg:hidden",
           open ? "max-h-[70vh]" : "max-h-0",

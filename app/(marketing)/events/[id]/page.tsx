@@ -1,4 +1,5 @@
 import { notFound } from "next/navigation";
+import Link from "next/link";
 import { Container } from "@/components/ui/container";
 import { PageHero } from "@/components/marketing/page-hero";
 import { EventDetailDisplay } from "@/components/events/event-detail";
@@ -42,9 +43,9 @@ export default async function PublicEventDetailPage({ params }: Props) {
             />
             <p className="mt-8 text-sm text-muted">
               Interested in this event?{" "}
-              <a href="/auth/login" className="text-primary hover:underline">
+              <Link href="/sign-in" className="text-primary hover:underline">
                 Log in
-              </a>{" "}
+              </Link>{" "}
               to register.
             </p>
           </div>

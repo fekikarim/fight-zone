@@ -597,3 +597,44 @@ Social proof and community engagement platform. See `docs/reviews-and-social-pro
 | `app/(marketing)/services/[id]/page.tsx` | Updated: added session-specific reviews |
 | `app/member/layout.tsx` | Updated: added "My Reviews" nav link |
 | `app/admin/layout.tsx` | Updated: added "Reviews" nav link |
+
+## 22. Production Readiness & Security Hardening (Prompt #12)
+
+Stabilization pass covering authorization guards, RLS hardening, error boundaries, accessibility, and documentation. See `docs/production-readiness.md` for full details.
+
+### Key changes
+
+| Category | What changed |
+|----------|-------------|
+| **Authorization** | `events.ts` actions (`createEvent`, `updateEvent`, `updateParticipantStatus`) upgraded from `assertAuthenticated` to `requireRole(["ADMIN","COACH"])` |
+| **Notification scoping** | `markNotificationRead` / `markAllNotificationsRead` now filter by `.eq("user_id", user.id)` — members can only mark their own notifications |
+| **Dead link fix** | Navbar `/member/dashboard` → `/member` (desktop + mobile) |
+| **Query wildcards** | 5 `select("*")` projections replaced with explicit column lists in `queries.ts` |
+| **Corrective RLS** | Migration `20260827000000_rls_hardening.sql`: drops 3 unsafe owner INSERT/UPDATE policies, adds scoped member-cancel and staff-only policies, adds `transformations_member_insert` |
+| **Bug fixes** | Dead link `/auth/login` → `/sign-in` in event detail, `news/[slug]` metadata 404 handling, SQL test table name typo |
+| **Error boundaries** | `app/member/error.tsx` added; `app/error.tsx` + `app/global-error.tsx` now log errors |
+| **Loading states** | 7 new loading skeletons for marketing, auth, news, about, events/[id], news/[slug] routes |
+| **Accessibility** | Navbar: `aria-controls`, `aria-hidden`, `inert` on collapsed mobile menu; account dropdown: `aria-haspopup`/`aria-expanded`, Escape key, outside-click close; review modal: overflow scroll, Escape close; moderation buttons: `min-h-10 min-w-10`, `aria-label` |
+
+### Pending migrations (not yet pushed)
+
+| Migration | Status |
+|-----------|--------|
+| `20260821000000_events.sql` | NOT DEPLOYED |
+| `20260822000000_coaching_services.sql` | NOT DEPLOYED |
+| `20260824000000_memberships_and_billing.sql` | NOT DEPLOYED |
+| `20260825000000_billing_hardening.sql` | NOT DEPLOYED |
+| `20260826000000_reviews_and_transformations.sql` | NOT DEPLOYED |
+| `20260827000000_rls_hardening.sql` | NOT DEPLOYED (corrective) |
+
+### Production checklist
+
+- [ ] Link Supabase project: `supabase link --project-ref jdbythhwikqvqenxyuqw`
+- [ ] Push migrations: `supabase db push --dry-run` then `supabase db push`
+- [ ] Verify RLS policies in dashboard
+- [ ] Enable Supabase PITR backups
+- [ ] Verify storage bucket policies
+- [ ] Run `next build` with zero errors
+- [ ] Verify error boundaries render fallback UI
+- [ ] Test notification mark-read scoping
+- [ ] Test event create/update requires ADMIN/COACH role

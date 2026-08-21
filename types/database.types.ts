@@ -579,60 +579,6 @@ export type Database = {
           },
         ]
       }
-      membership_plans: {
-        Row: {
-          billing_interval: Database["public"]["Enums"]["billing_interval"]
-          created_at: string
-          currency: string
-          description: string | null
-          features: string[]
-          id: string
-          is_active: boolean
-          is_popular: boolean
-          name: string
-          price: number
-          session_credits: number | null
-          slug: string
-          sort_order: number
-          tier: Database["public"]["Enums"]["plan_tier"]
-          updated_at: string
-        }
-        Insert: {
-          billing_interval?: Database["public"]["Enums"]["billing_interval"]
-          created_at?: string
-          currency?: string
-          description?: string | null
-          features?: string[]
-          id?: string
-          is_active?: boolean
-          is_popular?: boolean
-          name: string
-          price: number
-          session_credits?: number | null
-          slug: string
-          sort_order?: number
-          tier?: Database["public"]["Enums"]["plan_tier"]
-          updated_at?: string
-        }
-        Update: {
-          billing_interval?: Database["public"]["Enums"]["billing_interval"]
-          created_at?: string
-          currency?: string
-          description?: string | null
-          features?: string[]
-          id?: string
-          is_active?: boolean
-          is_popular?: boolean
-          name?: string
-          price?: number
-          session_credits?: number | null
-          slug?: string
-          sort_order?: number
-          tier?: Database["public"]["Enums"]["plan_tier"]
-          updated_at?: string
-        }
-        Relationships: []
-      }
       member_subscriptions: {
         Row: {
           auto_renew: boolean
@@ -692,6 +638,60 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      membership_plans: {
+        Row: {
+          billing_interval: Database["public"]["Enums"]["billing_interval"]
+          created_at: string
+          currency: string
+          description: string | null
+          features: string[]
+          id: string
+          is_active: boolean
+          is_popular: boolean
+          name: string
+          price: number
+          session_credits: number | null
+          slug: string
+          sort_order: number
+          tier: Database["public"]["Enums"]["plan_tier"]
+          updated_at: string
+        }
+        Insert: {
+          billing_interval?: Database["public"]["Enums"]["billing_interval"]
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: string[]
+          id?: string
+          is_active?: boolean
+          is_popular?: boolean
+          name: string
+          price: number
+          session_credits?: number | null
+          slug: string
+          sort_order?: number
+          tier?: Database["public"]["Enums"]["plan_tier"]
+          updated_at?: string
+        }
+        Update: {
+          billing_interval?: Database["public"]["Enums"]["billing_interval"]
+          created_at?: string
+          currency?: string
+          description?: string | null
+          features?: string[]
+          id?: string
+          is_active?: boolean
+          is_popular?: boolean
+          name?: string
+          price?: number
+          session_credits?: number | null
+          slug?: string
+          sort_order?: number
+          tier?: Database["public"]["Enums"]["plan_tier"]
+          updated_at?: string
+        }
+        Relationships: []
       }
       messages: {
         Row: {
@@ -893,11 +893,44 @@ export type Database = {
           },
         ]
       }
+      profiles: {
+        Row: {
+          avatar_url: string | null
+          created_at: string
+          email: string
+          full_name: string | null
+          id: string
+          is_active: boolean
+          phone: string | null
+          updated_at: string
+        }
+        Insert: {
+          avatar_url?: string | null
+          created_at?: string
+          email: string
+          full_name?: string | null
+          id: string
+          is_active?: boolean
+          phone?: string | null
+          updated_at?: string
+        }
+        Update: {
+          avatar_url?: string | null
+          created_at?: string
+          email?: string
+          full_name?: string | null
+          id?: string
+          is_active?: boolean
+          phone?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
       reviews: {
         Row: {
+          coach_id: string | null
           content: string
           created_at: string
-          coach_id: string | null
           id: string
           is_featured: boolean
           member_id: string
@@ -909,9 +942,9 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          coach_id?: string | null
           content: string
           created_at?: string
-          coach_id?: string | null
           id?: string
           is_featured?: boolean
           member_id: string
@@ -923,9 +956,9 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          coach_id?: string | null
           content?: string
           created_at?: string
-          coach_id?: string | null
           id?: string
           is_featured?: boolean
           member_id?: string
@@ -959,39 +992,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      profiles: {
-        Row: {
-          avatar_url: string | null
-          created_at: string
-          email: string
-          full_name: string | null
-          id: string
-          is_active: boolean
-          phone: string | null
-          updated_at: string
-        }
-        Insert: {
-          avatar_url?: string | null
-          created_at?: string
-          email: string
-          full_name?: string | null
-          id: string
-          is_active?: boolean
-          phone?: string | null
-          updated_at?: string
-        }
-        Update: {
-          avatar_url?: string | null
-          created_at?: string
-          email?: string
-          full_name?: string | null
-          id?: string
-          is_active?: boolean
-          phone?: string | null
-          updated_at?: string
-        }
-        Relationships: []
       }
       roles: {
         Row: {
@@ -1182,11 +1182,11 @@ export type Database = {
         Args: never
         Returns: {
           conversation_id: string
-          last_message_at: string | null
-          last_message_body: string | null
-          last_sender_id: string | null
-          other_avatar_url: string | null
-          other_full_name: string | null
+          last_message_at: string
+          last_message_body: string
+          last_sender_id: string
+          other_avatar_url: string
+          other_full_name: string
           other_participant_id: string
           unread_count: number
         }[]
@@ -1203,16 +1203,12 @@ export type Database = {
           specialization: string
         }[]
       }
-      get_unread_message_count: {
-        Args: never
-        Returns: number
-      }
+      get_unread_message_count: { Args: never; Returns: number }
       has_role: { Args: { role_name: string }; Returns: boolean }
+      is_admin: { Args: never; Returns: boolean }
       is_admin_or_coach: { Args: never; Returns: boolean }
       mark_conversation_read: {
-        Args: {
-          p_conversation_id: string
-        }
+        Args: { p_conversation_id: string }
         Returns: number
       }
     }
@@ -1230,15 +1226,31 @@ export type Database = {
       media_type: "IMAGE" | "VIDEO" | "DOCUMENT"
       message_status: "UNREAD" | "READ" | "REPLIED"
       notification_type: "BOOKING" | "SESSION" | "EVENT" | "MESSAGE" | "SYSTEM"
-      participation_status: "JOINED" | "INTERESTED" | "CANCELLED" | "ATTENDED" | "NO_SHOW"
+      participation_status:
+        | "JOINED"
+        | "INTERESTED"
+        | "CANCELLED"
+        | "ATTENDED"
+        | "NO_SHOW"
       payment_method: "CASH" | "BANK_TRANSFER" | "ONLINE" | "OTHER" | "CARD"
       payment_status: "PENDING" | "PAID" | "FAILED" | "REFUNDED" | "COMPLETED"
-      plan_tier: "STUDENT" | "ADULT" | "KIDS" | "FAMILY" | "PRO_FIGHTER" | "UNLIMITED"
+      plan_tier:
+        | "STUDENT"
+        | "ADULT"
+        | "KIDS"
+        | "FAMILY"
+        | "PRO_FIGHTER"
+        | "UNLIMITED"
       review_status: "PENDING" | "APPROVED" | "REJECTED"
       review_target_type: "COACH" | "SESSION" | "CLUB"
       session_type: "PERSONAL" | "TECHNICAL" | "PHYSICAL" | "STRATEGY" | "COMBO"
       skill_level: "BEGINNER" | "INTERMEDIATE" | "ADVANCED" | "PROFESSIONAL"
-      subscription_status: "ACTIVE" | "PAST_DUE" | "CANCELLED" | "EXPIRED" | "TRIAL"
+      subscription_status:
+        | "ACTIVE"
+        | "PAST_DUE"
+        | "CANCELLED"
+        | "EXPIRED"
+        | "TRIAL"
       user_role: "ADMIN" | "COACH" | "MEMBER"
     }
     CompositeTypes: {
@@ -1371,6 +1383,7 @@ export const Constants = {
   public: {
     Enums: {
       achievement_type: ["TITLE", "TROPHY", "MEDAL", "CERTIFICATE", "RANKING"],
+      billing_interval: ["MONTHLY", "QUARTERLY", "ANNUAL", "CUSTOM"],
       booking_status: [
         "PENDING",
         "CONFIRMED",
@@ -1383,11 +1396,34 @@ export const Constants = {
       media_type: ["IMAGE", "VIDEO", "DOCUMENT"],
       message_status: ["UNREAD", "READ", "REPLIED"],
       notification_type: ["BOOKING", "SESSION", "EVENT", "MESSAGE", "SYSTEM"],
-      participation_status: ["JOINED", "INTERESTED", "CANCELLED", "ATTENDED", "NO_SHOW"],
-      payment_method: ["CASH", "BANK_TRANSFER", "ONLINE", "OTHER"],
-      payment_status: ["PENDING", "PAID", "FAILED", "REFUNDED"],
+      participation_status: [
+        "JOINED",
+        "INTERESTED",
+        "CANCELLED",
+        "ATTENDED",
+        "NO_SHOW",
+      ],
+      payment_method: ["CASH", "BANK_TRANSFER", "ONLINE", "OTHER", "CARD"],
+      payment_status: ["PENDING", "PAID", "FAILED", "REFUNDED", "COMPLETED"],
+      plan_tier: [
+        "STUDENT",
+        "ADULT",
+        "KIDS",
+        "FAMILY",
+        "PRO_FIGHTER",
+        "UNLIMITED",
+      ],
+      review_status: ["PENDING", "APPROVED", "REJECTED"],
+      review_target_type: ["COACH", "SESSION", "CLUB"],
       session_type: ["PERSONAL", "TECHNICAL", "PHYSICAL", "STRATEGY", "COMBO"],
       skill_level: ["BEGINNER", "INTERMEDIATE", "ADVANCED", "PROFESSIONAL"],
+      subscription_status: [
+        "ACTIVE",
+        "PAST_DUE",
+        "CANCELLED",
+        "EXPIRED",
+        "TRIAL",
+      ],
       user_role: ["ADMIN", "COACH", "MEMBER"],
     },
   },

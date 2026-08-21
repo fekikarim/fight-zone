@@ -45,12 +45,12 @@ function PublishButton({
       <button
         type="submit"
         disabled={isPending}
-        className={`rounded p-1.5 transition-colors disabled:opacity-50 ${
+        aria-label={isPublished ? "Unpublish transformation" : "Publish transformation"}
+        className={`inline-flex min-h-10 min-w-10 items-center justify-center rounded p-1.5 transition-colors disabled:opacity-50 ${
           isPublished
             ? "text-green-400 hover:bg-green-500/10"
             : "text-muted hover:bg-ink-soft"
         }`}
-        title={isPublished ? "Unpublish" : "Publish"}
       >
         {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />
@@ -83,12 +83,12 @@ function FeatureButton({
       <button
         type="submit"
         disabled={isPending}
-        className={`rounded p-1.5 transition-colors disabled:opacity-50 ${
+        aria-label={isFeatured ? "Unfeature transformation" : "Feature transformation on home page"}
+        className={`inline-flex min-h-10 min-w-10 items-center justify-center rounded p-1.5 transition-colors disabled:opacity-50 ${
           isFeatured
             ? "text-primary hover:bg-primary/10"
             : "text-muted hover:bg-ink-soft"
         }`}
-        title={isFeatured ? "Unfeature" : "Feature"}
       >
         {isPending ? (
           <Loader2 className="h-4 w-4 animate-spin" />

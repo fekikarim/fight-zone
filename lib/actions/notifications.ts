@@ -49,6 +49,7 @@ export async function markNotificationRead(
     .from("notifications")
     .update({ is_read: true }, { count: "exact" })
     .eq("id", parsed.data.notificationId)
+    .eq("user_id", user.id)
     .eq("is_read", false);
 
   if (error) {
@@ -75,6 +76,7 @@ export async function markAllNotificationsRead(): Promise<NotificationActionStat
   const { error, count } = await supabase
     .from("notifications")
     .update({ is_read: true }, { count: "exact" })
+    .eq("user_id", user.id)
     .eq("is_read", false);
 
   if (error) {

@@ -1,13 +1,17 @@
 "use client";
 
 import Link from "next/link";
+import { useEffect } from "react";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
   reset: () => void;
 }
 
-export default function GlobalError({ reset }: GlobalErrorProps) {
+export default function GlobalError({ error, reset }: GlobalErrorProps) {
+  useEffect(() => {
+    console.error("[fight-zone] Global error boundary:", error);
+  }, [error]);
   return (
     <html lang="en">
       <body>

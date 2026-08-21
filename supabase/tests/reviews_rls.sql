@@ -29,7 +29,7 @@ INSERT INTO public.user_role_assignments (user_id, role_id)
 SELECT '00000000-0000-0000-0000-000000000011', id FROM public.roles WHERE name = 'MEMBER'
 ON CONFLICT DO NOTHING;
 
-INSERT INTO public.user_role_assignances (user_id, role_id)
+INSERT INTO public.user_role_assignments (user_id, role_id)
 SELECT '00000000-0000-0000-0000-000000000012', id FROM public.roles WHERE name = 'MEMBER'
 ON CONFLICT DO NOTHING;
 

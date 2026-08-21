@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useEffect, useState, useActionState } from "react";
 import { Star, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { submitReview } from "@/lib/actions/reviews";
@@ -39,11 +39,14 @@ export function ReviewFormModal({
       role="dialog"
       aria-modal="true"
       aria-label="Leave a review"
+      onKeyDown={(e) => {
+        if (e.key === "Escape") onClose();
+      }}
       onClick={(e) => {
         if (e.target === e.currentTarget) onClose();
       }}
     >
-      <div className="w-full max-w-lg rounded-2xl border border-ink-border bg-background p-6 shadow-xl">
+      <div className="w-full max-w-lg max-h-[85vh] overflow-y-auto rounded-2xl border border-ink-border bg-background p-6 shadow-xl">
         <div className="mb-6 flex items-center justify-between">
           <div>
             <h2 className="font-display text-xl font-bold uppercase tracking-tight">

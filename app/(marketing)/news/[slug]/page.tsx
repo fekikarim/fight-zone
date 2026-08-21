@@ -8,6 +8,7 @@ import { Separator } from "@/components/ui/separator";
 import { PlaceholderImage } from "@/components/ui/placeholder-image";
 import { getNewsBySlug, getPublishedNews } from "@/lib/supabase/queries";
 import { formatDate } from "@/lib/utils";
+import { NotFoundError } from "@/lib/errors";
 
 interface NewsArticlePageProps {
   params: Promise<{ slug: string }>;
@@ -17,11 +18,18 @@ export async function generateMetadata({
   params,
 }: NewsArticlePageProps): Promise<Metadata> {
   const { slug } = await params;
-  const article = await getNewsBySlug(slug);
-  return {
-    title: article.title,
-    description: article.content?.slice(0, 160),
-  };
+  try {
+    const article = await getNewsBySlug(slug);
+    return {
+      title: article.title,
+      description: article.content?.slice(0, 160),
+    };
+  } catch (error) {
+    if (error instanceof NotFoundError) {
+      return { title: "Article not found" };
+    }
+    throw error;
+  }
 }
 
 export default async function NewsArticlePage({ params }: NewsArticlePageProps) {

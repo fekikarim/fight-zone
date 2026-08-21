@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { assertAuthenticated } from "@/lib/auth/guards";
+import { assertAuthenticated, requireRole } from "@/lib/auth/guards";
 import {
   createEventSchema,
   updateEventSchema,
@@ -129,7 +129,7 @@ export async function createEvent(
     return { ok: false, message: msg };
   }
 
-  const user = await assertAuthenticated();
+  const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -183,6 +183,7 @@ export async function updateEvent(
 
   const { eventId, ...updates } = parsed.data;
 
+  await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
   const { error } = await supabase
     .from("events")
@@ -216,6 +217,7 @@ export async function updateParticipantStatus(
     return { ok: false, message: msg };
   }
 
+  await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
   const { error } = await supabase
     .from("event_participants")

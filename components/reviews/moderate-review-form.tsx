@@ -41,8 +41,8 @@ function ApproveButton({ reviewId }: { reviewId: string }) {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded p-1.5 text-green-400 transition-colors hover:bg-green-500/10 disabled:opacity-50"
-        title="Approve"
+        aria-label="Approve review"
+        className="inline-flex min-h-10 min-w-10 items-center justify-center rounded p-1.5 text-green-400 transition-colors hover:bg-green-500/10 disabled:opacity-50"
       >
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
       </button>
@@ -59,8 +59,8 @@ function RejectButton({ reviewId }: { reviewId: string }) {
       <button
         type="submit"
         disabled={isPending}
-        className="rounded p-1.5 text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
-        title="Reject"
+        aria-label="Reject review"
+        className="inline-flex min-h-10 min-w-10 items-center justify-center rounded p-1.5 text-red-400 transition-colors hover:bg-red-500/10 disabled:opacity-50"
       >
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
       </button>
@@ -87,12 +87,12 @@ function FeatureButton({
       <button
         type="submit"
         disabled={isPending}
-        className={`rounded p-1.5 transition-colors disabled:opacity-50 ${
+        aria-label={isFeatured ? "Unfeature review" : "Feature review on home page"}
+        className={`inline-flex min-h-10 min-w-10 items-center justify-center rounded p-1.5 transition-colors disabled:opacity-50 ${
           isFeatured
             ? "text-primary hover:bg-primary/10"
             : "text-muted hover:bg-ink-soft"
         }`}
-        title={isFeatured ? "Unfeature" : "Feature on home"}
       >
         <Star
           className={`h-4 w-4 ${isFeatured ? "fill-primary" : ""}`}

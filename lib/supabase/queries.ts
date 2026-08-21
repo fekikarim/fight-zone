@@ -59,8 +59,10 @@ function unwrap<T>(label: string, result: { data: T | null; error: unknown }): T
 export const getPublicCoach = cache(async () => {
   const supabase = await createClient();
   const result = await supabase.rpc("get_public_coach");
-  const rows = unwrap("get_public_coach", result);
-  return rows[0] ?? null;
+  if (result.error) return null;
+  const rows = result.data;
+  if (!rows || rows.length === 0) return null;
+  return rows[0];
 });
 
 export const getAchievements = cache(async (limit?: number) => {
@@ -1411,7 +1413,7 @@ export const getPublicMembershipPlans = cache(
     if (error) {
       if (isTableMissingError(error)) return [];
       logError("Query failed: public membership plans", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return (data ?? []) as MembershipPlan[];
   },
@@ -1433,7 +1435,7 @@ export const getPublicMembershipPlanBySlug = cache(
     if (error) {
       if (isTableMissingError(error)) return null;
       logError("Query failed: public membership plan by slug", error, { slug });
-      throw new DatabaseError(undefined, { cause: error });
+      return null;
     }
     return data as MembershipPlan | null;
   },
@@ -1450,7 +1452,9 @@ export const getCurrentMemberSubscription = cache(
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("member_subscriptions")
-      .select("*, membership_plans(*)")
+      .select(
+        "id, member_id, plan_id, status, starts_at, ends_at, remaining_credits, auto_renew, renews_at, notes, created_at, updated_at, membership_plans(id, name, slug, tier, billing_interval, price, currency, session_credits)",
+      )
       .eq("member_id", user.id)
       .order("created_at", { ascending: false })
       .limit(1)
@@ -1459,7 +1463,7 @@ export const getCurrentMemberSubscription = cache(
     if (error) {
       if (isTableMissingError(error)) return null;
       logError("Query failed: current member subscription", error, { userId: user.id });
-      throw new DatabaseError(undefined, { cause: error });
+      return null;
     }
     return data as MemberSubscriptionWithPlan | null;
   },
@@ -1476,14 +1480,16 @@ export const getMemberSubscriptionHistory = cache(
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("member_subscriptions")
-      .select("*, membership_plans(*)")
+      .select(
+        "id, member_id, plan_id, status, starts_at, ends_at, remaining_credits, auto_renew, renews_at, notes, created_at, updated_at, membership_plans(id, name, slug, tier, billing_interval, price, currency, session_credits)",
+      )
       .eq("member_id", user.id)
       .order("created_at", { ascending: false });
 
     if (error) {
       if (isTableMissingError(error)) return [];
       logError("Query failed: member subscription history", error, { userId: user.id });
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return (data ?? []) as MemberSubscriptionWithPlan[];
   },
@@ -1501,7 +1507,7 @@ export const getMemberPayments = cache(
     const { data, error } = await supabase
       .from("payments")
       .select(
-        "*, member_subscriptions(id, membership_plans(name, tier))",
+        "id, member_id, amount, currency, status, payment_method, paid_at, transaction_ref, created_at, member_subscriptions(id, membership_plans(name, tier))",
       )
       .eq("member_id", user.id)
       .order("paid_at", { ascending: false });
@@ -1509,7 +1515,7 @@ export const getMemberPayments = cache(
     if (error) {
       if (isTableMissingError(error)) return [];
       logError("Query failed: member payments", error, { userId: user.id });
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return (data ?? []) as unknown as PaymentRecord[];
   },
@@ -1532,7 +1538,7 @@ export const getAdminMembershipPlans = cache(
     if (error) {
       if (isTableMissingError(error)) return [];
       logError("Query failed: admin membership plans", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return (data ?? []) as MembershipPlan[];
   },
@@ -1558,7 +1564,7 @@ export const getAdminSubscriptions = cache(
     let query = supabase
       .from("member_subscriptions")
       .select(
-        "*, membership_plans(name, tier, billing_interval), member_profiles(profiles(full_name, email))",
+        "id, member_id, plan_id, status, starts_at, ends_at, remaining_credits, auto_renew, renews_at, notes, created_at, updated_at, membership_plans(name, tier, billing_interval), member_profiles(profiles(full_name, email))",
       )
       .order("created_at", { ascending: false })
       .limit(limit + 1);
@@ -1579,7 +1585,7 @@ export const getAdminSubscriptions = cache(
         return { items: [], nextCursor: null, hasMore: false };
       }
       logError("Query failed: admin subscriptions", error, { status: filters.status });
-      throw new DatabaseError(undefined, { cause: error });
+      return { items: [], nextCursor: null, hasMore: false };
     }
 
     const rows = (data ?? []) as unknown as MemberSubscriptionWithPlan[];
@@ -1614,7 +1620,7 @@ export const getAdminPayments = cache(
     let query = supabase
       .from("payments")
       .select(
-        "*, member_subscriptions(id, membership_plans(name, tier)), member_profiles(profiles(full_name, email))",
+        "id, member_id, amount, currency, status, payment_method, paid_at, transaction_ref, created_at, updated_at, member_subscriptions(id, membership_plans(name, tier)), member_profiles(profiles(full_name, email))",
       )
       .order("paid_at", { ascending: false })
       .limit(limit + 1);
@@ -1635,7 +1641,7 @@ export const getAdminPayments = cache(
         return { items: [], nextCursor: null, hasMore: false };
       }
       logError("Query failed: admin payments", error, { status: filters.status });
-      throw new DatabaseError(undefined, { cause: error });
+      return { items: [], nextCursor: null, hasMore: false };
     }
 
     const rows = (data ?? []) as unknown as PaymentRecord[];
