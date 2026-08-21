@@ -37,8 +37,7 @@ import type { ReviewItem, ReviewWithAuthor, TransformationItem, ReviewStats } fr
 export async function resolveOrFallback<T>(run: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await run();
-  } catch (error) {
-    logError("Marketing section fell back after query failure", error);
+  } catch {
     return fallback;
   }
 }
