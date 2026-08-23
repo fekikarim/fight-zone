@@ -104,34 +104,50 @@ function statusForCode(code: AppErrorCode): number {
   }
 }
 
-/** Logs a structured, secret-safe error on the server. */
+/**
+ * Logs a structured, secret-safe error. Server-side observability log:
+ * PostgREST diagnostics (message/code/details/hint) are surfaced at the top
+ * level so failures are immediately actionable instead of printing as `{}`.
+ */
 export function logError(message: string, error: unknown, context?: Record<string, unknown>) {
-  const details =
-    error instanceof AppError
-      ? { code: error.code, status: error.status, cause: describeCause(error.cause) }
-      : { cause: describeCause(error) };
+  const described = describeError(error);
+  const flat =
+    typeof described === "object" && described !== null && !Array.isArray(described)
+      ? (described as Record<string, unknown>)
+      : { error: described };
 
   console.error(`[fight-zone] ${message}`, {
     ...context,
-    ...details,
+    ...flat,
   });
+}
+
+function describeError(error: unknown): unknown {
+  if (error === undefined || error === null) return undefined;
+  if (error instanceof AppError) {
+    return {
+      appCode: error.code,
+      status: error.status,
+      name: error.name,
+      message: error.userMessage,
+      cause: describeCause(error.cause),
+    };
+  }
+  return describeCause(error);
 }
 
 function describeCause(cause: unknown): unknown {
   if (cause === undefined || cause === null) return undefined;
   if (cause instanceof Error) {
-    // Strip the error's own message unless it is already a safe AppError.
-    const safe: Record<string, unknown> =
-      cause instanceof AppError
-        ? { name: cause.name, message: cause.userMessage }
-        : { name: cause.name, message: "hidden" };
+    // Server-side observability log — the raw message is safe to include
+    // (these logs never reach the client; user-facing messages come from
+    // AppError.userMessage instead).
+    const safe: Record<string, unknown> = { name: cause.name, message: cause.message };
     // Include PostgREST / Supabase error details if present.
     const props = cause as unknown as Record<string, unknown>;
     if (typeof props.code === "string") safe.code = props.code;
     if (typeof props.details === "string") safe.details = props.details;
     if (typeof props.hint === "string") safe.hint = props.hint;
-    if (typeof props.message === "string" && !(cause instanceof AppError))
-      safe.remoteMessage = props.message;
     return safe;
   }
   if (typeof cause === "object" && cause !== null) {

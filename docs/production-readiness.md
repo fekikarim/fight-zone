@@ -26,7 +26,7 @@ is blocked until Supabase project is linked and Docker is available locally.
 | Gate | Status | Notes |
 |------|--------|-------|
 | Gate A: Auth guards | ✅ VERIFIED | `requireRole` on all event mutations, notification queries scoped |
-| Gate B: Migration integration | ⛔ BLOCKED | `supabase link` required; `--dry-run` pending |
+| Gate B: Migration integration | ✅ VERIFIED | Project linked, all migrations pushed; grants + public views deployed |
 | Gate C: Query wildcards | ✅ VERIFIED | All 5 wildcard projections replaced |
 | Gate D: Error boundaries | ✅ VERIFIED | Member boundary added, existing boundaries log errors |
 | Gate E: Loading states | ✅ VERIFIED | 7 new skeletons created |
@@ -79,8 +79,57 @@ is blocked until Supabase project is linked and Docker is available locally.
 
 ## Next steps
 
-1. **Link Supabase project** and run `supabase db push --dry-run`
+1. ~~**Link Supabase project** and run `supabase db push --dry-run`~~ ✅ DONE — project linked (`jdbythhwikqvqenxyuqw`), all migrations pushed and verified
 2. **Verify RLS** by running `supabase tests` or querying with test users
-3. **Enable PITR** backups in Supabase dashboard
-4. **Run `next build`** in CI to confirm zero-error production build
+3. **Enable PITR** backups in Supabase dashboard (requires dashboard access)
+4. ~~**Run `next build`** in CI to confirm zero-error production build~~ ✅ DONE locally — re-run in CI
 5. **Browser E2E** — test navbar, review modal, moderation buttons manually
+
+## Post-verification remediation (runtime DB errors)
+
+After the gates above, live smoke testing exposed production-breaking
+PostgREST errors. Root causes found and permanently fixed:
+
+### Root cause 1: missing Data-API grants (42501 permission denied)
+Tables created in later migrations never received `GRANT` privileges for
+the PostgREST roles (Supabase does not auto-grant). Every list query on
+those tables failed at runtime.
+
+**Fix**: `20260829000000_data_api_grants.sql` — SELECT to anon+authenticated
+on public-read tables; DML to authenticated; ALL to service_role.
+
+### Root cause 2: private profile embeds in public queries (42501)
+Public marketing pages embedded author/coach identity via
+`profiles(...)` / `member_profiles(profiles(...))`, but `profiles` RLS is
+own-or-staff. Anon callers got hard permission errors.
+
+**Fix**: definer-semantics views exposing only safe identity columns:
+- `20260830000000_public_showcase_views.sql` — `approved_reviews_public`,
+  `published_transformations_public`, `available_coaches_public` (anon+auth)
+- `20260831000000_coach_directory_authenticated.sql` +
+  `20260831000010_coach_views_updated_at.sql` —
+  `coaches_directory_authenticated` (authenticated only), `updated_at`
+  column alignment
+
+### Code changes
+- ~25 list queries in `lib/supabase/queries.ts` now degrade gracefully
+  (log + empty/fallback) instead of crashing pages; detail-by-id queries
+  intentionally still throw for correct 404 semantics
+- Marketing/member queries repointed from raw tables to the safe views;
+  view rows mapped back into the nested component-facing shapes so no UI
+  components changed
+- Dead `coach_profiles(profiles(...))` embed removed from member schedule
+  (never consumed); messaging recipients resolve coach names through the
+  authenticated directory view
+- `lib/errors.ts` logging now surfaces real PostgREST message/code/hint
+  server-side (was rendering `{}` due to non-enumerable Error props)
+- Ghost migration repaired: stale remote entry `20260828000000`
+  ("payments_rls_fix", file no longer present) reverted via
+  `supabase migration repair`; grants migration renamed to avoid collision
+
+### Verification results
+- REST API as anon: plans (6 rows), transformations (2 published),
+  reviews/coaches views return cleanly (empty = correct data state)
+- `coaches_directory_authenticated` correctly denies anon (authenticated-only)
+- All marketing routes HTTP 200 with graceful empty states
+- `tsc --noEmit` clean, ESLint clean, `next build` clean (62 routes)

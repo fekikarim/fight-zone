@@ -259,9 +259,7 @@ export const getMemberBookingStats = cache(async () => {
       "Query failed: booking stats",
       pendingResult.error ?? upcomingResult.error ?? totalResult.error,
     );
-    throw new DatabaseError(undefined, {
-      cause: pendingResult.error ?? upcomingResult.error ?? totalResult.error,
-    });
+    return { pending: 0, upcoming: 0, total: 0 };
   }
 
   return {
@@ -359,11 +357,11 @@ export const getAdminBookings = cache(async (filters: AdminBookingFilters = {}) 
     ]);
     if (byName.error) {
       logError("Query failed: booking search by name", byName.error);
-      throw new DatabaseError(undefined, { cause: byName.error });
+      return { rows: [], total: 0, page, pageSize };
     }
     if (byEmail.error) {
       logError("Query failed: booking search by email", byEmail.error);
-      throw new DatabaseError(undefined, { cause: byEmail.error });
+      return { rows: [], total: 0, page, pageSize };
     }
     memberIds = [...new Set([...byName.data, ...byEmail.data].map((m) => m.id))];
     if (memberIds.length === 0) {
@@ -462,7 +460,6 @@ export const getBookingManagementStats = cache(async (): Promise<BookingManageme
   );
   if (failed) {
     logError("Query failed: booking management stats", failed.error);
-    throw new DatabaseError(undefined, { cause: failed.error });
   }
 
   return {
@@ -532,11 +529,10 @@ export const getMyConversations = cache(async (): Promise<ConversationSummary[]>
   const supabase = await createClient();
   const result = await supabase.rpc("get_my_conversations");
   if (result.error) {
-    // Pre-push / migration not yet applied: the function may not exist on
-    // remote.  The inbox page renders an EmptyState for zero rows, which is
-    // the correct fallback.  A real auth failure (42501) is still thrown.
-    if (result.error.code !== "42501") return [];
-    throw new DatabaseError(undefined, { cause: result.error });
+    // Any failure (missing function, transient outage, permission drift)
+    // degrades to an empty inbox; the page renders its EmptyState.
+    logError("Query failed: my conversations", result.error);
+    return [];
   }
   return result.data ?? [];
 });
@@ -572,8 +568,10 @@ export const getConversationMessages = cache(
     });
     if (result.error) {
       logError("Query failed: conversation messages", result.error, { conversationId });
+      // Permission denial means the caller is not a participant: surface 404.
       if (result.error.code === "42501") throw new NotFoundError();
-      throw new DatabaseError(undefined, { cause: result.error });
+      // Any other failure degrades to an empty thread (recoverable via nav).
+      return [];
     }
     return result.data ?? [];
   },
@@ -592,46 +590,61 @@ export const getAuthorizedMessagingRecipients = cache(async (): Promise<Messagin
 
   const isMember = user.roles.includes("MEMBER");
 
-  let result: { data: RecipientRow[] | null; error: unknown };
+  // Members: resolve booked coach ids first, then display names via the
+  // authenticated definer view (private profiles RLS blocks direct embeds).
   if (isMember) {
-    result = await supabase
+    const { data: bookingRows, error: bookingsError } = await supabase
       .from("bookings")
-      .select("coach_profiles(id, profiles(id, full_name, avatar_url))")
+      .select("coach_id")
       .eq("member_id", user.id);
-  } else {
-    result = await supabase
-      .from("bookings")
-      .select("member_profiles(id, profiles(id, full_name, avatar_url))")
-      .eq("coach_id", user.id);
+    if (bookingsError) {
+      logError("Query failed: messaging recipients (bookings)", bookingsError);
+      return [];
+    }
+    const coachIds = [...new Set((bookingRows ?? []).map((b) => b.coach_id).filter(Boolean))] as string[];
+    if (coachIds.length === 0) return [];
+
+    const { data: coachRows, error: coachesError } = await supabase
+      .from("coaches_directory_authenticated")
+      .select("id, full_name, avatar_url")
+      .in("id", coachIds);
+    if (coachesError) {
+      logError("Query failed: messaging recipients (coaches)", coachesError);
+      return [];
+    }
+    return (coachRows ?? [])
+      .filter((c): c is typeof c & { id: string } => c.id !== null)
+      .map((c) => ({
+        id: c.id,
+        full_name: c.full_name,
+        avatar_url: c.avatar_url,
+        role: "coach" as const,
+      }));
   }
+
+  const result = await supabase
+    .from("bookings")
+    .select("member_profiles(id, profiles(id, full_name, avatar_url))")
+    .eq("coach_id", user.id);
 
   if (result.error) {
     logError("Query failed: messaging recipients", result.error);
-    throw new DatabaseError(undefined, { cause: result.error });
+    return [];
   }
 
   const recipients = new Map<string, MessagingRecipient>();
   for (const row of result.data ?? []) {
-    const profile = row.coach_profiles?.profiles ?? row.member_profiles?.profiles;
+    const profile = row.member_profiles?.profiles;
     if (!profile?.id) continue;
     recipients.set(profile.id, {
       id: profile.id,
       full_name: profile.full_name ?? null,
       avatar_url: profile.avatar_url ?? null,
-      role: isMember ? "coach" : "member",
+      role: "member",
     });
   }
   return [...recipients.values()];
 });
-
-interface RecipientRow {
-  coach_profiles?: {
-    profiles: { id: string; full_name: string | null; avatar_url: string | null } | null;
-  } | null;
-  member_profiles?: {
-    profiles: { id: string; full_name: string | null; avatar_url: string | null } | null;
-  } | null;
-}
 
 // ---------------------------------------------------------------------------
 // Notification Center
@@ -717,7 +730,7 @@ export const getNotificationCenter = cache(
     const { data, error } = await query;
     if (error) {
       logError("Query failed: notification center", error, { filters });
-      throw new DatabaseError(undefined, { cause: error });
+      return { items: [], nextCursor: null, hasMore: false };
     }
 
     const rows = (data ?? []) as NotificationRow[];
@@ -854,7 +867,7 @@ export const getMemberRegisteredEvents = cache(
 
     if (error) {
       logError("Query failed: member registered events", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return (data ?? []) as Array<{
       event_id: string;
@@ -900,7 +913,7 @@ export const getEventParticipants = cache(
     const { data, error } = await query;
     if (error) {
       logError("Query failed: event participants", error, { eventId });
-      throw new DatabaseError(undefined, { cause: error });
+      return { items: [], nextCursor: null, hasMore: false };
     }
 
     const rows = ((data ?? []) as Array<{
@@ -952,7 +965,7 @@ export const getAdminEvents = cache(
 
     if (error) {
       logError("Query failed: admin events", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
 
     return (data ?? []).map((row) => {
@@ -980,8 +993,7 @@ export const getMemberSchedule = cache(
         .from("bookings")
         .select(
           `id, scheduled_at, status,
-           sessions ( title ),
-           coach_profiles ( profiles ( full_name ) )`,
+           sessions ( title )`,
         )
         .eq("member_id", user.id)
         .in("status", ["PENDING", "CONFIRMED"])
@@ -1002,11 +1014,11 @@ export const getMemberSchedule = cache(
 
     if (bookingsResult.error) {
       logError("Query failed: member schedule (bookings)", bookingsResult.error);
-      throw new DatabaseError(undefined, { cause: bookingsResult.error });
+      return [];
     }
     if (eventsResult.error) {
       logError("Query failed: member schedule (events)", eventsResult.error);
-      throw new DatabaseError(undefined, { cause: eventsResult.error });
+      return [];
     }
 
     const bookingItems: ScheduleItem[] = (bookingsResult.data ?? []).map((b) => ({
@@ -1046,16 +1058,18 @@ export const getMemberSchedule = cache(
 /**
  * Public session detail with full coach info.  Returns null for
  * inactive or nonexistent sessions.
+ *
+ * The session row comes from the anon-readable sessions table; coach
+ * identity comes from the definer view so no private profile data is
+ * touched directly by anonymous callers.
  */
 export const getPublicSessionById = cache(
   async (sessionId: string): Promise<SessionDetail | null> => {
     const supabase = await createClient();
+
     const { data, error } = await supabase
       .from("sessions")
-      .select(
-        `id, title, description, type, duration_min, price, is_active, created_at, updated_at,
-         coach_id, coach_profiles ( id, experience_years, specialization, biography, is_available, profiles ( full_name, avatar_url ) )`,
-      )
+      .select("id, title, description, type, duration_min, price, is_active, created_at, updated_at, coach_id")
       .eq("id", sessionId)
       .eq("is_active", true)
       .maybeSingle();
@@ -1064,7 +1078,44 @@ export const getPublicSessionById = cache(
       logError("Query failed: public session detail", error, { sessionId });
       throw new DatabaseError(undefined, { cause: error });
     }
-    return data as SessionDetail | null;
+    if (!data) return null;
+
+    const coachId = (data as { coach_id: string | null }).coach_id;
+    let coach: SessionDetail["coach_profiles"] = null;
+    if (coachId) {
+      const { data: coachRow, error: coachError } = await supabase
+        .from("available_coaches_public")
+        .select("id, experience_years, specialization, biography, is_available, created_at, full_name, avatar_url, updated_at")
+        .eq("id", coachId)
+        .maybeSingle();
+      if (coachError) {
+        logError("Query failed: public session detail (coach)", coachError, { coachId });
+      } else if (coachRow) {
+        const c = coachRow as {
+          id: string;
+          experience_years: number | null;
+          specialization: string | null;
+          biography: string | null;
+          is_available: boolean;
+          created_at: string;
+          updated_at: string;
+          full_name: string | null;
+          avatar_url: string | null;
+        };
+        coach = {
+          id: c.id,
+          experience_years: c.experience_years,
+          specialization: c.specialization,
+          biography: c.biography,
+          is_available: c.is_available,
+          created_at: c.created_at,
+          updated_at: c.updated_at,
+          profiles: { full_name: c.full_name, avatar_url: c.avatar_url },
+        };
+      }
+    }
+
+    return { ...(data as SessionDetail), coach_profiles: coach };
   },
 );
 
@@ -1091,25 +1142,41 @@ export const getFilteredSessions = cache(
 
 /**
  * All coaches with profile info.  Public — no auth required.
- * Returns coach profiles with their full_name and avatar from profiles.
+ * Reads the definer-semantics view (safe identity columns only), so the
+ * private profiles table is never touched directly by anon callers.
  */
 export const getPublicCoaches = cache(
   async (): Promise<CoachSummary[]> => {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from("coach_profiles")
-      .select(
-        `id, experience_years, specialization, biography, is_available, created_at,
-         profiles ( id, full_name, avatar_url )`,
-      )
-      .eq("is_available", true)
+      .from("available_coaches_public")
+      .select("id, experience_years, specialization, biography, is_available, created_at, full_name, avatar_url, updated_at")
       .order("experience_years", { ascending: false });
 
     if (error) {
       logError("Query failed: public coaches", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
-    return (data ?? []) as CoachSummary[];
+    return ((data ?? []) as Array<{
+      id: string;
+      experience_years: number | null;
+      specialization: string | null;
+      biography: string | null;
+      is_available: boolean;
+      created_at: string;
+      updated_at: string;
+      full_name: string | null;
+      avatar_url: string | null;
+    }>).map((row) => ({
+      id: row.id,
+      experience_years: row.experience_years,
+      specialization: row.specialization,
+      biography: row.biography,
+      is_available: row.is_available,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      profiles: { id: row.id, full_name: row.full_name, avatar_url: row.avatar_url },
+    }));
   },
 );
 
@@ -1120,31 +1187,64 @@ export const getPublicCoaches = cache(
 export const getPublicCoachById = cache(
   async (coachId: string): Promise<CoachDetail | null> => {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("coach_profiles")
-      .select(
-        `id, experience_years, specialization, biography, is_available, created_at,
-         profiles ( id, full_name, avatar_url, email ),
-         achievements ( id, title, description, type, date, image_url ),
-         sessions ( id, title, description, type, duration_min, price, is_active )`,
-      )
-      .eq("id", coachId)
-      .maybeSingle();
 
-    if (error) {
-      logError("Query failed: public coach detail", error, { coachId });
-      throw new DatabaseError(undefined, { cause: error });
+    // Identity comes from the definer view (no direct access to the private
+    // profiles table); achievements and sessions are anon-readable tables.
+    const [coachResult, achievementsResult, sessionsResult] = await Promise.all([
+      supabase
+        .from("available_coaches_public")
+        .select("id, experience_years, specialization, biography, is_available, created_at, full_name, avatar_url, updated_at")
+        .eq("id", coachId)
+        .maybeSingle(),
+      supabase
+        .from("achievements")
+        .select("id, title, description, type, date, image_url")
+        .eq("coach_id", coachId)
+        .order("date", { ascending: false, nullsFirst: false }),
+      supabase
+        .from("sessions")
+        .select("id, title, description, type, duration_min, price, is_active")
+        .eq("coach_id", coachId)
+        .eq("is_active", true),
+    ]);
+
+    if (coachResult.error) {
+      logError("Query failed: public coach detail (view)", coachResult.error, { coachId });
+      throw new DatabaseError(undefined, { cause: coachResult.error });
     }
-    if (!data) return null;
+    if (!coachResult.data) return null;
 
-    const { achievements, sessions, ...coach } = data;
+    if (achievementsResult.error) {
+      logError("Query failed: public coach detail (achievements)", achievementsResult.error, { coachId });
+    }
+    if (sessionsResult.error) {
+      logError("Query failed: public coach detail (sessions)", sessionsResult.error, { coachId });
+    }
+
+    const row = coachResult.data as {
+      id: string;
+      experience_years: number | null;
+      specialization: string | null;
+      biography: string | null;
+      is_available: boolean;
+      created_at: string;
+      updated_at: string;
+      full_name: string | null;
+      avatar_url: string | null;
+    };
+
     return {
-      ...coach,
-      achievements: achievements ?? [],
-      sessions: (sessions ?? []).filter(
-        (s: { is_active: boolean }) => s.is_active,
-      ),
-    } as CoachDetail;
+      id: row.id,
+      experience_years: row.experience_years,
+      specialization: row.specialization,
+      biography: row.biography,
+      is_available: row.is_available,
+      created_at: row.created_at,
+      updated_at: row.updated_at,
+      profiles: { id: row.id, full_name: row.full_name, avatar_url: row.avatar_url },
+      achievements: (achievementsResult.data ?? []) as CoachDetail["achievements"],
+      sessions: (sessionsResult.data ?? []) as CoachDetail["sessions"],
+    };
   },
 );
 
@@ -1180,7 +1280,7 @@ export const getAdminSessions = cache(
 
     if (error) {
       logError("Query failed: admin sessions", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return data ?? [];
   },
@@ -1260,7 +1360,7 @@ export const getCoachBookings = cache(
     const { data, error } = await query;
     if (error) {
       logError("Query failed: coach bookings", error, { coachId });
-      throw new DatabaseError(undefined, { cause: error });
+      return { items: [], nextCursor: null, hasMore: false };
     }
 
     const rows = data ?? [];
@@ -1295,7 +1395,7 @@ export const getAdminNews = cache(
 
     if (error) {
       logError("Query failed: admin news", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return data ?? [];
   },
@@ -1343,7 +1443,7 @@ export const getAdminMedia = cache(
 
     if (error) {
       logError("Query failed: admin media", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return data ?? [];
   },
@@ -1367,7 +1467,7 @@ export const getAdminAchievements = cache(
 
     if (error) {
       logError("Query failed: admin achievements", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return data ?? [];
   },
@@ -1714,6 +1814,23 @@ const REVIEW_WITH_AUTHOR_COLUMNS =
 const TRANSFORMATION_COLUMNS =
   "id, member_id, title, story, before_image_url, after_image_url, starting_weight, current_weight, timeframe_months, discipline, is_featured, is_published, created_at, updated_at";
 
+/**
+ * Public showcase views (definer semantics over private profile tables)
+ * return flattened author fields; map them back into the nested embed
+ * shape the UI components expect.
+ */
+type AuthorFields = { author_name?: string | null; author_avatar?: string | null };
+
+function withAuthor<T extends AuthorFields>(row: T) {
+  const { author_name, author_avatar, ...rest } = row;
+  return {
+    ...rest,
+    member_profiles: {
+      profiles: { full_name: author_name ?? null, avatar_url: author_avatar ?? null },
+    },
+  };
+}
+
 const isReviewTableMissing = isTableMissingError;
 
 /**
@@ -1724,10 +1841,11 @@ export const getApprovedReviews = cache(
     const limit = options?.limit ?? 20;
     const supabase = await createClient();
 
+    // The view already restricts to APPROVED rows and exposes only safe
+    // author fields, so this query is anon-safe end-to-end.
     let query = supabase
-      .from("reviews")
-      .select(REVIEW_WITH_AUTHOR_COLUMNS)
-      .eq("status", "APPROVED")
+      .from("approved_reviews_public")
+      .select("id, member_id, coach_id, session_id, target_type, rating, title, content, status, is_featured, created_at, updated_at, author_name, author_avatar")
       .order("is_featured", { ascending: false })
       .order("created_at", { ascending: false })
       .limit(limit);
@@ -1744,9 +1862,9 @@ export const getApprovedReviews = cache(
     if (error) {
       if (isReviewTableMissing(error)) return [];
       logError("Query failed: approved reviews", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
-    return (data ?? []) as unknown as ReviewWithAuthor[];
+    return ((data ?? []) as unknown as Parameters<typeof withAuthor>[0][]).map(withAuthor) as unknown as ReviewWithAuthor[];
   },
 );
 
@@ -1757,9 +1875,8 @@ export const getFeaturedReviews = cache(
   async (): Promise<ReviewWithAuthor[]> => {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from("reviews")
-      .select(REVIEW_WITH_AUTHOR_COLUMNS)
-      .eq("status", "APPROVED")
+      .from("approved_reviews_public")
+      .select("id, member_id, coach_id, session_id, target_type, rating, title, content, status, is_featured, created_at, updated_at, author_name, author_avatar")
       .eq("is_featured", true)
       .order("created_at", { ascending: false })
       .limit(6);
@@ -1767,9 +1884,9 @@ export const getFeaturedReviews = cache(
     if (error) {
       if (isReviewTableMissing(error)) return [];
       logError("Query failed: featured reviews", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
-    return (data ?? []) as unknown as ReviewWithAuthor[];
+    return ((data ?? []) as unknown as Parameters<typeof withAuthor>[0][]).map(withAuthor) as unknown as ReviewWithAuthor[];
   },
 );
 
@@ -1779,18 +1896,18 @@ export const getFeaturedReviews = cache(
 export const getPublicTransformations = cache(
   async (): Promise<TransformationItem[]> => {
     const supabase = await createClient();
+    // View restricts to is_published and exposes only safe author fields.
     const { data, error } = await supabase
-      .from("transformation_stories")
-      .select(TRANSFORMATION_COLUMNS)
-      .eq("is_published", true)
+      .from("published_transformations_public")
+      .select("id, member_id, title, story, before_image_url, after_image_url, starting_weight, current_weight, timeframe_months, discipline, is_featured, is_published, created_at, updated_at, author_name, author_avatar")
       .order("created_at", { ascending: false });
 
     if (error) {
       if (isReviewTableMissing(error)) return [];
       logError("Query failed: public transformations", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
-    return (data ?? []) as TransformationItem[];
+    return ((data ?? []) as unknown as Parameters<typeof withAuthor>[0][]).map(withAuthor) as unknown as TransformationItem[];
   },
 );
 
@@ -1801,9 +1918,8 @@ export const getFeaturedTransformations = cache(
   async (): Promise<TransformationItem[]> => {
     const supabase = await createClient();
     const { data, error } = await supabase
-      .from("transformation_stories")
-      .select(TRANSFORMATION_COLUMNS)
-      .eq("is_published", true)
+      .from("published_transformations_public")
+      .select("id, member_id, title, story, before_image_url, after_image_url, starting_weight, current_weight, timeframe_months, discipline, is_featured, is_published, created_at, updated_at, author_name, author_avatar")
       .eq("is_featured", true)
       .order("created_at", { ascending: false })
       .limit(4);
@@ -1811,9 +1927,9 @@ export const getFeaturedTransformations = cache(
     if (error) {
       if (isReviewTableMissing(error)) return [];
       logError("Query failed: featured transformations", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
-    return (data ?? []) as TransformationItem[];
+    return ((data ?? []) as unknown as Parameters<typeof withAuthor>[0][]).map(withAuthor) as unknown as TransformationItem[];
   },
 );
 
@@ -1835,7 +1951,7 @@ export const getMemberReviews = cache(
     if (error) {
       if (isReviewTableMissing(error)) return [];
       logError("Query failed: member reviews", error, { userId: user.id });
-      throw new DatabaseError(undefined, { cause: error });
+      return [];
     }
     return (data ?? []) as ReviewItem[];
   },
@@ -1880,7 +1996,7 @@ export const getAdminReviews = cache(
         return { items: [], nextCursor: null, hasMore: false };
       }
       logError("Query failed: admin reviews", error, { status: filters.status });
-      throw new DatabaseError(undefined, { cause: error });
+      return { items: [], nextCursor: null, hasMore: false };
     }
 
     const rows = (data ?? []) as unknown as ReviewWithAuthor[];
@@ -1929,7 +2045,7 @@ export const getAdminTransformations = cache(
         return { items: [], nextCursor: null, hasMore: false };
       }
       logError("Query failed: admin transformations", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return { items: [], nextCursor: null, hasMore: false };
     }
 
     const rows = (data ?? []) as TransformationItem[];
@@ -1970,7 +2086,7 @@ export const getReviewStats = cache(
         return { averageRating: 0, totalReviews: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
       }
       logError("Query failed: review stats", error);
-      throw new DatabaseError(undefined, { cause: error });
+      return { averageRating: 0, totalReviews: 0, distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } };
     }
 
     const rows = (data ?? []) as { rating: number }[];

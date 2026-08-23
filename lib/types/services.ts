@@ -71,7 +71,7 @@ export type CoachSummary = CoachProfileRow & {
 
 /** Coach detail with achievements and sessions. */
 export type CoachDetail = CoachProfileRow & {
-  profiles: Pick<ProfileRow, "id" | "full_name" | "avatar_url" | "email"> | null;
+  profiles: Pick<ProfileRow, "id" | "full_name" | "avatar_url"> | null;
   achievements: AchievementRow[];
   sessions: SessionRow[];
 };
