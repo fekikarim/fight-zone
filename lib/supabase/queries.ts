@@ -604,10 +604,9 @@ export const getAuthorizedMessagingRecipients = cache(async (): Promise<Messagin
     const coachIds = [...new Set((bookingRows ?? []).map((b) => b.coach_id).filter(Boolean))] as string[];
     if (coachIds.length === 0) return [];
 
-    const { data: coachRows, error: coachesError } = await supabase
-      .from("coaches_directory_authenticated")
-      .select("id, full_name, avatar_url")
-      .in("id", coachIds);
+    const { data: coachRows, error: coachesError } = await supabase.rpc("get_coaches_directory", {
+      p_coach_ids: coachIds,
+    });
     if (coachesError) {
       logError("Query failed: messaging recipients (coaches)", coachesError);
       return [];
@@ -1060,8 +1059,8 @@ export const getMemberSchedule = cache(
  * inactive or nonexistent sessions.
  *
  * The session row comes from the anon-readable sessions table; coach
- * identity comes from the definer view so no private profile data is
- * touched directly by anonymous callers.
+ * identity comes from the SECURITY DEFINER RPC so no private profile
+ * data is touched directly by anonymous callers.
  */
 export const getPublicSessionById = cache(
   async (sessionId: string): Promise<SessionDetail | null> => {
@@ -1084,9 +1083,7 @@ export const getPublicSessionById = cache(
     let coach: SessionDetail["coach_profiles"] = null;
     if (coachId) {
       const { data: coachRow, error: coachError } = await supabase
-        .from("available_coaches_public")
-        .select("id, experience_years, specialization, biography, is_available, created_at, full_name, avatar_url, updated_at")
-        .eq("id", coachId)
+        .rpc("get_available_coaches", { p_coach_id: coachId })
         .maybeSingle();
       if (coachError) {
         logError("Query failed: public session detail (coach)", coachError, { coachId });
@@ -1142,16 +1139,13 @@ export const getFilteredSessions = cache(
 
 /**
  * All coaches with profile info.  Public — no auth required.
- * Reads the definer-semantics view (safe identity columns only), so the
+ * Reads via SECURITY DEFINER RPC (safe identity columns only), so the
  * private profiles table is never touched directly by anon callers.
  */
 export const getPublicCoaches = cache(
   async (): Promise<CoachSummary[]> => {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("available_coaches_public")
-      .select("id, experience_years, specialization, biography, is_available, created_at, full_name, avatar_url, updated_at")
-      .order("experience_years", { ascending: false });
+    const { data, error } = await supabase.rpc("get_available_coaches");
 
     if (error) {
       logError("Query failed: public coaches", error);
@@ -1188,14 +1182,10 @@ export const getPublicCoachById = cache(
   async (coachId: string): Promise<CoachDetail | null> => {
     const supabase = await createClient();
 
-    // Identity comes from the definer view (no direct access to the private
-    // profiles table); achievements and sessions are anon-readable tables.
+    // Identity comes from the SECURITY DEFINER RPC (no direct access to the
+    // private profiles table); achievements and sessions are anon-readable.
     const [coachResult, achievementsResult, sessionsResult] = await Promise.all([
-      supabase
-        .from("available_coaches_public")
-        .select("id, experience_years, specialization, biography, is_available, created_at, full_name, avatar_url, updated_at")
-        .eq("id", coachId)
-        .maybeSingle(),
+      supabase.rpc("get_available_coaches", { p_coach_id: coachId }).maybeSingle(),
       supabase
         .from("achievements")
         .select("id, title, description, type, date, image_url")
@@ -1209,7 +1199,7 @@ export const getPublicCoachById = cache(
     ]);
 
     if (coachResult.error) {
-      logError("Query failed: public coach detail (view)", coachResult.error, { coachId });
+      logError("Query failed: public coach detail (rpc)", coachResult.error, { coachId });
       throw new DatabaseError(undefined, { cause: coachResult.error });
     }
     if (!coachResult.data) return null;
@@ -1841,26 +1831,13 @@ export const getApprovedReviews = cache(
     const limit = options?.limit ?? 20;
     const supabase = await createClient();
 
-    // The view already restricts to APPROVED rows and exposes only safe
-    // author fields, so this query is anon-safe end-to-end.
-    let query = supabase
-      .from("approved_reviews_public")
-      .select("id, member_id, coach_id, session_id, target_type, rating, title, content, status, is_featured, created_at, updated_at, author_name, author_avatar")
-      .order("is_featured", { ascending: false })
-      .order("created_at", { ascending: false })
-      .limit(limit);
-
-    if (options?.coachId) {
-      query = query.eq("coach_id", options.coachId);
-    }
-    if (options?.sessionId) {
-      query = query.eq("session_id", options.sessionId);
-    }
-
-    const { data, error } = await query;
+    const { data, error } = await supabase.rpc("get_public_approved_reviews", {
+      p_limit: limit,
+      ...(options?.coachId ? { p_coach_id: options.coachId } : {}),
+      ...(options?.sessionId ? { p_session_id: options.sessionId } : {}),
+    });
 
     if (error) {
-      if (isReviewTableMissing(error)) return [];
       logError("Query failed: approved reviews", error);
       return [];
     }
@@ -1874,15 +1851,12 @@ export const getApprovedReviews = cache(
 export const getFeaturedReviews = cache(
   async (): Promise<ReviewWithAuthor[]> => {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("approved_reviews_public")
-      .select("id, member_id, coach_id, session_id, target_type, rating, title, content, status, is_featured, created_at, updated_at, author_name, author_avatar")
-      .eq("is_featured", true)
-      .order("created_at", { ascending: false })
-      .limit(6);
+    const { data, error } = await supabase.rpc("get_public_approved_reviews", {
+      p_limit: 6,
+      p_featured: true,
+    });
 
     if (error) {
-      if (isReviewTableMissing(error)) return [];
       logError("Query failed: featured reviews", error);
       return [];
     }
@@ -1896,14 +1870,9 @@ export const getFeaturedReviews = cache(
 export const getPublicTransformations = cache(
   async (): Promise<TransformationItem[]> => {
     const supabase = await createClient();
-    // View restricts to is_published and exposes only safe author fields.
-    const { data, error } = await supabase
-      .from("published_transformations_public")
-      .select("id, member_id, title, story, before_image_url, after_image_url, starting_weight, current_weight, timeframe_months, discipline, is_featured, is_published, created_at, updated_at, author_name, author_avatar")
-      .order("created_at", { ascending: false });
+    const { data, error } = await supabase.rpc("get_public_transformations", { p_limit: 100 });
 
     if (error) {
-      if (isReviewTableMissing(error)) return [];
       logError("Query failed: public transformations", error);
       return [];
     }
@@ -1917,15 +1886,12 @@ export const getPublicTransformations = cache(
 export const getFeaturedTransformations = cache(
   async (): Promise<TransformationItem[]> => {
     const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("published_transformations_public")
-      .select("id, member_id, title, story, before_image_url, after_image_url, starting_weight, current_weight, timeframe_months, discipline, is_featured, is_published, created_at, updated_at, author_name, author_avatar")
-      .eq("is_featured", true)
-      .order("created_at", { ascending: false })
-      .limit(4);
+    const { data, error } = await supabase.rpc("get_public_transformations", {
+      p_limit: 4,
+      p_featured: true,
+    });
 
     if (error) {
-      if (isReviewTableMissing(error)) return [];
       logError("Query failed: featured transformations", error);
       return [];
     }

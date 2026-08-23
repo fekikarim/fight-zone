@@ -133,3 +133,33 @@ own-or-staff. Anon callers got hard permission errors.
 - `coaches_directory_authenticated` correctly denies anon (authenticated-only)
 - All marketing routes HTTP 200 with graceful empty states
 - `tsc --noEmit` clean, ESLint clean, `next build` clean (62 routes)
+
+## Advisor remediation: SECURITY DEFINER views → RPC functions
+
+Supabase Advisor flagged all four showcase views as CRITICAL
+("Security Definer View"): Postgres views execute with the owner's
+privileges and cannot scope the caller, unlike RLS-governed tables.
+
+**Fix**: `20260831000020_replace_showcase_views_with_functions.sql`
+- Dropped `approved_reviews_public`, `published_transformations_public`,
+  `available_coaches_public`, `coaches_directory_authenticated`
+- Replaced with SECURITY DEFINER SQL functions following the pre-existing
+  `get_public_coach()` pattern — each with pinned `search_path`,
+  per-call `statement_timeout`, in-body LIMIT caps, and explicit EXECUTE
+  grants (PUBLIC/defaul revoked first):
+  - `get_public_approved_reviews(p_limit, p_featured, p_coach_id, p_session_id)` — anon+authenticated
+  - `get_public_transformations(p_limit, p_featured)` — anon+authenticated
+  - `get_available_coaches(p_coach_id)` — anon+authenticated
+  - `get_coaches_directory(p_coach_ids)` — **authenticated only**
+- Tightened direct access: anon SELECT revoked on `reviews` and
+  `transformation_stories` (anon must use the RPCs; members keep direct
+  SELECT for their own pending/rejected reviews via RLS)
+- `lib/supabase/queries.ts` call sites repointed from `.from(view)` to
+  `.rpc(...)`; flat author columns still mapped into nested component
+  shapes so no UI components changed
+
+**Post-fix verification**
+- `supabase db lint --linked --level error -s public` → **No schema errors found**
+- RPCs verified live as anon: reviews `[]`, transformations 2 rows,
+  coaches `[]`; directory RPC denies anon; direct table SELECT denied for anon
+- All marketing routes HTTP 200 · tsc clean · ESLint clean · production build clean

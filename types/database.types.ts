@@ -78,21 +78,7 @@ export type Database = {
             foreignKeyName: "achievements_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
-            referencedRelation: "available_coaches_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "achievements_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
             referencedRelation: "coach_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "achievements_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_directory_authenticated"
             referencedColumns: ["id"]
           },
         ]
@@ -136,21 +122,7 @@ export type Database = {
             foreignKeyName: "bookings_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
-            referencedRelation: "available_coaches_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
             referencedRelation: "coach_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "bookings_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_directory_authenticated"
             referencedColumns: ["id"]
           },
           {
@@ -275,21 +247,7 @@ export type Database = {
             foreignKeyName: "conversations_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
-            referencedRelation: "available_coaches_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "conversations_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
             referencedRelation: "coach_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "conversations_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_directory_authenticated"
             referencedColumns: ["id"]
           },
           {
@@ -476,21 +434,7 @@ export type Database = {
             foreignKeyName: "media_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
-            referencedRelation: "available_coaches_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "media_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
             referencedRelation: "coach_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "media_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_directory_authenticated"
             referencedColumns: ["id"]
           },
         ]
@@ -1030,21 +974,7 @@ export type Database = {
             foreignKeyName: "reviews_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
-            referencedRelation: "available_coaches_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
             referencedRelation: "coach_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_directory_authenticated"
             referencedColumns: ["id"]
           },
           {
@@ -1132,21 +1062,7 @@ export type Database = {
             foreignKeyName: "sessions_coach_id_fkey"
             columns: ["coach_id"]
             isOneToOne: false
-            referencedRelation: "available_coaches_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sessions_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
             referencedRelation: "coach_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "sessions_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_directory_authenticated"
             referencedColumns: ["id"]
           },
         ]
@@ -1245,136 +1161,37 @@ export type Database = {
       }
     }
     Views: {
-      approved_reviews_public: {
-        Row: {
-          author_avatar: string | null
-          author_name: string | null
-          coach_id: string | null
-          content: string | null
-          created_at: string | null
-          id: string | null
-          is_featured: boolean | null
-          member_id: string | null
-          rating: number | null
-          session_id: string | null
-          status: Database["public"]["Enums"]["review_status"] | null
-          target_type: Database["public"]["Enums"]["review_target_type"] | null
-          title: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "reviews_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "available_coaches_public"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coach_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_coach_id_fkey"
-            columns: ["coach_id"]
-            isOneToOne: false
-            referencedRelation: "coaches_directory_authenticated"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "member_profiles"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "reviews_session_id_fkey"
-            columns: ["session_id"]
-            isOneToOne: false
-            referencedRelation: "sessions"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      available_coaches_public: {
-        Row: {
-          avatar_url: string | null
-          biography: string | null
-          created_at: string | null
-          experience_years: number | null
-          full_name: string | null
-          id: string | null
-          is_available: boolean | null
-          specialization: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coach_profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      coaches_directory_authenticated: {
-        Row: {
-          avatar_url: string | null
-          biography: string | null
-          created_at: string | null
-          experience_years: number | null
-          full_name: string | null
-          id: string | null
-          is_available: boolean | null
-          specialization: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "coach_profiles_id_fkey"
-            columns: ["id"]
-            isOneToOne: true
-            referencedRelation: "profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
-      published_transformations_public: {
-        Row: {
-          after_image_url: string | null
-          author_avatar: string | null
-          author_name: string | null
-          before_image_url: string | null
-          created_at: string | null
-          current_weight: number | null
-          discipline: string | null
-          id: string | null
-          is_featured: boolean | null
-          is_published: boolean | null
-          member_id: string | null
-          starting_weight: number | null
-          story: string | null
-          timeframe_months: number | null
-          title: string | null
-          updated_at: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "transformation_stories_member_id_fkey"
-            columns: ["member_id"]
-            isOneToOne: false
-            referencedRelation: "member_profiles"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
+      [_ in never]: never
     }
     Functions: {
+      get_available_coaches: {
+        Args: { p_coach_id?: string }
+        Returns: {
+          avatar_url: string
+          biography: string
+          created_at: string
+          experience_years: number
+          full_name: string
+          id: string
+          is_available: boolean
+          specialization: string
+          updated_at: string
+        }[]
+      }
+      get_coaches_directory: {
+        Args: { p_coach_ids?: string[] }
+        Returns: {
+          avatar_url: string
+          biography: string
+          created_at: string
+          experience_years: number
+          full_name: string
+          id: string
+          is_available: boolean
+          specialization: string
+          updated_at: string
+        }[]
+      }
       get_conversation_messages: {
         Args: {
           p_before_id?: string
@@ -1402,6 +1219,30 @@ export type Database = {
           unread_count: number
         }[]
       }
+      get_public_approved_reviews: {
+        Args: {
+          p_coach_id?: string
+          p_featured?: boolean
+          p_limit?: number
+          p_session_id?: string
+        }
+        Returns: {
+          author_avatar: string
+          author_name: string
+          coach_id: string
+          content: string
+          created_at: string
+          id: string
+          is_featured: boolean
+          member_id: string
+          rating: number
+          session_id: string
+          status: Database["public"]["Enums"]["review_status"]
+          target_type: Database["public"]["Enums"]["review_target_type"]
+          title: string
+          updated_at: string
+        }[]
+      }
       get_public_coach: {
         Args: never
         Returns: {
@@ -1412,6 +1253,27 @@ export type Database = {
           id: string
           is_available: boolean
           specialization: string
+        }[]
+      }
+      get_public_transformations: {
+        Args: { p_featured?: boolean; p_limit?: number }
+        Returns: {
+          after_image_url: string
+          author_avatar: string
+          author_name: string
+          before_image_url: string
+          created_at: string
+          current_weight: number
+          discipline: string
+          id: string
+          is_featured: boolean
+          is_published: boolean
+          member_id: string
+          starting_weight: number
+          story: string
+          timeframe_months: number
+          title: string
+          updated_at: string
         }[]
       }
       get_unread_message_count: { Args: never; Returns: number }
