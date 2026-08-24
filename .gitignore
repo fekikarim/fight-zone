@@ -24,6 +24,10 @@
 
 # production
 /build
+/.netlify/
+
+# local supabase metadata
+/supabase/.temp/
 
 # misc
 .DS_Store
@@ -46,6 +50,6 @@ yarn-error.log*
 
 # typescript
 *.tsbuildinfo
-next-env.d.ts
+!.next-env.d.ts
 .p18/
 .p19/

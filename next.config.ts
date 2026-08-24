@@ -1,5 +1,8 @@
 import type { NextConfig } from "next";
 
+const supabaseOrigin =
+  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://*.supabase.co";
+
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
   { key: "X-Frame-Options", value: "DENY" },
@@ -17,7 +20,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob:",
       "font-src 'self' data:",
-      "connect-src 'self' https://jdbythhwikqvqenxyuqw.supabase.co",
+      `connect-src 'self' ${supabaseOrigin}`,
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",
