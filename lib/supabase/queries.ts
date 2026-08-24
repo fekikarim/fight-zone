@@ -37,7 +37,8 @@ import type { ReviewItem, ReviewWithAuthor, TransformationItem, ReviewStats } fr
 export async function resolveOrFallback<T>(run: () => Promise<T>, fallback: T): Promise<T> {
   try {
     return await run();
-  } catch {
+  } catch (error) {
+    logError("Optional query failed; degrading to fallback", error);
     return fallback;
   }
 }
@@ -247,11 +248,17 @@ export const getMemberBookingStats = cache(async () => {
   if (!user) return { pending: 0, upcoming: 0, total: 0 };
 
   const now = new Date().toISOString();
-  const base = supabase.from("bookings").select("id", { count: "exact", head: true });
+  // Factory (not a shared builder): supabase-js builders are mutable, so a
+  // reused instance accumulates every filter across Promise.all arms.
+  const base = () =>
+    supabase.from("bookings").select("id", { count: "exact", head: true });
   const [pendingResult, upcomingResult, totalResult] = await Promise.all([
-    base.eq("member_id", user.id).eq("status", "PENDING"),
-    base.eq("member_id", user.id).eq("status", "CONFIRMED").gte("scheduled_at", now),
-    base.eq("member_id", user.id),
+    base().eq("member_id", user.id).eq("status", "PENDING"),
+    base()
+      .eq("member_id", user.id)
+      .eq("status", "CONFIRMED")
+      .gte("scheduled_at", now),
+    base().eq("member_id", user.id),
   ]);
 
   if (pendingResult.error || upcomingResult.error || totalResult.error) {
@@ -438,21 +445,24 @@ export const getBookingManagementStats = cache(async (): Promise<BookingManageme
   const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
   const dayEnd = new Date(dayStart.getTime() + 24 * 60 * 60 * 1000);
 
-  const base = supabase.from("bookings").select("id", { count: "exact", head: true });
-  const scope = (query: ReturnType<typeof base.eq>) =>
+  // Factory (not a shared builder): supabase-js builders are mutable, so a
+  // reused instance accumulates every filter across Promise.all arms.
+  const base = () =>
+    supabase.from("bookings").select("id", { count: "exact", head: true });
+  const scope = (query: ReturnType<ReturnType<typeof base>["eq"]>) =>
     staff.isAdmin ? query : query.eq("coach_id", staff.userId);
 
   const [pending, upcoming, today, completed, cancelled, noShow] = await Promise.all([
-    scope(base.eq("status", "PENDING")),
-    scope(base.eq("status", "CONFIRMED").gte("scheduled_at", now.toISOString())),
+    scope(base().eq("status", "PENDING")),
+    scope(base().eq("status", "CONFIRMED").gte("scheduled_at", now.toISOString())),
     scope(
-      base
+      base()
         .gte("scheduled_at", dayStart.toISOString())
         .lt("scheduled_at", dayEnd.toISOString()),
     ),
-    scope(base.eq("status", "COMPLETED")),
-    scope(base.eq("status", "CANCELLED")),
-    scope(base.eq("status", "NO_SHOW")),
+    scope(base().eq("status", "COMPLETED")),
+    scope(base().eq("status", "CANCELLED")),
+    scope(base().eq("status", "NO_SHOW")),
   ]);
 
   const failed = [pending, upcoming, today, completed, cancelled, noShow].find(

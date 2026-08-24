@@ -15,6 +15,7 @@
 
 # local acceptance-test artifacts
 /.p15/
+/.p16/
 
 # next.js
 /.next/
