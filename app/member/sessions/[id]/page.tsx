@@ -21,6 +21,7 @@ type Params = Promise<{ id: string }>;
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { id } = await params;
   const session = await getSessionById(id);
+  if (!session) return { title: "Session not found | Fight Zone" };
   return {
     title: session.title,
     description: session.description ?? `${session.title} at Fight Zone.`,

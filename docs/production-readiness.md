@@ -907,3 +907,119 @@ rollback has a working `/api/health` probe, secrets/storage procedures
 are documented with honest classifications, and cleanup is verified. The
 upgrade decision belongs to the owner outside this prompt. Do not start
 Prompt #19 automatically.
+
+---
+
+# Phase 19 — End-to-End Production Acceptance Testing (2026-08-24)
+
+Scope per `agent/prompt-19.md`: full journey matrix across public,
+authentication, member, admin/coach and security surfaces, with recorded
+evidence per journey. Owner-approved fixture harness: 3 temporary
+accounts (MEMBER/COACH/ADMIN) + tagged fixture content, exercised via a
+local dev server (:3100) against the production backend with Playwright
+(Chrome headless) and direct REST/RPC probes.
+
+## Defects found & fixed during acceptance
+
+| # | Finding | Severity | Fix |
+|---|---------|----------|-----|
+| 1 | Invalid news slug tripped the generic error boundary ("SOMETHING WENT WRONG") instead of the 404 page — `getNewsBySlug` threw `NotFoundError` while the page checked for `null` (unreachable) | P2 | `getNewsBySlug` returns `null`; page calls `notFound()`; metadata guard added. Verified live: "ROUND NOT FOUND" renders |
+| 2 | Same pattern in member session detail (`getSessionById`) and booking detail (`getBookingById`) — unknown/cross-member ids showed the error boundary instead of 404 | P2 | Both return `null`; pages call `notFound()`; metadata guards added; tsc clean |
+
+## Journey results (192 PASS / 0 unresolved FAIL)
+
+Evidence log: `.p19/evidence.jsonl` (actor, route/action, expected,
+observed, timestamp, severity, artifact, environment per line).
+Screenshots: `.p19/shots/`.
+
+### Public (12 surfaces)
+Home (hero + section previews incl. gallery/palmarès/testimonials/
+transformations graceful-empty), About, Services list/detail, Coaches
+list/detail, Events list/detail, News list/detail, Pricing
+(presentation-only), Contact (form submits → `contact_messages` row +
+success notice). All invalid-id details render the friendly 404 after
+fix #1/#2. Anon REST reads leak no unpublished data.
+
+### Authentication
+Sign-up (valid email → verification notice path verified structurally;
+live send currently blocked by platform **email rate limit** — friendly
+RATE_LIMIT error shown, classified via structured logs), sign-in valid
+(+bcrypt SQL-seeded fixtures sign in successfully), invalid credentials
+(friendly error, no enumeration), sign-out (POST route + UI control),
+protected-route bounce for anon on /member & /admin, forgot-password
+generic success, reset-password forged/expired token rejected
+(flow_state_not_found handled gracefully), verify-email states.
+Email delivery itself remains platform-managed (SMTP) — UNVERIFIED by
+design here.
+
+### Member
+Dashboard, profile update (persisted to DB + revert), sessions list &
+detail, booking request (PENDING row), bookings list refresh-consistency
+(UI==DB), cancellation (two-step confirm → CANCELLED persisted),
+event registration + cancellation (participant row soft-CANCELLED),
+schedule, notifications (booking events generate entries; visible after
+admin actions), messaging (conversation created, message persisted,
+visible after refresh), review submission pipeline (pending → own-list
+visibility), subscription/payments/pricing presentation-only (no
+checkout/payment promise anywhere).
+
+### Admin/Coach
+ADMIN dashboard + all 10 admin surfaces render without denial; COACH
+accesses staff area; coach creates session with correct coach attribution
+(admin attempt correctly failed FK before coach profile existed); news
+draft CMS create; event create; booking lifecycle CONFIRM (status
+persisted, member notified, member UI reflects after reload); COMPLETE /
+NO_SHOW correctly time-gated (`scheduledAt <= now`, queries.ts:512);
+review moderation queue → APPROVED persisted → feature toggle → public
+testimonial visibility with revalidation; memberships/payments/
+subscriptions = billing-infrastructure visibility only (no charges).
+
+### Security (REST-level with real fixture JWTs + anon key)
+- IDOR read/PATCH of foreign booking: RLS-scoped, zero rows / no effect ✅
+- Ownership forgery (self-confirm booking via REST): 403, unchanged ✅
+- Role escalation (self-grant ADMIN): 403, no row ✅
+- Moderation forgery (insert APPROVED+featured review): rejected ✅
+- Unpublished isolation: drafts hidden from anon AND member (REST + UI) ✅
+- Storage boundaries with REAL private object: anon list blind, anon GET
+  denied, owner/staff access works, cleanup delete OK ✅
+- Public RPC limit: oversized p_limit server-capped ✅ (projection note:
+  internal UUIDs exposed in get_public_approved_reviews — P3 hardening)
+
+### Responsive & resilience
+Zero horizontal overflow at 320/390/768/1280/1440+ across all affected
+routes (55 checks). Route-level loading skeletons stream (20+
+loading.tsx files; SSR shell observed). Error boundaries with retry were
+exercised live in Phase 17 drills (same shared components); offline
+reload served from cache (P3 note). Structured `[fight-zone]` logs
+carried requestId/category through every failure observed this phase.
+
+## Environment notes
+- GoTrue now rejects `.test.local` domains (fixtures used syntactically
+  valid non-deliverable domain) and enforces auth-email rate limits.
+- "JWT issued at future" skew seen once from local clock — transient,
+  self-recovered (P3 observation).
+- Platform email quota means verification/reset EMAIL DELIVERY is
+  UNVERIFIED end-to-end (external SMTP dependency).
+
+## Cleanup (verified)
+All fixture users, identities, profiles, role assignments, extension
+profiles, bookings, participants, messages/conversations, notifications,
+reviews, contact messages, session/event/news content deleted. Baseline
+restored exactly: users 2, profiles 2, ura 2, plans 6, stories 2, all
+journey tables empty. Tokens/state files removed; dev server stopped.
+
+## Required commands
+`tsc` clean · `eslint` 0 errors (2 known warnings) · `build` 48/48 ·
+`migration list` synced · `db push --dry-run` up to date ·
+`db lint` no schema errors.
+
+## Recommendation
+
+**READY FOR RELEASE CANDIDATE** — every feasible journey passed with
+recorded evidence; the two defects found during testing were fixed and
+re-verified in-place; no unresolved P0/P1. Residual accepted risks:
+auth-email delivery depends on platform SMTP quota (rate limit observed,
+handled gracefully); storage byte-recovery remains UNVERIFIED until real
+media exists (Phase 18 record); provider backups still NOT AVAILABLE ON
+CURRENT PLAN (accepted operational blocker, owner decision outside this
+prompt). Do not start Prompt #20 automatically.

@@ -135,7 +135,9 @@ export const getNewsBySlug = cache(async (slug: string) => {
     logError(`Query failed: news by slug`, result.error, { slug });
     throw new DatabaseError(undefined, { cause: result.error });
   }
-  if (!result.data) throw new NotFoundError();
+  // Unknown slug is a normal outcome: return null so the page can call
+  // notFound() instead of tripping the generic error boundary.
+  if (!result.data) return null;
   return result.data;
 });
 
@@ -190,7 +192,9 @@ export const getBookingById = cache(async (id: string) => {
     logError("Query failed: booking by id", result.error, { id });
     throw new DatabaseError(undefined, { cause: result.error });
   }
-  if (!result.data) throw new NotFoundError();
+  // Unknown id or another member's booking (RLS-scoped): return null so
+  // pages render notFound() rather than the generic error boundary.
+  if (!result.data) return null;
   return result.data;
 });
 
@@ -210,7 +214,9 @@ export const getSessionById = cache(async (id: string) => {
     logError("Query failed: session by id", result.error, { id });
     throw new DatabaseError(undefined, { cause: result.error });
   }
-  if (!result.data) throw new NotFoundError();
+  // Unknown/inactive session is a normal outcome: return null so pages can
+  // call notFound() instead of tripping the generic error boundary.
+  if (!result.data) return null;
   return result.data;
 });
 

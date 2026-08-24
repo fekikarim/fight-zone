@@ -20,6 +20,7 @@ export async function generateMetadata({
   const { slug } = await params;
   try {
     const article = await getNewsBySlug(slug);
+    if (!article) return { title: "Article not found | Fight Zone" };
     return {
       title: article.title,
       description: article.content?.slice(0, 160),

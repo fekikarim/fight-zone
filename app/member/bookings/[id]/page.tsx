@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { notFound } from "next/navigation";
 import {
   ArrowLeft,
   CalendarClock,
@@ -34,6 +35,7 @@ const statusExplanations: Record<
 export async function generateMetadata({ params }: { params: Params }): Promise<Metadata> {
   const { id } = await params;
   const booking = await getBookingById(id);
+  if (!booking) return { title: "Booking not found | Fight Zone" };
   return {
     title: booking.sessions?.title ?? "Booking details",
     description: `Booking details for ${booking.sessions?.title ?? "your session"} at Fight Zone.`,
@@ -43,6 +45,7 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
 export default async function BookingDetailPage({ params }: { params: Params }) {
   const { id } = await params;
   const booking = await getBookingById(id);
+  if (!booking) notFound();
 
   const cancellable = isBookingCancellable(booking.status, booking.scheduled_at);
   const coachName = booking.coach_profiles?.profiles?.full_name ?? "Coach";
