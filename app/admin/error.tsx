@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { AppError } from "@/lib/errors";
+import { logBoundaryError } from "@/lib/boundary-log";
+import { useEffect } from "react";
 
 interface AdminErrorPageProps {
   error: Error & { digest?: string };
@@ -9,6 +11,9 @@ interface AdminErrorPageProps {
 }
 
 export default function AdminErrorPage({ error, reset }: AdminErrorPageProps) {
+  useEffect(() => {
+    logBoundaryError("ADMIN_PAGE", error);
+  }, [error]);
   const message =
     error instanceof AppError
       ? error.userMessage

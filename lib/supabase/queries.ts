@@ -8,6 +8,7 @@ import {
   DatabaseError,
   NotFoundError,
   ValidationError,
+  logDegradation,
   logError,
 } from "@/lib/errors";
 import type { Database } from "@/types/database.types";
@@ -35,17 +36,29 @@ import type { ReviewItem, ReviewWithAuthor, TransformationItem, ReviewStats } fr
  * than crashing the whole page. Failures are still logged for observability.
  */
 export async function resolveOrFallback<T>(run: () => Promise<T>, fallback: T): Promise<T> {
+  const startedAt = Date.now();
   try {
     return await run();
   } catch (error) {
-    logError("Optional query failed; degrading to fallback", error);
+    // Static prerender intentionally trips `cookies()` — framework flow,
+    // not a failure. Silence during build so runtime signals stay clean.
+    const isPrerenderFlow =
+      process.env.NEXT_PHASE === "phase-production-build" &&
+      error instanceof Error &&
+      error.message.includes("Dynamic server usage");
+    if (!isPrerenderFlow) {
+      logDegradation("Optional query failed; degrading to fallback", error, {
+        domain: "query",
+        durationMs: Date.now() - startedAt,
+      });
+    }
     return fallback;
   }
 }
 
 function unwrap<T>(label: string, result: { data: T | null; error: unknown }): T {
   if (result.error) {
-    logError(`Query failed: ${label}`, result.error);
+    logError("Query failed", result.error, { domain: "db", op: label });
     throw new DatabaseError(undefined, { cause: result.error });
   }
   if (result.data === null || result.data === undefined) {
@@ -262,10 +275,14 @@ export const getMemberBookingStats = cache(async () => {
   ]);
 
   if (pendingResult.error || upcomingResult.error || totalResult.error) {
-    logError(
-      "Query failed: booking stats",
-      pendingResult.error ?? upcomingResult.error ?? totalResult.error,
-    );
+    // Head-count stats are non-critical: degrade to zeros at warn severity
+    // so dashboards stay available during partial data-layer failures.
+    const arms = [pendingResult.error, upcomingResult.error, totalResult.error];
+    const coded = arms.find((e) => e && typeof e === "object" && "code" in e);
+    logDegradation("Booking stats query failed; degrading to zeros", coded ?? arms[0], {
+      domain: "bookings",
+      op: "stats",
+    });
     return { pending: 0, upcoming: 0, total: 0 };
   }
 

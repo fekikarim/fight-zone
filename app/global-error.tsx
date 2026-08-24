@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
+import { logBoundaryError } from "@/lib/boundary-log";
 
 interface GlobalErrorProps {
   error: Error & { digest?: string };
@@ -10,7 +11,7 @@ interface GlobalErrorProps {
 
 export default function GlobalError({ error, reset }: GlobalErrorProps) {
   useEffect(() => {
-    console.error("[fight-zone] Global error boundary:", error);
+    logBoundaryError("global", error);
   }, [error]);
   return (
     <html lang="en">

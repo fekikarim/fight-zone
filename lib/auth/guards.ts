@@ -70,7 +70,9 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
   ]);
 
   if (profileResult.error || rolesResult.error) {
-    logError("Failed to load profile/roles for authenticated user", undefined, {
+    logError("Failed to load profile/roles for authenticated user", profileResult.error ?? rolesResult.error, {
+      domain: "auth",
+      op: "load-user-profile",
       userId: user.id,
     });
   }
@@ -120,7 +122,9 @@ export const getCurrentUserContext = cache(async (): Promise<CurrentUserContext>
   ]);
 
   if (memberResult.error || coachResult.error) {
-    logError("Failed to load member/coach profiles", undefined, {
+    logError("Failed to load member/coach profiles", memberResult.error ?? coachResult.error, {
+      domain: "auth",
+      op: "load-user-context",
       userId: user.id,
     });
   }

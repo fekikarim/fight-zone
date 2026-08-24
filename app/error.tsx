@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import { useEffect } from "react";
-import { AppError, logError } from "@/lib/errors";
+import { AppError } from "@/lib/errors";
+import { logBoundaryError } from "@/lib/boundary-log";
 
 interface ErrorPageProps {
   error: Error & { digest?: string };
@@ -11,7 +12,7 @@ interface ErrorPageProps {
 
 export default function ErrorPage({ error, reset }: ErrorPageProps) {
   useEffect(() => {
-    logError("Route error boundary caught", error, { digest: error.digest });
+    logBoundaryError("public-page", error);
   }, [error]);
   const message =
     error instanceof AppError ? error.userMessage : "Something went wrong on this page.";

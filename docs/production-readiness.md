@@ -648,3 +648,131 @@ hosted deploy.
 captured, confirmed defects fixed and re-verified, hardening migration
 applied, injections passed with graceful degradation, cleanup complete.
 Do not start Prompt #17 automatically.
+
+---
+
+# Phase 17 — Observability & Operational Readiness (2026-08-24)
+
+Scope per `agent/prompt-17.md`: server-side diagnostics hardening,
+structured logging contract, failure classification, duplicate-log
+prevention, correlation, monitoring/alert definitions.
+
+## Logging contract (implemented in `lib/errors.ts`)
+
+Single-line JSON after `[fight-zone] ` prefix with: `ts`, `level`
+(error|warn), `domain`, `op`, stable `category`, `dbCode`
+(SQLSTATE/PostgREST/GoTrue), `ctx.requestId` (minted by proxy,
+echoed on responses), optional `durationMs`, sanitized `err`.
+Defensive redaction of password/token/secret/auth/cookie/api-key/
+credential keys; string truncation; no raw payloads. One underlying
+failure → one actionable record (WeakSet dedup across error+cause
+chain, globalThis-shared to survive chunk duplication).
+
+Representative sanitized examples (from live evidence run):
+
+```
+[fight-zone] {"ts":"…","level":"error","domain":"app","msg":"Sign-in failed",
+  "category":"AUTHENTICATION","dbCode":"invalid_credentials",
+  "err":{"name":"AuthApiError","message":"Invalid login credentials"},
+  "ctx":{"requestId":"92a1beac…"}}
+
+[fight-zone] {"ts":"…","level":"error","domain":"db","op":"bookings (current user)",
+  "msg":"Query failed","category":"DB_PERMISSION","dbCode":"42501",
+  "err":{"message":"permission denied for table bookings","code":"42501",
+         "hint":"Grant the required privileges…"},
+  "ctx":{"requestId":"61053588…"}}
+
+[fight-zone] {"ts":"…","level":"warn","domain":"bookings","op":"stats",
+  "msg":"Booking stats query failed; degrading to zeros",
+  "category":"DB_PERMISSION","dbCode":"42501","durationMs":…}
+```
+
+## Changes
+
+- `lib/errors.ts`: classification matrix (SQLSTATE + PostgREST + GoTrue
+  codes; timeout/connectivity message heuristics), scrub/redaction,
+  structured emitter (console.error/warn by level), dedup registry,
+  pluggable correlation provider.
+- `instrumentation.ts` + `lib/observability/server.ts`: registers
+  per-request correlation loader at boot (requestId + route).
+- `lib/supabase/proxy.ts`: mints/forwards `x-request-id`, echoes it on
+  responses (client-side support correlation).
+- `lib/supabase/queries.ts`: `unwrap` logs once with domain/op;
+  `resolveOrFallback` = warn-level degradation incl. durationMs; stats
+  degradation warn-level with coded-error selection; build-time
+  prerender control-flow errors silenced.
+- `lib/auth/guards.ts`: profile-load failures now log real error objects
+  with domain/op (were object-less).
+- Error boundaries (`app/error.tsx`, `member`, `admin`,
+  `global-error.tsx`): shared client-side structured logger
+  (`lib/boundary-log.ts`) with category + Next digest for cross-channel
+  correlation. member/admin previously logged nothing.
+
+## Evidence
+
+- Synthetic suite `.p17/classify.test.mjs`: **16/16 passed**
+  (classification matrix, wrapped-cause chains, redaction, truncation,
+  dedup one-log assertion, JSON contract shape).
+- Live auth anomaly: 3× failed sign-ins → 3 records
+  AUTHENTICATION/invalid_credentials, each with its own requestId ✅
+- Live injection (REVOKE bookings, reverted): `/member/bookings` HTTP 200
+  with visible degraded state; per-query DB_PERMISSION/42501 records +
+  warn-level stats degradation, all carrying the request's requestId;
+  dashboard stayed available ✅
+- Live injection (REVOKE news, reverted): home partial-render 200;
+  `/news` boundary ("went wrong" + Try again) ✅
+- Correlation: response header `x-request-id` matches `ctx.requestId` in
+  the corresponding server record ✅
+- Duplicate-log test: same error instance never re-logged (unit);
+  distinct queries each log exactly once under distinct op labels
+  (per-operation granularity is intentional signal) ✅
+- Recovery verified after grant restoration (news + bookings healthy) ✅
+- Classification preservation: missing optional schema (SCHEMA_MISSING),
+  empty data (NOT_FOUND / empty-state paths), authorization failure
+  (AUTHORIZATION/DB_PERMISSION), malformed query (VALIDATION/PGRST100),
+  timeout (TIMEOUT), outage (CONNECTIVITY) are distinguishable categories.
+- Monitoring must not block rendering: all emission fire-and-forget;
+  degradations return fallbacks — dashboards/pages rendered 200 during
+  every injection window ✅
+
+## Monitoring & alerts
+
+Provider-neutral signals, thresholds, severity/escalation, retention and
+triage runbook documented in `docs/operations/observability.md`. No
+provider deployed → integration point documented, monitoring classified
+**UNVERIFIED** (logging itself ACTIVE and verified). Deployed-monitoring
+checks remain **BLOCKED** until a provider exists.
+
+## Required commands
+
+- `npx tsc --noEmit` → clean ✅
+- `npx eslint .` → 0 errors, same 2 pre-existing warnings ✅
+- `npm run build` → compiled successfully, 48/48 pages ✅
+- `supabase db push --dry-run` → up to date ✅ (+ db lint clean)
+
+## Cleanup verified
+
+P17 accounts/fixtures deleted; baseline re-confirmed: 2 real users,
+0 P17 rows. Probe route removed; no instrumentation debug code remains.
+
+## Status summary
+
+| Gate | Status |
+|------|--------|
+| Structured server logs (contract fields, secret-safe) | **VERIFIED** |
+| Failure classification (schema/empty/authz/malformed/timeout/outage) | **VERIFIED** |
+| One failure → one actionable log | **VERIFIED** (unit + live) |
+| Request correlation (proxy ↔ server logs ↔ response header) | **VERIFIED** |
+| Auth-anomaly diagnostics | **VERIFIED** |
+| Degradation vs failure separation (warn/error) | **VERIFIED** |
+| Monitoring without local reproduction (runbook + digest/requestId triage) | **VERIFIED** |
+| Provider-deployed monitoring & alerting | **UNVERIFIED / BLOCKED** (none deployed; integration point documented) |
+
+## Recommendation
+
+**READY FOR RECOVERY** — all Phase-17 acceptance criteria that can be
+verified locally pass; production incidents are diagnosable from logs
+alone via requestId/digest/category. No P0/P1 observability gap remains
+in the application; connecting a log-drain/alerting provider is a
+documented, non-blocking follow-up classified UNVERIFIED. Do not start
+Prompt #18 automatically.

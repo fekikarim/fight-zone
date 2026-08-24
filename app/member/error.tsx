@@ -2,6 +2,8 @@
 
 import Link from "next/link";
 import { AppError } from "@/lib/errors";
+import { logBoundaryError } from "@/lib/boundary-log";
+import { useEffect } from "react";
 
 interface MemberErrorPageProps {
   error: Error & { digest?: string };
@@ -9,6 +11,9 @@ interface MemberErrorPageProps {
 }
 
 export default function MemberErrorPage({ error, reset }: MemberErrorPageProps) {
+  useEffect(() => {
+    logBoundaryError("MEMBER_PAGE", error);
+  }, [error]);
   const message =
     error instanceof AppError
       ? error.userMessage

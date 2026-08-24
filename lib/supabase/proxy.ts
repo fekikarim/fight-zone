@@ -11,12 +11,20 @@ import type { Database } from "@/types/database.types";
 export async function updateSession(request: NextRequest) {
   const { url, key } = getSupabaseEnv();
 
+  // Correlation: honor an upstream request id or mint one; forward it to
+  // the RSC/action runtime and echo it on the response for client-side
+  // support workflows. Never logged with sensitive data.
+  const requestId = request.headers.get("x-request-id") ?? crypto.randomUUID();
+  const requestHeaders = new Headers(request.headers);
+  requestHeaders.set("x-request-id", requestId);
+
   // Start with a response we can modify so cookie refreshes are forwarded.
   let supabaseResponse = NextResponse.next({
     request: {
-      headers: request.headers,
+      headers: requestHeaders,
     },
   });
+  supabaseResponse.headers.set("x-request-id", requestId);
 
   const supabase = createServerClient<Database>(url, key, {
     cookies: {
@@ -28,7 +36,7 @@ export async function updateSession(request: NextRequest) {
           request.cookies.set(name, value),
         );
         supabaseResponse = NextResponse.next({
-          request,
+          request: { headers: requestHeaders },
         });
         cookiesToSet.forEach(({ name, value, options }) =>
           supabaseResponse.cookies.set(name, value, options),
