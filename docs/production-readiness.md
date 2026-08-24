@@ -776,3 +776,134 @@ alone via requestId/digest/category. No P0/P1 observability gap remains
 in the application; connecting a log-drain/alerting provider is a
 documented, non-blocking follow-up classified UNVERIFIED. Do not start
 Prompt #18 automatically.
+
+---
+
+# Phase 18 — Backup, Recovery & Disaster Readiness (2026-08-24)
+
+Scope per `agent/prompt-18.md`: verify backup configuration, rehearse
+restore in a safe non-production environment, define RPO/RTO/ownership,
+migration + app rollback strategy. No destructive action against
+production at any point.
+
+## What was verified (live rehearsal)
+
+Full restore cycle executed against an isolated local PostgreSQL 17
+cluster (no Docker available; native pg_dump/initdb used):
+
+| Step | Result | Timing |
+|------|--------|--------|
+| Export roles/schema/data from production (read-only role) | ✅ | 3.7s / 20.7s / ~7s |
+| initdb + cluster start | ✅ | seconds |
+| Roles restore (all Supabase roles recreated) | ✅ | — |
+| Schema restore | ✅ 2 benign errors (supabase_vault ext = platform-only) | 0.8s |
+| Data restore (type-safe jsonb_populate_recordset per table) | ✅ row counts match production exactly (11 tables incl. auth.users=2, identities=2, buckets=2) | <1s |
+| Structural parity | ✅ 25 tables / 75 policies / 34 functions / 27 triggers / 25 RLS-enabled = production | — |
+| Auth integrity after restore | ✅ users confirmed, bcrypt hashes intact | — |
+| Bucket flags | ✅ fightzone-public(public=t), fightzone-private(public=f) | — |
+| Anonymous deny-by-default | ✅ 0 rows across auth.users/profiles/buckets as anon | — |
+| Member isolation w/ synthetic JWT | ✅ authenticated sees exactly own profile; auth.uid() resolves | — |
+| Compensating migration (role timeouts) | ✅ cleared → re-applied original → restored; full revert↔reapply cycle | — |
+
+Measured **RTO (database rebuild, given a dump exists)**: under 2
+minutes at current size. **RPO**: provider-managed backup RPO is
+**currently unavailable** — the project is on the Free plan with no
+scheduled backups and no PITR (confirmed by owner); see below.
+
+## Platform backup configuration — confirmed by owner (2026-08-24)
+
+Owner-verified from Dashboard → Database → Backups for project
+`jdbythhwikqvqenxyuqw`:
+
+| Capability | Status |
+|------------|--------|
+| Plan tier | Free plan (confirmed) |
+| Scheduled project backups | **NOT AVAILABLE ON CURRENT PLAN** (Pro provides up to 7 days of scheduled backups) |
+| PITR | **NOT AVAILABLE ON CURRENT PLAN / NOT ENABLED** (Pro Plan add-on) |
+| Backup retention | N/A on current plan — no scheduled backups exist; any retention would be operator-defined only (**UNVERIFIED/BLOCKED**) |
+| Restore to a new project | **UNAVAILABLE ON CURRENT PLAN** — requires Pro or above with physical backups enabled |
+
+Consequences recorded honestly:
+
+- **No provider-managed backup of this database exists.** No claim of a
+  24-hour RPO from Supabase backups is made anywhere in these documents;
+  provider-managed backup RPO is currently unavailable on this plan.
+- The native pg_dump export procedure is documented as an
+  **operator-managed contingency**, not an active automated backup
+  service: frequency = ad-hoc (run once during this rehearsal), storage =
+  local disk without encryption-at-rest (dumps deleted after
+  verification), owner = manual execution by the project owner, restore
+  test status = procedure tested once end-to-end in isolation. It does
+  NOT reduce RPO until it becomes scheduled + encrypted + periodically
+  restore-tested.
+- The rehearsal evidence below proves the **restore procedure**, not the
+  existence of production backups or PITR.
+- Whether to upgrade to a plan with scheduled backups/PITR is an owner
+  business decision outside this implementation prompt; no upgrade is
+  recommended or performed here. This limitation stands as an **accepted
+  operational blocker**.
+
+## Storage/media recovery
+
+Kept separate from database metadata recovery: bucket METADATA restores
+with the DB dump, but object BYTES live in Supabase storage and have **no
+provider-managed backup on the Free plan** (0 objects exist today —
+nothing to recover yet). Byte-level path classified **UNVERIFIED** until
+exercised with real media; procedure documented.
+
+## Secrets/environment recovery
+
+Inventory + rotation flow documented (dashboard re-copy, gitignored
+`.env.local`, `.env.example` without values); no secrets committed.
+
+## Application rollback & health checks
+
+`GET /api/health` added (200 `{ok:true,db:"up"}` when DB reachable;
+503 otherwise; no internals exposed). Rollback procedure documented:
+redeploy previous tag / git revert → poll health → smoke home.
+
+## Production hygiene during this phase
+
+Temporary `backup_reader` role granted `pg_read_all_data`, used for
+read-only dumps, then revoked and dropped (verified absent). PII-bearing
+dump files deleted post-rehearsal; only sanitized verification artifacts
+remain (`.p18/compensating/`). Local cluster destroyed.
+
+## Required commands
+
+- `npx tsc --noEmit` → clean ✅
+- `npx eslint .` → 0 errors (2 pre-existing warnings) ✅
+- `npm run build` → compiled successfully, 48/48 pages incl. `/api/health` ✅
+- `supabase migration list` → 28 migrations synced local↔remote ✅
+- `supabase db push --dry-run` → up to date ✅
+- `supabase db lint --linked --level error -s public` → no schema errors ✅
+
+## Status summary
+
+| Gate | Status |
+|------|--------|
+| Restore into clean environment | **VERIFIED** (full parity + data integrity) |
+| Post-restore validation (auth/RLS/public/admin surface) | **VERIFIED** |
+| Migration rollback via compensating migration | **VERIFIED** (revert↔reapply cycle) |
+| App rollback + health check | **VERIFIED** (probe added; procedure documented) |
+| Export contingency (pg_dump path) | **PROCEDURE VERIFIED** — operator-managed contingency only; NOT an active automated backup service |
+| Provider-managed scheduled backups | **NOT AVAILABLE ON CURRENT PLAN** (Free plan; owner-confirmed) |
+| PITR | **NOT AVAILABLE ON CURRENT PLAN / NOT ENABLED** |
+| Provider-managed retention | **UNVERIFIED/BLOCKED** — no scheduled backups exist on current plan |
+| Restore-to-new-project (platform) | **NOT AVAILABLE ON CURRENT PLAN** (requires Pro+ with physical backups) |
+| Storage byte-level recovery | UNVERIFIED (0 objects today; documented; separate from DB metadata recovery) |
+| RPO/RTO targets + ownership + escalation + evidence retention | DOCUMENTED (RPO honestly stated as unbounded without backups) |
+
+## Recommendation
+
+**READY FOR E2E ACCEPTANCE**, with one clearly recorded **accepted
+operational blocker**: the project is on the Supabase Free plan with no
+provider-managed scheduled backups, no PITR, and no restore-to-new-project
+capability (all confirmed by the owner from the dashboard). Every other
+recovery requirement is satisfied: the isolated restore rehearsal proved
+the full procedure with schema/data parity and post-restore validation,
+migration rollback was rehearsed via a compensating migration, app
+rollback has a working `/api/health` probe, secrets/storage procedures
+are documented with honest classifications, and cleanup is verified. The
+upgrade decision belongs to the owner outside this prompt. Do not start
+Prompt #19 automatically.
