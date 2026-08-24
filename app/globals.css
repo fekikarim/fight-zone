@@ -15,6 +15,9 @@
   --primary-dark: #9f1239;
   --primary-soft: rgba(225, 29, 72, 0.14);
   --primary-ring: rgba(225, 29, 72, 0.55);
+  /* Brand red fails WCAG AA for small text on dark surfaces (3.8–4.2:1).
+     This lightened tone is used for small primary-colored TEXT only. */
+  --primary-readable: #fb7185;
 
   --ink: #0a0a0a;
   --ink-soft: #111113;
@@ -22,7 +25,7 @@
   --ink-border: #26262b;
 
   --muted: #a1a1aa;
-  --muted-foreground: #71717a;
+  --muted-foreground: #94949c;
 }
 
 @theme inline {
@@ -34,6 +37,7 @@
   --color-primary-dark: var(--primary-dark);
   --color-primary-soft: var(--primary-soft);
   --color-primary-ring: var(--primary-ring);
+  --color-primary-readable: var(--primary-readable);
 
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
@@ -182,5 +186,15 @@ body {
 @keyframes skeleton-shimmer {
   100% {
     transform: translateX(100%);
+  }
+}
+
+/* WCAG AA: brand red (#e11d48) measures 3.8–4.2:1 on dark surfaces — enough
+   for large text but below the 4.5:1 small-text threshold. Every *text* use
+   of the primary token renders in the lightened brand tone instead; bg-,
+   border-, ring- and hover:text-primary variants keep the original brand. */
+@layer utilities {
+  .text-primary {
+    color: var(--primary-readable);
   }
 }

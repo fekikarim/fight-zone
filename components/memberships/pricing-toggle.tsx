@@ -27,14 +27,20 @@ export function PricingToggle({ plans, isLoggedIn }: PricingToggleProps) {
   return (
     <div className="flex flex-col items-center gap-8">
       {/* Interval toggle */}
-      <div className="inline-flex rounded-xl border border-ink-border bg-ink-soft/50 p-1">
+      <div
+        role="tablist"
+        aria-label="Billing interval"
+        className="inline-flex max-w-full rounded-xl border border-ink-border bg-ink-soft/50 p-1"
+      >
         {intervals.map((interval) => (
           <button
             key={interval}
             type="button"
+            role="tab"
+            aria-selected={activeInterval === interval}
             onClick={() => setActiveInterval(interval)}
             className={cn(
-              "rounded-lg px-5 py-2 text-sm font-semibold transition-all",
+              "whitespace-nowrap rounded-lg px-3 py-2 text-sm font-semibold transition-all sm:px-5",
               activeInterval === interval
                 ? "bg-primary text-white shadow-sm"
                 : "text-muted hover:text-foreground",
@@ -42,9 +48,9 @@ export function PricingToggle({ plans, isLoggedIn }: PricingToggleProps) {
           >
             {billingIntervalLabel[interval]}
             {interval === "QUARTERLY" ? (
-              <span className="ml-1.5 text-[10px] uppercase text-primary">save 10%</span>
+              <span className="ml-1.5 hidden text-[10px] uppercase text-primary sm:inline">save 10%</span>
             ) : interval === "ANNUAL" ? (
-              <span className="ml-1.5 text-[10px] uppercase text-primary">save 20%</span>
+              <span className="ml-1.5 hidden text-[10px] uppercase text-primary sm:inline">save 20%</span>
             ) : null}
           </button>
         ))}

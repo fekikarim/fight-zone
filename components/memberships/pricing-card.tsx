@@ -43,9 +43,9 @@ export function PricingCard({ plan, billingInterval, isLoggedIn }: PricingCardPr
             {tierLabel}
           </span>
         </div>
-        <h3 className="mt-2 font-display text-xl font-bold uppercase tracking-wide">
+        <h2 className="mt-2 font-display text-xl font-bold uppercase tracking-wide">
           {plan.name}
-        </h3>
+        </h2>
         {plan.description ? (
           <p className="mt-2 text-sm leading-relaxed text-muted">
             {plan.description}

@@ -69,19 +69,19 @@ export default function ContactPage() {
                       <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary-soft text-primary">
                         <Icon className="h-5 w-5" />
                       </span>
-                      <div className="flex flex-col gap-0.5">
+                      <div className="flex min-w-0 flex-col gap-0.5">
                         <span className="text-xs font-semibold uppercase tracking-widest text-muted">
                           {label}
                         </span>
                         {href ? (
                           <a
                             href={href}
-                            className="text-sm font-medium text-foreground transition-colors hover:text-primary"
+                            className="break-all text-sm font-medium text-foreground transition-colors hover:text-primary"
                           >
                             {value}
                           </a>
                         ) : (
-                          <span className="text-sm font-medium">{value}</span>
+                          <span className="break-all text-sm font-medium">{value}</span>
                         )}
                       </div>
                     </div>

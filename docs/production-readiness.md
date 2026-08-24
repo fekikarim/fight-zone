@@ -356,8 +356,8 @@ deeper rewrite and is not required for gate correctness.
 
 Static evidence: Tailwind breakpoints used throughout (sm×164, lg×126,
 md×18, xl×6), exported viewport meta, skeletons/error boundaries from
-Prompt #12 intact. Browser pixel-check at 320–1440px remains **UNVERIFIED**
-(no Playwright/Docker available this session).
+Prompt #12 intact. ~~Browser pixel-check at 320–1440px remains
+**UNVERIFIED**~~ → superseded by Phase 15 (below): **VERIFIED**.
 
 ## Exact command results
 
@@ -385,7 +385,7 @@ Prompt #12 intact. Browser pixel-check at 320–1440px remains **UNVERIFIED**
 | Review/transformation moderation | VERIFIED |
 | Content/storage integrity | VERIFIED |
 | Legacy SQL suites fully green | UNVERIFIED (superseded; blocked) |
-| Browser responsive checks | UNVERIFIED |
+| Browser responsive checks | VERIFIED (Phase 15) |
 | Event-capacity cross-session lock | FIXED & DEPLOYED |
 
 ## Remaining risks
@@ -399,3 +399,110 @@ Prompt #12 intact. Browser pixel-check at 320–1440px remains **UNVERIFIED**
 **READY FOR UX ACCEPTANCE** — capacity-lock migration pushed and verified
 during this session with owner approval. One operational step remains:
 assign an ADMIN role to the owner account so the back office is usable.
+
+---
+
+# Phase 15 — UX, Responsive & Accessibility Acceptance
+
+Date: 2026-08-24 · Scope: `agent/prompt-15.md` · No feature changes.
+
+## Method & tooling
+
+Playwright 1.62.1 driving the system Chrome (`channel: "chrome"`,
+headless) — installed with `npm i --no-save playwright axe-core`
+(NOT added to package.json). Harness scripts + evidence live in
+`.p15/` (`sweep.mjs`, `keyboard.mjs`, `save-states.mjs`, screenshots in
+`.p15/shots/`, machine results in `.p15/results.json`). axe-core 4.13
+injected per page (wcag2a/aa/best-practice; landmark/heading-one rules
+off as page-scoped false-positive sources).
+
+Test data (owner-approved, ALL REMOVED after acceptance):
+- Accounts seeded directly in DB (signup UI blocked by Supabase email
+  rate limit 429): `p15-member@test.local`, `p15-admin@test.local`.
+- Fixtures: 1 coach profile, 2 sessions ("P15 Temp …"), 1 event
+  ("P15 Temp Open Mat"), 1 news post (`p15-temp-announcement`).
+
+## Route × viewport matrix
+
+Public routes ×5 viewports (320/390/768/1280/1440), member+admin areas
+×3 viewports (320/390/1280). Per cell: HTTP status, horizontal overflow,
+broken images, h1 count, full-page screenshot, axe audit.
+**Final sweep: 152 audits / 0 problem rows** (after fixes below).
+
+Access probes: anon→/member and anon→/admin redirect to /sign-in ✓;
+member→/admin renders a distinct "access denied" state (was a fatal
+error boundary — fixed) ✓.
+
+Keyboard/AT pass (`keyboard.mjs`): Tab traversal + visible focus on
+/, /services, /sign-in, /member/bookings, /admin/bookings,
+/admin/content/news/new ✓ (focus ring observed on every pass).
+Navbar account menu: opens, `role="menu"` semantics added, Escape
+closes ✓. Profile edit → save → hard reload → value persisted
+(mutation SYNC) ✓; original value restored, then accounts deleted.
+
+## Defects found → fixed
+
+| # | Defect | Root cause | Fix |
+|---|--------|-----------|-----|
+| D1 | Member/admin mobile nav overflowed 320/390px (584/488px scroll) | flex bottom nav without wrap/scroll strategy | overflow-x-auto rail, min-w-20 items, truncated labels, `aria-label="Sections"`, scrollable-region focusable |
+| D2 | /pricing toggle clipped at 320px | fixed padding + nowrap | max-w-full, responsive paddings, save badges hidden below sm |
+| D3 | /contact channel values clipped | long emails in grid column | break-all + min-w-0 |
+| D4 | member→/admin showed fatal error boundary | layout threw ForbiddenError unhandled | new AccessDenied component rendered by admin layout |
+| D5 | ~77 pages failed axe color-contrast (brand red on dark) | #e11d48 ≈3.8–4.2:1 for small text | token `--primary-readable:#fb7185` + single scoped override `.text-primary` at end of globals.css (bg/border variants untouched); muted-foreground lightened to #94949c |
+| D6 | heading-order violations (~28 pages) | card titles used h3 under h1 sections | CardTitle/EmptyState/footer/pricing/session/transformations titles h3→h2 |
+| D7 | media upload input unlabeled | missing accessible name | aria-label added |
+| D8 | empty table header cell | decorative th | sr-only label |
+| D9 | **Public event detail 404'd for zero-participant events** (and 42501 for anon REST) | `event_participants!inner` embed required revoked SELECT + `.single()` on empty | new security-definer RPC `get_public_event_participant_count(uuid)` (migration `20260901000020`, owner-approved push) + queries.ts rewrite; types regenerated |
+| D10 | Malformed event id → prod error boundary instead of not-found | Postgres 22P02 on invalid uuid | UUID format guard before query (page + metadata) |
+
+## Observations (no action taken)
+
+- `components/reviews/review-form-modal.tsx` is imported by no page;
+  /member/reviews is read-only → review modal Escape test N/A. Dead
+  code candidate for a future cleanup prompt.
+- Dynamic routes with `loading.tsx` stream a 200 shell before
+  `notFound()` resolves (Next.js streaming limitation) — UI shows the
+  custom "Round not found" page; HTTP-status soft-404 remains an SEO
+  follow-up, not a UX gate item.
+- `nextjs-portal` dev-tools button appears as first Tab target in dev
+  only; absent in production builds.
+
+## Reduced motion & skeletons
+
+`@media (prefers-reduced-motion: reduce)` disables reveal animations +
+smooth scroll (globals.css:123). Emulated reduced-motion sweep row
+clean. All loading skeletons are pure placeholder divs — no protected
+data rendered pre-load.
+
+## Exact command results
+
+- `.p15/sweep.mjs` → `total audits=152, problem rows=0` ✅
+- `.p15/keyboard.mjs` → all tab-paths OK, visible-focus yes, menu
+  Escape ok, profile mutation SYNCED ✅
+- `npx tsc --noEmit` → clean ✅
+- `npx eslint .` → 0 errors, 2 pre-existing warnings (review-form-modal
+  unused import; .p15 harness) ✅
+- `npm run build` → compiled successfully, 48/48 pages ✅
+- Prod smoke via `next start`: `/events/not-a-uuid` → custom not-found
+  H1 "ROUND NOT FOUND" ✅
+- Cleanup verified: `auth.users` p15-% = 0, profiles/member_profiles/
+  coach_profiles P15 rows = 0, roles = exactly 2×MEMBER (real users),
+  P15 sessions/events/news = 0 ✅
+- `migration list --linked` → all synced incl. `20260901000020` ✅
+
+## Status summary
+
+| Gate | Status |
+|------|--------|
+| Browser responsive checks (P14 UNVERIFIED) | **VERIFIED — 152 audits, 0 residual defects** |
+| Accessibility (axe WCAG 2.0/AA + keyboard + AT semantics) | **VERIFIED** |
+| Auth-gated route protection (browser-level) | **VERIFIED** |
+| Mutation sync (profile write persists across reload) | **VERIFIED** |
+| Review-modal interaction test | N/A (modal unwired — observation logged) |
+| Soft-404 HTTP status on dynamic detail routes | KNOWN LIMITATION (SEO follow-up) |
+
+## Recommendation
+
+**READY FOR PERFORMANCE AUDIT** — all Phase-15 acceptance criteria pass;
+temp accounts/fixtures removed and baseline re-verified. Do not start
+Prompt #16 automatically.

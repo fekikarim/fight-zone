@@ -83,7 +83,7 @@ export default async function NewsArticlePage({ params }: NewsArticlePageProps) 
           )}
 
           {article.content ? (
-            <div className="prose prose-invert max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-p:text-muted prose-p:leading-relaxed prose-a:text-primary">
+            <div className="prose prose-invert max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-p:text-muted prose-p:leading-relaxed prose-a:text-primary hover:prose-a:text-primary">
               {article.content.split("\n\n").map((paragraph, i) => (
                 <p key={i}>{paragraph}</p>
               ))}

@@ -758,8 +758,7 @@ export const getPublicEventById = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, created_at, created_by,
-         event_participants!inner ( id )`,
+         is_public, created_at, created_by`,
       )
       .eq("id", eventId)
       .eq("is_public", true)
@@ -771,10 +770,17 @@ export const getPublicEventById = cache(
       throw new DatabaseError(undefined, { cause: error });
     }
 
-    const rows = data.event_participants ?? [];
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- discard event_participants from rest spread
-    const { event_participants: _, ...event } = data;
-    return { ...event, participant_count: rows.length } as EventDetail;
+    // Participant rows are private (Prompt-13 privilege hardening), so the
+    // count comes from a security-definer aggregate instead of an embed.
+    const { data: count, error: rpcError } = await supabase.rpc(
+      "get_public_event_participant_count",
+      { p_event_id: eventId },
+    );
+    if (rpcError) {
+      logError("Query failed: public event participant count", rpcError, { eventId });
+      throw new DatabaseError(undefined, { cause: rpcError });
+    }
+    return { ...data, participant_count: (count as number) ?? 0 } as EventDetail;
   },
 );
 

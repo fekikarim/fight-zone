@@ -75,7 +75,7 @@ export default async function AdminTransformationsPage({
                   </div>
                 </div>
                 <div className="flex flex-1 flex-col p-4">
-                  <h3 className="font-semibold leading-tight">{t.title}</h3>
+                  <h2 className="font-semibold leading-tight">{t.title}</h2>
                   <p className="mt-1 line-clamp-2 text-sm text-muted">
                     {t.story}
                   </p>

@@ -6,7 +6,7 @@ export default function MemberReviewsLoading() {
         <div className="h-8 w-48 animate-pulse rounded bg-ink-soft" />
         <div className="h-4 w-72 animate-pulse rounded bg-ink-soft" />
       </div>
-      <div className="overflow-x-auto rounded-xl border border-ink-border">
+      <div className="[contain:inline-size] overflow-x-auto rounded-xl border border-ink-border">
         <div className="space-y-0">
           {Array.from({ length: 5 }).map((_, i) => (
             <div

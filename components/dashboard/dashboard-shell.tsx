@@ -97,22 +97,27 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
           </nav>
         </aside>
 
-        <main className="flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+        <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
       </div>
 
-      <nav className="sticky bottom-0 z-30 flex border-t border-ink-border bg-background/90 backdrop-blur md:hidden">
+      <nav
+        aria-label="Sections"
+        tabIndex={0}
+        className="sticky bottom-0 z-30 flex overflow-x-auto border-t border-ink-border bg-background/90 backdrop-blur md:hidden"
+      >
         {nav.map((item) => {
           const active = isActive(item.href);
           return (
             <Link
               key={item.href}
               href={item.href}
+              aria-current={active ? "page" : undefined}
               className={cn(
-                "flex flex-1 flex-col items-center gap-1 py-3 text-xs font-medium",
+                "flex min-w-20 shrink-0 flex-col items-center justify-center gap-1 px-2 py-3 text-xs font-medium",
                 active ? "text-primary" : "text-muted",
               )}
             >
-              {item.label}
+              <span className="max-w-24 truncate">{item.label}</span>
               {item.badge ? (
                 <span
                   className="rounded-full bg-primary px-1.5 py-0.5 text-[10px] font-semibold leading-none text-white"

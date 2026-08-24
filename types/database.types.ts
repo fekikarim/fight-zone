@@ -1255,6 +1255,10 @@ export type Database = {
           specialization: string
         }[]
       }
+      get_public_event_participant_count: {
+        Args: { p_event_id: string }
+        Returns: number
+      }
       get_public_transformations: {
         Args: { p_featured?: boolean; p_limit?: number }
         Returns: {

@@ -10,7 +10,7 @@ export default function AdminMembershipsLoading() {
           <div key={i} className="h-24 animate-pulse rounded-xl border border-ink-border bg-ink-soft/30" />
         ))}
       </div>
-      <div className="overflow-x-auto rounded-xl border border-ink-border">
+      <div className="[contain:inline-size] overflow-x-auto rounded-xl border border-ink-border">
         <div className="space-y-0">
           {Array.from({ length: 6 }).map((_, i) => (
             <div key={i} className="h-14 animate-pulse border-b border-ink-border/50 bg-ink-soft/20" />

@@ -169,7 +169,7 @@ export default async function MemberSubscriptionPage() {
           <h2 className="mb-4 font-display text-xl font-bold uppercase tracking-wide">
             Subscription history
           </h2>
-          <div className="overflow-x-auto rounded-xl border border-ink-border">
+          <div className="[contain:inline-size] overflow-x-auto rounded-xl border border-ink-border">
             <table className="w-full text-sm">
               <thead>
                 <tr className="border-b border-ink-border bg-ink-soft/50">

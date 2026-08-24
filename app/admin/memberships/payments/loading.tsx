@@ -11,7 +11,7 @@ export default function AdminPaymentsLoading() {
           <div key={i} className="h-8 w-20 animate-pulse rounded-lg bg-ink-soft" />
         ))}
       </div>
-      <div className="overflow-x-auto rounded-xl border border-ink-border">
+      <div className="[contain:inline-size] overflow-x-auto rounded-xl border border-ink-border">
         <div className="space-y-0">
           {Array.from({ length: 8 }).map((_, i) => (
             <div key={i} className="h-12 animate-pulse border-b border-ink-border/50 bg-ink-soft/20" />

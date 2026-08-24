@@ -69,9 +69,9 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
             Explore
-          </h3>
+          </h2>
           {siteConfig.nav.public.map((link) => (
             <Link
               key={link.href}
@@ -84,9 +84,9 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
             Members
-          </h3>
+          </h2>
           <Link href="/member" className="text-sm text-muted transition-colors hover:text-primary">
             Member area
           </Link>
@@ -99,9 +99,9 @@ export function Footer() {
         </div>
 
         <div className="flex flex-col gap-3">
-          <h3 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
+          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
             Contact
-          </h3>
+          </h2>
           <a
             href={`mailto:${siteConfig.contactEmail}`}
             className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-primary"

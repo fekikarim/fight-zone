@@ -24,9 +24,9 @@ export function EmptyState({
           {icon}
         </span>
       ) : null}
-      <h3 className="font-display text-lg font-semibold uppercase tracking-wide">
+      <h2 className="font-display text-lg font-semibold uppercase tracking-wide">
         {title}
-      </h3>
+      </h2>
       <p className="max-w-sm text-sm leading-relaxed text-muted">{description}</p>
       {actionLabel && actionHref ? (
         <Button asChild size="sm" className="mt-2">

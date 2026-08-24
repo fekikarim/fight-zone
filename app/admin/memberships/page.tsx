@@ -80,7 +80,7 @@ export default async function AdminMembershipsPage() {
       </div>
 
       {/* Plans table */}
-      <div className="overflow-x-auto rounded-xl border border-ink-border">
+      <div className="[contain:layout] overflow-x-auto rounded-xl border border-ink-border">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-ink-border bg-ink-soft/50">
@@ -90,7 +90,7 @@ export default async function AdminMembershipsPage() {
               <th className="px-4 py-3 text-left font-semibold text-muted">Price</th>
               <th className="px-4 py-3 text-left font-semibold text-muted">Status</th>
               <th className="px-4 py-3 text-left font-semibold text-muted">Popular</th>
-              <th className="px-4 py-3" />
+              <th className="px-4 py-3"><span className="sr-only">Actions</span></th>
             </tr>
           </thead>
           <tbody>

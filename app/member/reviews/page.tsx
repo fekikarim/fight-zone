@@ -38,7 +38,7 @@ export default async function MemberReviewsPage() {
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-ink-border">
+        <div className="[contain:inline-size] overflow-x-auto rounded-xl border border-ink-border">
           <table className="w-full text-left text-sm">
             <thead>
               <tr className="border-b border-ink-border bg-ink-soft/50 text-xs uppercase tracking-wider text-muted">

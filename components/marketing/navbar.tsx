@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import { usePathname } from "next/navigation";
@@ -141,10 +141,15 @@ export function NavbarClient({ user }: NavbarProps) {
               </button>
 
               {accountMenuOpen && (
-                <div className="absolute right-0 top-full mt-2 w-48 rounded-md border border-ink-border bg-ink shadow-lg">
+                <div
+                  role="menu"
+                  aria-label="Account"
+                  className="absolute right-0 top-full mt-2 w-48 rounded-md border border-ink-border bg-ink shadow-lg"
+                >
                   <div className="p-2">
                     <Link
                       href="/member"
+                      role="menuitem"
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
                       onClick={() => setAccountMenuOpen(false)}
                     >
@@ -153,6 +158,7 @@ export function NavbarClient({ user }: NavbarProps) {
                     </Link>
                     <Link
                       href="/member/profile"
+                      role="menuitem"
                       className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
                       onClick={() => setAccountMenuOpen(false)}
                     >
@@ -163,6 +169,7 @@ export function NavbarClient({ user }: NavbarProps) {
                     <form action="/sign-out" method="POST">
                       <button
                         type="submit"
+                        role="menuitem"
                         className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
                       >
                         <LogOut className="h-4 w-4" />

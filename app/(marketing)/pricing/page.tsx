@@ -95,7 +95,11 @@ export default async function PricingPage() {
             <h2 className="mb-8 text-center font-display text-2xl font-bold uppercase tracking-wide sm:text-3xl">
               Plan comparison
             </h2>
-            <div className="mx-auto max-w-3xl overflow-x-auto">
+            <div
+              tabIndex={0}
+              aria-label="Plan comparison table, scrollable"
+              className="mx-auto max-w-3xl overflow-x-auto"
+            >
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b border-ink-border">

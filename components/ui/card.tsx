@@ -27,7 +27,9 @@ const CardTitle = React.forwardRef<
   HTMLHeadingElement,
   React.HTMLAttributes<HTMLHeadingElement>
 >(({ className, ...props }, ref) => (
-  <h3
+  // Cards typically follow a page-level h1 directly; rendering as h2 keeps
+  // heading order valid without requiring an extra section heading.
+  <h2
     ref={ref}
     className={cn("font-display text-lg font-semibold uppercase tracking-wide", className)}
     {...props}

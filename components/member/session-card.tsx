@@ -35,9 +35,9 @@ export function MemberSessionCard({ session }: { session: MemberSessionItem }) {
         </span>
       </div>
       <CardContent className="flex flex-1 flex-col gap-3 p-5 pt-0">
-        <h3 className="font-display text-lg font-semibold uppercase tracking-wide">
+        <h2 className="font-display text-lg font-semibold uppercase tracking-wide">
           {session.title}
-        </h3>
+        </h2>
         {session.discipline ? (
           <p className="text-xs font-medium uppercase tracking-wider text-primary/80">
             {disciplineLabel[session.discipline as Discipline] ?? session.discipline}

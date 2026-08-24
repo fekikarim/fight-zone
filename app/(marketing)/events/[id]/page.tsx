@@ -10,8 +10,12 @@ interface Props {
   params: Promise<{ id: string }>;
 }
 
+/** Postgres rejects non-UUID ids with 22P02; treat malformed ids as missing. */
+const UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
+  if (!UUID_RE.test(id)) return { title: "Event not found" };
   const event = await getPublicEventById(id);
   if (!event) return { title: "Event not found" };
   return {
@@ -22,6 +26,7 @@ export async function generateMetadata({ params }: Props): Promise<Metadata> {
 
 export default async function PublicEventDetailPage({ params }: Props) {
   const { id } = await params;
+  if (!UUID_RE.test(id)) notFound();
   const event = await getPublicEventById(id);
   if (!event) notFound();
 
@@ -43,7 +48,7 @@ export default async function PublicEventDetailPage({ params }: Props) {
             />
             <p className="mt-8 text-sm text-muted">
               Interested in this event?{" "}
-              <Link href="/sign-in" className="text-primary hover:underline">
+              <Link href="/sign-in" className="text-primary underline hover:text-primary-hover">
                 Log in
               </Link>{" "}
               to register.

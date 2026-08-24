@@ -148,6 +148,7 @@ export function MediaUploadZone() {
           type="file"
           accept="image/png,image/jpeg,image/webp,image/gif"
           onChange={handleFileSelect}
+          aria-label="Upload media file"
           className="absolute inset-0 cursor-pointer opacity-0"
           disabled={upload.uploading}
         />
