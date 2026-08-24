@@ -44,7 +44,6 @@ reset request.jwt.claims;
 create or replace function tests_set_auth(sub uuid, authenticated boolean)
 returns void
 language plpgsql
-security definer
 set search_path = public
 as $$
 begin
@@ -58,6 +57,14 @@ begin
     end,
     false
   );
+  -- Phase 14 fix: GUC-only simulation bypasses RLS when the session role owns
+  -- tables (relforcerowsecurity = false). Switch the actual role so every
+  -- subsequent statement in the transaction is evaluated under real RLS.
+  if authenticated then
+    execute 'set local role authenticated';
+  else
+    execute 'set local role anon';
+  end if;
 end;
 $$;
 
@@ -106,7 +113,17 @@ as $$
 declare
   found integer;
 begin
-  execute 'select count(*) from (' || body || ') t' into found;
+  begin
+    execute 'select count(*) from (' || body || ') t' into found;
+  exception
+    when insufficient_privilege then
+      if expected = 0 then
+        raise notice 'PASS % (denied — stricter than empty)', label;
+        return;
+      else
+        raise exception 'FAIL % — denied', label;
+      end if;
+  end;
   if found = expected then
     raise notice 'PASS % (% rows)', label, found;
   else

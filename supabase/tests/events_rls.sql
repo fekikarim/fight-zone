@@ -35,7 +35,6 @@ reset request.jwt.claims;
 create or replace function tests_set_auth(sub uuid, authenticated boolean)
 returns void
 language plpgsql
-security definer
 set search_path = public
 as $$
 begin
@@ -49,6 +48,14 @@ begin
     end,
     false
   );
+  -- Phase 14 fix: GUC-only simulation bypasses RLS when the session role owns
+  -- tables (relforcerowsecurity = false). Switch the actual role so every
+  -- subsequent statement in the transaction is evaluated under real RLS.
+  if authenticated then
+    execute 'set local role authenticated';
+  else
+    execute 'set local role anon';
+  end if;
 end;
 $$;
 
@@ -63,7 +70,7 @@ begin
   if found = expected then
     raise notice '  ✓ % (rows=%)', label, found;
   else
-    raise notice '  ✗ % — expected %, got %', label, expected, found;
+    raise exception 'FAIL % — expected % rows, got %', label, expected, found;
   end if;
 end;
 $$;
@@ -74,13 +81,13 @@ language plpgsql
 as $$
 begin
   execute body;
-  raise notice '  ✗ % — expected error % but succeeded', label, expected_sqlstate;
+  raise exception 'FAIL % — expected error % but succeeded', label, expected_sqlstate;
 exception
   when others then
     if sqlstate = expected_sqlstate then
       raise notice '  ✓ % (error %)', label, sqlstate;
     else
-      raise notice '  ✗ % — expected %, got %', label, expected_sqlstate, sqlstate;
+      raise exception 'FAIL % — expected sqlstate %, got %', label, expected_sqlstate, sqlstate;
     end if;
 end;
 $$;
@@ -119,7 +126,7 @@ values (
 );
 
 -- Past event
-insert into events (id, title, description, start_at, end_at, location, event_type, is_public, created_by)
+insert into events (id, title, description, start_at, end_at, location, event_type, is_public, max_participants, created_by)
 values (
   '10000000-0000-0000-0000-000000000003',
   'Old Competition',
@@ -141,16 +148,16 @@ values ('10000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-0000000
 -- TEST SUITE
 -- ============================================================
 
-raise notice '';
-raise notice '================================================';
-raise notice '  Events + Event Participants RLS';
-raise notice '================================================';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '================================================'; end $$;
+do $$ begin raise notice '  Events + Event Participants RLS'; end $$;
+do $$ begin raise notice '================================================'; end $$;
 
 -- ------------------------------------------------------------
 -- 1. Anon: events SELECT — public only
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 1. Anon: events SELECT — public only ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 1. Anon: events SELECT — public only ---'; end $$;
 
 select tests_set_auth('00000000-0000-0000-0000-000000000000', false);
 
@@ -175,8 +182,8 @@ select tests_expect_rows(
 -- ------------------------------------------------------------
 -- 2. Anon: events INSERT/UPDATE/DELETE denied
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 2. Anon: events mutation denied ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 2. Anon: events mutation denied ---'; end $$;
 
 select tests_expect_error(
   'anon INSERT events denied',
@@ -199,8 +206,8 @@ select tests_expect_error(
 -- ------------------------------------------------------------
 -- 3. Member: events SELECT — public only
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 3. Member: events SELECT ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 3. Member: events SELECT ---'; end $$;
 
 select tests_set_auth('00000000-0000-0000-0000-000000000002', true);
 
@@ -219,8 +226,8 @@ select tests_expect_rows(
 -- ------------------------------------------------------------
 -- 4. Member: event_participants — owner read only
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 4. Member: event_participants owner read ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 4. Member: event_participants owner read ---'; end $$;
 
 select tests_expect_rows(
   'member sees own registration',
@@ -241,8 +248,8 @@ select tests_expect_rows(
 -- ------------------------------------------------------------
 -- 5. Member: event_participants INSERT — own only
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 5. Member: event_participants INSERT ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 5. Member: event_participants INSERT ---'; end $$;
 
 select tests_expect_error(
   'anon INSERT event_participants denied',
@@ -271,8 +278,8 @@ select tests_expect_rows(
 -- ------------------------------------------------------------
 -- 6. Coach/Admin: events — full access
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 6. Coach/Admin: events full access ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 6. Coach/Admin: events full access ---'; end $$;
 
 select tests_set_auth('00000000-0000-0000-0000-000000000001', true);
 
@@ -291,8 +298,8 @@ select tests_expect_rows(
 -- ------------------------------------------------------------
 -- 7. Trigger: capacity enforcement
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 7. Trigger: capacity enforcement ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 7. Trigger: capacity enforcement ---'; end $$;
 
 -- Create a small-capacity event
 insert into events (id, title, start_at, end_at, event_type, is_public, max_participants, created_by)
@@ -336,8 +343,8 @@ select tests_expect_rows(
 -- ------------------------------------------------------------
 -- 8. Trigger: deadline enforcement
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 8. Trigger: deadline enforcement ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 8. Trigger: deadline enforcement ---'; end $$;
 
 -- Create an event that already started
 insert into events (id, title, start_at, end_at, event_type, is_public, created_by)
@@ -362,8 +369,8 @@ select tests_expect_error(
 -- ------------------------------------------------------------
 -- 9. Trigger: state machine — invalid transitions blocked
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 9. Trigger: state machine transitions ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 9. Trigger: state machine transitions ---'; end $$;
 
 -- Create a test registration
 insert into event_participants (event_id, member_id, status)
@@ -434,8 +441,8 @@ select tests_expect_error(
 -- ------------------------------------------------------------
 -- 10. Trigger: notification on event registration
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 10. Trigger: notification on registration ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 10. Trigger: notification on registration ---'; end $$;
 
 -- Create a new event for notification testing
 insert into events (id, title, start_at, end_at, event_type, is_public, created_by)
@@ -475,8 +482,8 @@ select tests_expect_rows(
 -- ------------------------------------------------------------
 -- 11. event_participants: DELETE denied for all
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '--- 11. event_participants: DELETE denied ---';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '--- 11. event_participants: DELETE denied ---'; end $$;
 
 select tests_set_auth('00000000-0000-0000-0000-000000000001', true);
 
@@ -497,11 +504,11 @@ select tests_expect_error(
 -- ------------------------------------------------------------
 -- Summary
 -- ------------------------------------------------------------
-raise notice '';
-raise notice '================================================';
-raise notice '  Events RLS suite complete';
-raise notice '================================================';
-raise notice '';
+do $$ begin raise notice ''; end $$;
+do $$ begin raise notice '================================================'; end $$;
+do $$ begin raise notice '  Events RLS suite complete'; end $$;
+do $$ begin raise notice '================================================'; end $$;
+do $$ begin raise notice ''; end $$;
 
 -- Cleanup
 reset role;

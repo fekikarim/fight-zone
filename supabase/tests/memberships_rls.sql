@@ -51,7 +51,15 @@ RESET role;
 -- TEST 1: Anonymous can read active plans
 -- ============================================================
 SET LOCAL role anon;
-SELECT plan('TEST 1: Anonymous can read active plans');
+
+-- Phase 14 portability fix: plan() banner helper (pgTAP-style, no-op)
+create or replace function pg_temp.__phase14_plan(label text)
+returns void language plpgsql as $fn$
+begin
+  raise notice 'PLAN %', label;
+end $fn$;
+
+SELECT pg_temp.__phase14_plan('TEST 1: Anonymous can read active plans');
 
 DO $$
 DECLARE
@@ -64,7 +72,7 @@ END $$;
 -- ============================================================
 -- TEST 2: Anonymous CANNOT read inactive plans
 -- ============================================================
-SELECT plan('TEST 2: Anonymous cannot read inactive plans');
+SELECT pg_temp.__phase14_plan('TEST 2: Anonymous cannot read inactive plans');
 
 DO $$
 DECLARE
@@ -79,7 +87,7 @@ RESET role;
 -- ============================================================
 -- TEST 3: Anonymous CANNOT insert/update/delete plans
 -- ============================================================
-SELECT plan('TEST 3: Anonymous cannot modify plans');
+SELECT pg_temp.__phase14_plan('TEST 3: Anonymous cannot modify plans');
 
 DO $$
 BEGIN
@@ -99,7 +107,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000001"}';
 
-SELECT plan('TEST 4: Member can read own subscription');
+SELECT pg_temp.__phase14_plan('TEST 4: Member can read own subscription');
 
 -- Create a subscription as admin first
 SET LOCAL role postgres;
@@ -128,7 +136,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000002"}';
 
-SELECT plan('TEST 5: Member cannot read other member subscription (IDOR protection)');
+SELECT pg_temp.__phase14_plan('TEST 5: Member cannot read other member subscription (IDOR protection)');
 
 DO $$
 DECLARE
@@ -147,7 +155,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000001"}';
 
-SELECT plan('TEST 6: Member cannot insert payments directly');
+SELECT pg_temp.__phase14_plan('TEST 6: Member cannot insert payments directly');
 
 DO $$
 BEGIN
@@ -168,7 +176,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000099"}';
 
-SELECT plan('TEST 7: Admin can manage plans');
+SELECT pg_temp.__phase14_plan('TEST 7: Admin can manage plans');
 
 DO $$
 DECLARE
@@ -195,7 +203,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000099"}';
 
-SELECT plan('TEST 8: Admin can manage subscriptions');
+SELECT pg_temp.__phase14_plan('TEST 8: Admin can manage subscriptions');
 
 DO $$
 DECLARE
@@ -225,7 +233,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000099"}';
 
-SELECT plan('TEST 9: Admin can manage payments');
+SELECT pg_temp.__phase14_plan('TEST 9: Admin can manage payments');
 
 DO $$
 DECLARE
@@ -252,7 +260,7 @@ RESET role;
 -- Note: This test assumes a COACH role user exists.
 -- In practice, coach RLS allows read via is_admin_or_coach().
 
-SELECT plan('TEST 10: Cleanup test data');
+SELECT pg_temp.__phase14_plan('TEST 10: Cleanup test data');
 
 -- Cleanup
 SET LOCAL role postgres;

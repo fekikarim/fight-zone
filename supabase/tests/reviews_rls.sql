@@ -63,7 +63,15 @@ RESET role;
 -- ============================================================
 SET LOCAL role anon;
 
-SELECT plan('TEST 1: Anonymous cannot insert reviews');
+
+-- Phase 14 portability fix: plan() banner helper (pgTAP-style, no-op)
+create or replace function pg_temp.__phase14_plan(label text)
+returns void language plpgsql as $fn$
+begin
+  raise notice 'PLAN %', label;
+end $fn$;
+
+SELECT pg_temp.__phase14_plan('TEST 1: Anonymous cannot insert reviews');
 
 DO $$
 BEGIN
@@ -83,7 +91,7 @@ RESET role;
 -- ============================================================
 SET LOCAL role anon;
 
-SELECT plan('TEST 2: Anonymous can only select approved reviews');
+SELECT pg_temp.__phase14_plan('TEST 2: Anonymous can only select approved reviews');
 
 DO $$
 DECLARE
@@ -105,7 +113,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000011"}';
 
-SELECT plan('TEST 3: Member can insert own review');
+SELECT pg_temp.__phase14_plan('TEST 3: Member can insert own review');
 
 DO $$
 DECLARE
@@ -126,7 +134,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000011"}';
 
-SELECT plan('TEST 4: Member cannot forge member_id on insert');
+SELECT pg_temp.__phase14_plan('TEST 4: Member cannot forge member_id on insert');
 
 DO $$
 BEGIN
@@ -147,7 +155,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000012"}';
 
-SELECT plan('TEST 5: Member cannot self-approve review');
+SELECT pg_temp.__phase14_plan('TEST 5: Member cannot self-approve review');
 
 DO $$
 DECLARE
@@ -178,7 +186,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000099"}';
 
-SELECT plan('TEST 6: Admin can approve and feature reviews');
+SELECT pg_temp.__phase14_plan('TEST 6: Admin can approve and feature reviews');
 
 DO $$
 DECLARE
@@ -202,7 +210,7 @@ RESET role;
 SET LOCAL role authenticated;
 SET LOCAL request.jwt.claims = '{"sub":"00000000-0000-0000-0000-000000000012"}';
 
-SELECT plan('TEST 7: Member can see own pending reviews');
+SELECT pg_temp.__phase14_plan('TEST 7: Member can see own pending reviews');
 
 DO $$
 DECLARE
@@ -220,7 +228,7 @@ RESET role;
 -- ============================================================
 SET LOCAL role anon;
 
-SELECT plan('TEST 8: Anonymous cannot insert transformations');
+SELECT pg_temp.__phase14_plan('TEST 8: Anonymous cannot insert transformations');
 
 DO $$
 BEGIN
@@ -240,7 +248,7 @@ RESET role;
 -- ============================================================
 SET LOCAL role anon;
 
-SELECT plan('TEST 9: Anonymous can only see published transformations');
+SELECT pg_temp.__phase14_plan('TEST 9: Anonymous can only see published transformations');
 
 DO $$
 DECLARE
@@ -255,7 +263,7 @@ RESET role;
 -- ============================================================
 -- TEST 10: Cleanup
 -- ============================================================
-SELECT plan('TEST 10: Cleanup test data');
+SELECT pg_temp.__phase14_plan('TEST 10: Cleanup test data');
 
 SET LOCAL role postgres;
 DELETE FROM public.reviews WHERE member_id IN (

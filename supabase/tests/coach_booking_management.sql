@@ -40,7 +40,6 @@ reset request.jwt.claims;
 create or replace function tests_set_auth(sub uuid, authenticated boolean)
 returns void
 language plpgsql
-security definer
 set search_path = public
 as $$
 begin
@@ -54,6 +53,14 @@ begin
     end,
     false
   );
+  -- Phase 14 fix: GUC-only simulation bypasses RLS when the session role owns
+  -- tables (relforcerowsecurity = false). Switch the actual role so every
+  -- subsequent statement in the transaction is evaluated under real RLS.
+  if authenticated then
+    execute 'set local role authenticated';
+  else
+    execute 'set local role anon';
+  end if;
 end;
 $$;
 
@@ -102,7 +109,17 @@ as $$
 declare
   found integer;
 begin
-  execute 'select count(*) from (' || body || ') t' into found;
+  begin
+    execute 'select count(*) from (' || body || ') t' into found;
+  exception
+    when insufficient_privilege then
+      if expected = 0 then
+        raise notice 'PASS % (denied — stricter than empty)', label;
+        return;
+      else
+        raise exception 'FAIL % — denied', label;
+      end if;
+  end;
   if found = expected then
     raise notice 'PASS % (% rows)', label, found;
   else
@@ -226,25 +243,25 @@ limit 1;
 --   b_coach2             member 2, s2, future      -> PENDING
 --   b_coach2_two         member 2, s2, future+1d   -> PENDING
 insert into public.bookings (id, member_id, session_id, coach_id, scheduled_at, status)
-select 'a0000000-0000-0000-0000-000000000001', '00000000-0000-0000-0000-000000000002', s.id, s.coach, s.future, 'PENDING'      from t_s s
+select 'a0000000-0000-0000-0000-000000000001'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s.id, s.coach, s.future, 'PENDING'::booking_status      from t_s s
 union all
-select 'a0000000-0000-0000-0000-000000000002', '00000000-0000-0000-0000-000000000002', s.id, s.coach, s.future + interval '1 day', 'CONFIRMED' from t_s s
+select 'a0000000-0000-0000-0000-000000000002'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s.id, s.coach, s.future + interval '1 day', 'CONFIRMED'::booking_status from t_s s
 union all
-select 'a0000000-0000-0000-0000-000000000003', '00000000-0000-0000-0000-000000000002', s.id, s.coach, s.past, 'COMPLETED'   from t_s s
+select 'a0000000-0000-0000-0000-000000000003'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s.id, s.coach, s.past, 'COMPLETED'::booking_status   from t_s s
 union all
-select 'a0000000-0000-0000-0000-000000000004', '00000000-0000-0000-0000-000000000002', s.id, s.coach, s.past, 'NO_SHOW'     from t_s s
+select 'a0000000-0000-0000-0000-000000000004'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s.id, s.coach, s.past, 'NO_SHOW'::booking_status     from t_s s
 union all
-select 'a0000000-0000-0000-0000-000000000005', '00000000-0000-0000-0000-000000000001', s.id, s.coach, s.past, 'CONFIRMED'   from t_s s
+select 'a0000000-0000-0000-0000-000000000005'::uuid, '00000000-0000-0000-0000-000000000001'::uuid, s.id, s.coach, s.past, 'CONFIRMED'::booking_status   from t_s s
 union all
-select 'a0000000-0000-0000-0000-000000000006', '00000000-0000-0000-0000-000000000002', s.id, s.coach, s.future + interval '2 days', 'CONFIRMED' from t_s s
+select 'a0000000-0000-0000-0000-000000000006'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s.id, s.coach, s.future + interval '2 days', 'CONFIRMED'::booking_status from t_s s
 union all
-select 'a0000000-0000-0000-0000-000000000007', '00000000-0000-0000-0000-000000000002', s.id, s.coach, s.past - interval '2 hours', 'PENDING' from t_s s
+select 'a0000000-0000-0000-0000-000000000007'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s.id, s.coach, s.past - interval '2 hours', 'PENDING'::booking_status from t_s s
 union all
-select 'a0000000-0000-0000-0000-00000000000b', '00000000-0000-0000-0000-000000000002', s.id, s.coach, s.past, 'CONFIRMED'   from t_s s
+select 'a0000000-0000-0000-0000-00000000000b'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s.id, s.coach, s.past, 'CONFIRMED'::booking_status   from t_s s
 union all
-select 'a0000000-0000-0000-0000-000000000008', '00000000-0000-0000-0000-000000000002', s2.id, s2.coach, s2.future, 'PENDING'  from t_s2 s2
+select 'a0000000-0000-0000-0000-000000000008'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s2.id, s2.coach, s2.future, 'PENDING'::booking_status  from t_s2 s2
 union all
-select 'a0000000-0000-0000-0000-000000000009', '00000000-0000-0000-0000-000000000002', s2.id, s2.coach, s2.future + interval '1 day', 'PENDING' from t_s2 s2;
+select 'a0000000-0000-0000-0000-000000000009'::uuid, '00000000-0000-0000-0000-000000000002'::uuid, s2.id, s2.coach, s2.future + interval '1 day', 'PENDING'::booking_status from t_s2 s2;
 
 -- ------------------------------------------------------------
 -- CASE 1 — Anonymous cannot read private booking data
