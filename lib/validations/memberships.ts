@@ -54,10 +54,6 @@ export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
 // Subscription
 // ---------------------------------------------------------------------------
 
-export const subscribePlanSchema = z.object({
-  planId: z.string().uuid(),
-});
-
 export const cancelSubscriptionSchema = z.object({
   subscriptionId: z.string().uuid(),
 });

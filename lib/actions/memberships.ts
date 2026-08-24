@@ -6,7 +6,6 @@ import { requireRole } from "@/lib/auth/guards";
 import {
   createPlanSchema,
   updatePlanSchema,
-  subscribePlanSchema,
   cancelSubscriptionSchema,
   recordPaymentSchema,
   grantSubscriptionSchema,
@@ -45,80 +44,12 @@ function revalidatePayments() {
 }
 
 // ---------------------------------------------------------------------------
-// Member: Subscribe to plan
+// NOTE (Prompt #13 security gate): `subscribeToPlan` was removed.
+// Membership plans are presentation-only ("Coming Soon" / "Contact Coach");
+// a self-service path that created ACTIVE subscriptions and COMPLETED
+// ONLINE payments must not exist, even behind RLS. Subscriptions are
+// granted exclusively through the admin actions below.
 // ---------------------------------------------------------------------------
-
-export async function subscribeToPlan(
-  _prev: MembershipActionState,
-  formData: FormData,
-): Promise<MembershipActionState> {
-  const parsed = subscribePlanSchema.safeParse({ planId: formData.get("planId") });
-  if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return { ok: false, message: first?.message ?? "Invalid data." };
-  }
-
-  const user = await requireRole(["MEMBER", "ADMIN"]);
-  const supabase = await createClient();
-
-  // Fetch the plan to compute ends_at
-  const { data: plan, error: planError } = await supabase
-    .from("membership_plans")
-    .select("id, billing_interval, session_credits, price")
-    .eq("id", parsed.data.planId)
-    .eq("is_active", true)
-    .maybeSingle();
-
-  if (planError || !plan) {
-    return { ok: false, message: "Plan not found or unavailable." };
-  }
-
-  const startsAt = new Date();
-  const endsAt = computeEndsAt(plan.billing_interval, startsAt);
-
-  // Create subscription
-  const { data: subscription, error: subError } = await supabase
-    .from("member_subscriptions")
-    .insert({
-      member_id: user.id,
-      plan_id: plan.id,
-      status: "ACTIVE",
-      starts_at: startsAt.toISOString(),
-      ends_at: endsAt.toISOString(),
-      remaining_credits: plan.session_credits ?? 0,
-    })
-    .select("id")
-    .single();
-
-  if (subError) {
-    logError("Failed to create subscription", subError, { userId: user.id, planId: plan.id });
-    return { ok: false, message: "Could not create subscription. Please try again." };
-  }
-
-  // Create payment record
-  const { error: paymentError } = await supabase.from("payments").insert({
-    member_id: user.id,
-    subscription_id: subscription.id,
-    amount: plan.price,
-    currency: "TND",
-    status: "COMPLETED",
-    payment_method: "ONLINE",
-    paid_at: startsAt.toISOString(),
-  });
-
-  if (paymentError) {
-    logError("Failed to create payment record", paymentError, {
-      userId: user.id,
-      subscriptionId: subscription.id,
-    });
-    // Subscription was created but payment failed — still return success since
-    // the subscription is the primary entity. Admin can reconcile payment.
-  }
-
-  revalidateSubscriptions();
-  revalidatePayments();
-  return { ok: true, id: subscription.id, message: "Subscription activated!" };
-}
 
 // ---------------------------------------------------------------------------
 // Member/Admin: Cancel subscription

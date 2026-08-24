@@ -163,3 +163,80 @@ privileges and cannot scope the caller, unlike RLS-governed tables.
 - RPCs verified live as anon: reviews `[]`, transformations 2 rows,
   coaches `[]`; directory RPC denies anon; direct table SELECT denied for anon
 - All marketing routes HTTP 200 · tsc clean · ESLint clean · production build clean
+
+---
+
+# Security & Authorization Audit (Prompt #13)
+
+## Scope
+
+Full security gate: every Server Action, RLS policy/grant, SECURITY
+DEFINER function, public RPC, storage policy and cache scope audited
+against the **remote** database (`jdbythhwikqvqenxyuqw`). Executable,
+rollback-safe tests were run against remote inside a single transaction
+(`BEGIN … ROLLBACK` — production data untouched).
+
+## Findings & disposition
+
+| ID | Severity | Finding | Status |
+|----|----------|---------|--------|
+| F1 | P0 | `reviews_owner_insert/update` policies allowed members to forge `status='APPROVED'` / `is_featured=true` via direct PostgREST writes | FIXED-IN-MIGRATION-PENDING-PUSH — guard triggers `guard_reviews_insert/update`; verified by tests T2/T4/T5 |
+| F2 | P0 | `transformations_member_insert` allowed members to insert `is_published=true` stories → public showcase forgery | FIXED-IN-MIGRATION-PENDING-PUSH — guard trigger `guard_transformations_insert`; test T7 |
+| F7 | P0 (operational) | Remote `roles` table was EMPTY (roles existed only in local seed.sql) → `is_admin()`/`has_role()` false for everyone; staff gates inert; signups assigned no MEMBER role | FIXED-IN-MIGRATION-PENDING-PUSH — canonical role seed + MEMBER backfill for existing users |
+| F3 | P1 | `subscribeToPlan` Server Action was a live self-service checkout path (ACTIVE subscription + COMPLETED ONLINE payment) with zero UI callers; violates presentation-only product rule | FIXED-IN-CODE — action + schema removed; tsc clean |
+| F4 | P2 | Member cancellation could mutate subscription terms (`remaining_credits`, dates, plan) alongside status/auto_renew | FIXED-IN-MIGRATION-PENDING-PUSH — guard trigger `guard_subscription_cancel`; tests T12/T13 |
+| F5 | P2 | `service_role` lacked DML grants on most base tables | FIXED-IN-MIGRATION-PENDING-PUSH — baseline grants + default privileges |
+| F6 | P2 (hygiene) | anon/authenticated held inert TRUNCATE/REFERENCES; PUBLIC EXECUTE on helper functions | FIXED-IN-MIGRATION-PENDING-PUSH — revoked; EXECUTE re-granted to anon+authenticated+service_role |
+| F8 | P1 (app) | Profile self-update could set arbitrary `avatar_url`/`email`/`is_active` via direct API writes | FIXED-IN-MIGRATION-PENDING-PUSH — guard trigger `guard_profiles_self_update`; tests T8/T9/T10 |
+
+## Verified-good (no change required)
+
+- All 25 tables have RLS enabled; storage buckets correctly scoped
+  (`fightzone-public` anon read/staff write, `fightzone-private` owner-or-staff)
+- Bookings/events/participations enforced by DB triggers: ownership
+  immutable, state machines, capacity/deadline checks (test T11)
+- All SECURITY DEFINER functions pin `search_path=public`; public RPCs add
+  `statement_timeout=5s` + in-body LIMIT caps; directory RPC is authenticated-only
+- All 11 Server Action files: session-derived identity, `requireRole`,
+  Zod validation, narrow column updates, safe error messages, revalidation
+- No wildcard projections, no `any`/`@ts-ignore`, no service-role keys in
+  app code, no unsafe redirects, no `dangerouslySetInnerHTML`, no empty catches
+- React `cache()` scoping safe: identity derived inside each cached fn;
+  admin queries gated by `resolveStaffScope()` with coach row-scoping
+
+## Executable test results (remote, rollback-safe)
+
+14/14 PASS — T1 anon table read denied · T2/T4 review moderation forgery
+blocked · T5 staff approval works · T6 cross-member review isolated ·
+T7 transformation publish forgery blocked · T8 profile sensitive-field
+self-change blocked · T9 legitimate name/phone edit works · T10 cross-member
+profile patch isolated · T11 booking ownership forgery blocked · T12/T13
+cancel hygiene · T14 directory RPC denies anon · T15 public RPCs execute.
+(Legitimate pending-review insert exercised implicitly by T4/T5/T6 fixtures.)
+
+## Verification suite
+
+- `npx tsc --noEmit` ✅ clean
+- `npx eslint .` ✅ 0 errors (2 pre-existing warnings)
+- `npm run build` ✅ compiled, 48/48 pages
+- `supabase migration list` ✅ 25 synced; `20260901000000` local-only by design
+- `supabase db push --dry-run` ✅ would push exactly the hardening migration
+- `supabase db lint --linked --level error -s public` ✅ No schema errors found
+- Route smoke: `/` `/coaches` `/events` `/news` `/contact` `/pricing` → HTTP 200
+
+## Unverified / blocked
+
+- Responsive pixel-check at 320/390/768/1280/1440px: UNVERIFIED (no browser
+  E2E available). Static evidence: Tailwind breakpoints used throughout
+  (sm×164, lg×126, md×18, xl×6) + exported viewport meta.
+- Guard triggers/role seed take effect only after owner pushes
+  `20260901000000_security_gate_hardening.sql` (NOT pushed — awaiting approval).
+- Backup/PITR verification requires Supabase dashboard access.
+
+## Recommendation
+
+**READY FOR DATA-INTEGRITY AUDIT** — conditional on pushing
+`20260901000000_security_gate_hardening.sql`. Until it is pushed, the P0
+policy-forgery findings (F1/F2/F7) remain exploitable by any authenticated
+user against the live project. After push: assign ADMIN to the owner account
+via SQL or dashboard, then re-run `db lint`.
