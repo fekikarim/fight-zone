@@ -21,26 +21,31 @@ export default function MemberErrorPage({ error, reset }: MemberErrorPageProps) 
 
   return (
     <div className="flex min-h-[60vh] flex-col items-center justify-center gap-6 bg-background px-6 text-center">
-      <p className="font-display text-6xl font-bold text-primary">Oops</p>
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-2xl font-bold uppercase tracking-tight">
-          Member area unavailable
-        </h1>
-        <p className="max-w-md text-sm text-muted">{message}</p>
+      <div className="relative">
+        <p className="font-display text-8xl font-bold text-ink-soft">404</p>
+        <p className="absolute inset-0 flex items-center justify-center font-display text-4xl font-bold text-primary uppercase">Off the mat</p>
       </div>
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-2">
+        <h1 className="font-display text-2xl font-bold uppercase tracking-tight text-white">
+          Something went wrong
+        </h1>
+        <p className="max-w-md text-sm text-zinc-400">
+          Even the best fighters need to pause. {message} Take a breather and try again.
+        </p>
+      </div>
+      <div className="flex flex-col gap-3 sm:flex-row mt-4">
         <button
           type="button"
           onClick={reset}
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-7 text-sm font-medium text-white transition-colors hover:bg-primary-hover"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md bg-primary px-7 text-sm font-medium uppercase tracking-wide text-ink-base transition-colors hover:bg-primary-hover"
         >
           Try again
         </button>
         <Link
           href="/member"
-          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-ink-border px-7 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
+          className="inline-flex h-11 items-center justify-center gap-2 rounded-md border border-ink-border px-7 text-sm font-medium uppercase tracking-wide text-white transition-colors hover:border-primary hover:text-primary"
         >
-          Back to dashboard
+          Back to Dashboard
         </Link>
       </div>
     </div>

@@ -1,12 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import Image from "next/image";
 import { CalendarDays, ChevronRight, MapPin } from "lucide-react";
 import { getCurrentUserBookings, isBookingCancellable } from "@/lib/supabase/queries";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { BookingStatusBadge } from "@/components/booking-status-badge";
 import { CancelBookingButton } from "@/components/member/cancel-booking-button";
-import { EmptyState } from "@/components/empty-state";
 import { formatDate, formatPrice } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -100,13 +100,26 @@ export default async function MemberBookingsPage() {
           })}
         </ul>
       ) : (
-        <EmptyState
-          icon={<CalendarDays className="h-5 w-5" aria-hidden />}
-          title="No bookings yet"
-          description="Browse the available sessions and request your first booking — the coach will confirm it shortly."
-          actionLabel="Browse sessions"
-          actionHref="/member/sessions"
-        />
+        <div className="relative overflow-hidden rounded-2xl border border-ink-border bg-ink-soft/40 p-8 sm:p-14 mt-4">
+          <div className="absolute right-0 top-0 h-full w-full opacity-15 sm:w-1/2">
+            <Image src="/components/sports-physiotherapy-illustration-2000x2000.jpg" alt="Recovery and Training" fill className="object-cover object-right" />
+            <div className="absolute inset-0 bg-gradient-to-r from-ink-soft via-ink-soft/90 to-transparent sm:hidden" />
+            <div className="absolute inset-0 hidden bg-gradient-to-r from-ink-soft/60 via-ink-soft/20 to-transparent sm:block" />
+          </div>
+          <div className="relative z-10 flex max-w-xl flex-col gap-4">
+            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-white">
+              Your next round starts here
+            </h2>
+            <p className="text-base text-zinc-300">
+              You haven't requested any bookings yet. Explore Fight Zone training and find the session that fits your goals.
+            </p>
+            <div className="mt-2 flex">
+              <Button asChild size="lg">
+                <Link href="/member/sessions">Explore Training</Link>
+              </Button>
+            </div>
+          </div>
+        </div>
       )}
     </Container>
   );

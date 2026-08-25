@@ -1,8 +1,7 @@
 import type { Metadata } from "next";
+import Image from "next/image";
 import { MemberSessionCard, type MemberSessionItem } from "@/components/member/session-card";
-import { EmptyState } from "@/components/empty-state";
 import { getActiveSessions } from "@/lib/supabase/queries";
-import { CalendarDays } from "lucide-react";
 import { Container } from "@/components/ui/container";
 
 export const metadata: Metadata = {
@@ -31,11 +30,21 @@ export default async function MemberSessionsPage() {
           ))}
         </div>
       ) : (
-        <EmptyState
-          icon={<CalendarDays className="h-5 w-5" aria-hidden />}
-          title="No sessions available"
-          description="Check back soon — new coaching sessions are being added."
-        />
+        <div className="relative overflow-hidden rounded-2xl border border-ink-border bg-ink-soft/40 p-8 sm:p-14 mt-4">
+          <div className="absolute right-0 top-0 h-full w-full opacity-10 sm:w-1/2">
+            <Image src="/components/fit-cartoon-women-lifting-training-4096x4096.jpg" alt="Training" fill className="object-cover object-right" />
+            <div className="absolute inset-0 bg-gradient-to-r from-ink-soft via-ink-soft/90 to-transparent sm:hidden" />
+            <div className="absolute inset-0 hidden bg-gradient-to-r from-ink-soft/40 via-ink-soft/80 to-transparent sm:block" />
+          </div>
+          <div className="relative z-10 flex max-w-xl flex-col gap-4">
+            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-white">
+              Preparing the next round
+            </h2>
+            <p className="text-base text-zinc-300">
+              No sessions are currently available. Check back soon — new professional coaching sessions are being added to the platform.
+            </p>
+          </div>
+        </div>
       )}
     </Container>
   );

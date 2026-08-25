@@ -3,7 +3,7 @@ import { MessageSquare } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { getAuthorizedMessagingRecipients, getMyConversations } from "@/lib/supabase/queries";
 import { Container } from "@/components/ui/container";
-import { EmptyState } from "@/components/empty-state";
+import Image from "next/image";
 import { InboxList } from "@/components/messages/inbox-list";
 import { StartConversationForm } from "@/components/messages/start-conversation-form";
 
@@ -41,11 +41,21 @@ export default async function MemberMessagesPage() {
           otherFallback="Coach"
         />
       ) : (
-        <EmptyState
-          icon={<MessageSquare className="h-6 w-6" aria-hidden />}
-          title="No conversations yet"
-          description="When you book a session with a coach you can start chatting right here."
-        />
+        <div className="relative overflow-hidden rounded-2xl border border-ink-border bg-ink-soft/40 p-8 sm:p-14 mt-4">
+          <div className="absolute right-0 top-0 h-full w-full opacity-10 sm:w-1/2">
+            <Image src="/components/hand-holding-medal-720x720.jpg" alt="Medal" fill className="object-cover object-right" />
+            <div className="absolute inset-0 bg-gradient-to-r from-ink-soft via-ink-soft/90 to-transparent sm:hidden" />
+            <div className="absolute inset-0 hidden bg-gradient-to-r from-ink-soft/40 via-ink-soft/80 to-transparent sm:block" />
+          </div>
+          <div className="relative z-10 flex max-w-xl flex-col gap-4">
+            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-white">
+              Stay connected to your corner
+            </h2>
+            <p className="text-base text-zinc-300">
+              No messages yet. When you book a session, you'll be able to communicate directly with Coach Seif right here.
+            </p>
+          </div>
+        </div>
       )}
     </Container>
   );

@@ -1,4 +1,5 @@
 import { Bell } from "lucide-react";
+import Image from "next/image";
 import { EmptyState } from "@/components/empty-state";
 import { NotificationItem } from "./notification-item";
 import { MarkAllReadButton } from "./mark-all-read-button";
@@ -33,6 +34,22 @@ export function NotificationList({
           {page.items.map((n) => (
             <NotificationItem key={n.id} notification={n} role={role} />
           ))}
+        </div>
+      ) : role === "member" ? (
+        <div className="relative overflow-hidden rounded-2xl border border-ink-border bg-ink-soft/40 p-8 sm:p-14 mt-4">
+          <div className="absolute right-0 top-0 h-full w-full opacity-10 sm:w-1/2">
+            <Image src="/components/flat-sport-medals-illustration-2000x2000.jpg" alt="Medals" fill className="object-cover object-right grayscale mix-blend-screen" />
+            <div className="absolute inset-0 bg-gradient-to-r from-ink-soft via-ink-soft/90 to-transparent sm:hidden" />
+            <div className="absolute inset-0 hidden bg-gradient-to-r from-ink-soft/40 via-ink-soft/80 to-transparent sm:block" />
+          </div>
+          <div className="relative z-10 flex max-w-xl flex-col gap-4">
+            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-white">
+              You're in the zone
+            </h2>
+            <p className="text-base text-zinc-300">
+              No new alerts right now. Notifications about your bookings and messages from Coach Seif will appear here.
+            </p>
+          </div>
         </div>
       ) : (
         <EmptyState
