@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { contactSchema } from "@/lib/validations/contact";
 import { logError } from "@/lib/errors";
+import { sendContactNotification } from "@/lib/email/resend";
 
 export interface ContactActionState {
   ok: boolean;
@@ -50,6 +51,19 @@ export async function submitContactMessage(
       ok: false,
       message: "Something went wrong on our end. Please try again.",
     };
+  }
+
+  // Send email notification
+  try {
+    await sendContactNotification({
+      name: parsed.data.name,
+      email: parsed.data.email,
+      subject: parsed.data.subject,
+      message: parsed.data.message,
+    });
+  } catch (emailError) {
+    // Log email error but don't fail the contact form submission
+    logError("Failed to send contact notification email", emailError);
   }
 
   return { ok: true, message: "Message sent — I'll get back to you soon." };

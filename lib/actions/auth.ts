@@ -14,6 +14,7 @@ import {
   signUpSchema,
 } from "@/lib/validations/auth";
 import { logError } from "@/lib/errors";
+import { sendWelcomeEmail, sendPasswordResetEmail } from "@/lib/email/resend";
 
 export interface AuthActionState {
   ok: boolean;
@@ -91,6 +92,17 @@ export async function signUp(
     };
   }
 
+  // Send welcome email
+  try {
+    await sendWelcomeEmail({
+      to: parsed.data.email,
+      name: parsed.data.fullName,
+    });
+  } catch (emailError) {
+    // Log email error but don't fail the signup
+    logError("Failed to send welcome email", emailError);
+  }
+
   // Email confirmation enabled: no session is issued until the user verifies.
   // Transition straight to the verification gate — never a message on the form.
   if (data.session) {
@@ -164,7 +176,9 @@ export async function forgotPassword(
   formData: FormData,
 ): Promise<AuthActionState> {
   const parsed = forgotPasswordSchema.safeParse({ email: formData.get("email") });
-  if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
+  if (!parsed.success) {
+    return { ok: false, errors: fieldErrors(parsed.error) };
+  }
 
   // The reset link must point at our own canonical origin. Never derive the
   // redirect target from request headers (open-redirect / code-harvesting).
@@ -175,6 +189,17 @@ export async function forgotPassword(
 
   if (error) {
     logError("Password reset request failed", error);
+  }
+
+  // Send password reset email
+  try {
+    await sendPasswordResetEmail({
+      to: parsed.data.email,
+      resetLink: `${getSiteUrl()}/reset-password`,
+    });
+  } catch (emailError) {
+    // Log email error but don't fail the password reset request
+    logError("Failed to send password reset email", emailError);
   }
 
   // Always return success to avoid leaking which emails exist.
