@@ -1023,3 +1023,78 @@ handled gracefully); storage byte-recovery remains UNVERIFIED until real
 media exists (Phase 18 record); provider backups still NOT AVAILABLE ON
 CURRENT PLAN (accepted operational blocker, owner decision outside this
 prompt). Do not start Prompt #20 automatically.
+
+---
+
+# Phase 20 — Release Candidate and Controlled Production Launch (2026-08-25)
+
+Gate per `agent/prompt-20.md`. Launch model: owner-operated controlled
+launch on Netlify; canonical production domain
+**https://fight-zone.app** (Netlify origin), Supabase project
+`jdbythhwikqvqenxyuqw` as backend.
+
+## Release version / diff
+
+- Deployed baseline: `2cefe70` (contains all P15–P19 work incl. the two
+  P19 404 fixes — verified live: unknown news slug renders
+  "ROUND NOT FOUND", not the error boundary).
+- Release-candidate diff prepared for owner commit (normal process, not
+  committed by the agent): this report + one-word single-coach copy fix
+  (`app/member/messages/page.tsx` "coaches"→"coach"). Working tree was
+  otherwise clean at gate start.
+
+## Pre-launch checklist results
+
+| Item | Result |
+|---|---|
+| TypeScript / ESLint / build | CLEAN · 0 errors · 48/48 routes |
+| Source scans | No wildcard selects, no `any`, no `@ts-ignore`, no service-role exposure, no `dangerouslySetInnerHTML`; all redirects literal or internally-derived (encoded email params) |
+| Migrations | local == remote (30/30 synced); `db push --dry-run` upToDate → **no pending migrations to deploy** |
+| Schema | 25 tables · 75 RLS policies · 34 functions · 27 triggers · 77 indexes |
+| db lint | No schema errors (error AND warning level) |
+| Storage | Policies verified with real private object in P19 deep probe |
+| Security Advisor equivalent | `db lint` warning-level clean; platform Security Advisor UI not CLI-accessible from agent — classified UNVERIFIED-BY-TOOLING (P3 note) |
+| Auth/email/domain | Owner-configured in dashboard: Site URL = https://fight-zone.app; Resend SMTP (RESEND_API_KEY/FROM/REPLY_TO) active. Live probe: forgot-password returns generic success **without** rate-limit error (Resend path working); inbox receipt pending owner confirmation |
+| Single-coach language | Marketing copy singular throughout; member messages meta description fixed this phase ("Message your coach") |
+| Presentation-only membership | No checkout/payment/stripe strings in source; live pricing/subscription/payments pages carry no payment promise |
+| Responsive/accessibility | P19 sweep zero overflow @320–1440; axe clean on key flows (P15) |
+| Performance baselines (LIVE CDN) | LCP 1412–1844ms, CLS 0 on home/services/news/pricing |
+| Logging/monitoring/alerts | Structured `[fight-zone]` request logs verified live end-to-end (P17/P19); external alerting NOT configured — UNVERIFIED (accepted risk) |
+| Backup/recovery/rollback | DR runbook + restore rehearsal complete (P18); app rollback = git revert + Netlify redeploy; DB rollback = forward-only compensating migrations (rehearsed) |
+| E2E | Full matrix 192 PASS / 0 unresolved FAIL (P19) |
+
+## Controlled deployment verification (post-deploy)
+
+Live smoke against **https://fight-zone.app**: 9 public/auth routes 200 ·
+404-fix present (h1 "ROUND NOT FOUND") · anon `/member` bounce to
+sign-in · invalid-credentials server-action path functional ·
+forgot-password via Resend SMTP generic-success/no-rate-limit · ALL five
+security headers present (XFO/XCTO/Referrer/HSTS/CSP). Evidence:
+`.p20/evidence.jsonl` (26 entries across netlify.app + fight-zone.app).
+Health endpoint: `{ok:true,db:"up"}` (~200ms).
+
+## Rollback readiness
+
+Frontend: `git revert <sha>` → Netlify redeploy (minutes). Database:
+no migrations ship with this release (schema unchanged since P18);
+forward-only compensating-migration strategy rehearsed. Secrets: none in
+repo; rotation runbook exists.
+
+## Remaining risks
+
+1. Provider backups still NOT AVAILABLE ON CURRENT PLAN (accepted,
+   owner decision recorded in DR doc).
+2. Resend email delivery: config verified live, actual inbox receipt
+   pending owner confirmation (send a real reset to your own address).
+3. External monitoring/alerting not yet configured (uptime monitor
+   recommended post-launch).
+4. Storage byte-level recovery remains UNVERIFIED until real media
+   exists.
+5. Both `fight-zone.netlify.app` and canonical domain serve content;
+   consider a Netlify redirect to canonical for SEO hygiene (P3).
+6. Platform Security Advisor not executable via CLI from this
+   environment (db lint clean as proxy).
+
+## Recommendation
+
+GO WITH EXPLICIT ACCEPTED RISKS

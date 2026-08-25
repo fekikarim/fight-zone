@@ -9,7 +9,7 @@ import { StartConversationForm } from "@/components/messages/start-conversation-
 
 export const metadata: Metadata = {
   title: "Messages",
-  description: "Message your coaches and keep every training conversation in one place.",
+  description: "Message your coach and keep every training conversation in one place.",
 };
 
 export default async function MemberMessagesPage() {
