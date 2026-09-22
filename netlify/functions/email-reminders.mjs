@@ -29,4 +29,7 @@ export const handler = schedule("*/15 * * * *", async () => {
   };
 });
 
-export { config } from "@netlify/functions";
+// NOTE: no `config` export needed — `schedule()` above already declares the
+// cron expression. (`@netlify/functions` has no `config` value to import;
+// a `config` export is only for the v2 default-export function style,
+// where it must be defined locally, never re-exported.)
