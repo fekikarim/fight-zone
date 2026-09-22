@@ -7,10 +7,8 @@ import { AccessDenied } from "@/components/dashboard/access-denied";
 
 const adminNav = [
   { href: "/admin", label: "Overview" },
-  { href: "/admin/services", label: "Services" },
   { href: "/admin/events", label: "Events" },
-  { href: "/admin/bookings", label: "Bookings" },
-  { href: "/admin/memberships", label: "Memberships" },
+  { href: "/admin/calendar", label: "Calendar" },
   { href: "/admin/reviews", label: "Reviews" },
   { href: "/admin/messages", label: "Messages" },
   { href: "/admin/notifications", label: "Notifications" },

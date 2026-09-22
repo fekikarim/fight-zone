@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import { Suspense } from "react";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
-import { EventCard, type EventItem } from "@/components/marketing/event-card";
+import { EventCard } from "@/components/marketing/event-card";
 import { PageHero } from "@/components/marketing/page-hero";
 import { EventFilters } from "@/components/events/event-filters";
 import { getPublicEvents } from "@/lib/supabase/queries";
@@ -42,7 +42,7 @@ export default async function EventsPage({ searchParams }: Props) {
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
               {events.map((event, i) => (
                 <Reveal key={event.id} delay={(i % 3) * 80}>
-                  <EventCard event={event as EventItem} />
+                  <EventCard event={event} />
                 </Reveal>
               ))}
             </div>

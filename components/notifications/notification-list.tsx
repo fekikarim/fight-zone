@@ -44,7 +44,7 @@ export function NotificationList({
           </div>
           <div className="relative z-10 flex max-w-xl flex-col gap-4">
             <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-white">
-              You're in the zone
+              You&apos;re in the zone
             </h2>
             <p className="text-base text-zinc-300">
               No new alerts right now. Notifications about your bookings and messages from Coach Seif will appear here.

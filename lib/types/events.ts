@@ -12,6 +12,8 @@ export type ParticipationStatus =
   | "ATTENDED"
   | "NO_SHOW";
 
+export type EventPaymentStatus = "UNPAID" | "PAID" | "NOT_REQUIRED";
+
 export interface EventSummary {
   id: string;
   title: string;
@@ -22,12 +24,19 @@ export interface EventSummary {
   event_type: EventType;
   is_public: boolean;
   max_participants: number | null;
+  is_free: boolean;
+  price_tnd: number | null;
+  image_url: string | null;
   created_at: string;
 }
 
 export interface EventDetail extends EventSummary {
   created_by: string;
   participant_count: number;
+  /** Active (non-cancelled) participant count, for "spots left". */
+  spots_left: number | null;
+  /** True when this is a private one-on-one coaching event (capacity 1). */
+  is_private_coaching: boolean;
 }
 
 export interface EventParticipant {
@@ -35,10 +44,19 @@ export interface EventParticipant {
   event_id: string;
   member_id: string;
   status: ParticipationStatus;
+  payment_status: EventPaymentStatus;
+  attended: boolean;
   joined_at: string;
   member_name: string | null;
   member_avatar: string | null;
 }
+
+/** Local payment / attendance status label map. */
+export const eventPaymentStatusLabel: Record<EventPaymentStatus, string> = {
+  UNPAID: "Unpaid",
+  PAID: "Paid",
+  NOT_REQUIRED: "Free",
+};
 
 export interface ScheduleItem {
   kind: "booking" | "event";

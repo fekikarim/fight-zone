@@ -1,13 +1,14 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useActionState } from "react";
-import { Check, X, UserMinus } from "lucide-react";
+import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { updateParticipantStatus } from "@/lib/actions/events";
-import { participationStatusLabel } from "@/lib/types/events";
-import type { EventParticipant } from "@/lib/types/events";
+import { updateParticipantPayment } from "@/lib/actions/events";
+import { eventPaymentStatusLabel, participationStatusLabel } from "@/lib/types/events";
+import type { EventParticipant, EventPaymentStatus } from "@/lib/types/events";
 import type { EventActionState } from "@/lib/actions/events";
 
 const statusVariant: Record<string, "default" | "outline" | "neutral" | "solid"> = {
@@ -18,11 +19,19 @@ const statusVariant: Record<string, "default" | "outline" | "neutral" | "solid">
   NO_SHOW: "outline",
 };
 
+const paymentVariant: Record<EventPaymentStatus, "default" | "outline" | "neutral" | "solid"> = {
+  UNPAID: "outline",
+  PAID: "solid",
+  NOT_REQUIRED: "neutral",
+};
+
 interface ParticipantListProps {
   participants: EventParticipant[];
+  /** Restricts payment options: free events expose NOT_REQUIRED only. */
+  isFreeEvent?: boolean;
 }
 
-export function ParticipantList({ participants }: ParticipantListProps) {
+export function ParticipantList({ participants, isFreeEvent = false }: ParticipantListProps) {
   if (participants.length === 0) {
     return (
       <p className="rounded-xl border border-dashed border-ink-border bg-ink-soft/40 px-5 py-10 text-center text-sm text-muted">
@@ -34,19 +43,30 @@ export function ParticipantList({ participants }: ParticipantListProps) {
   return (
     <div className="divide-y divide-ink-border rounded-xl border border-ink-border">
       {participants.map((p) => (
-        <ParticipantRow key={p.id} participant={p} />
+        <ParticipantRow key={p.id} participant={p} isFreeEvent={isFreeEvent} />
       ))}
     </div>
   );
 }
 
-function ParticipantRow({ participant }: { participant: EventParticipant }) {
+function ParticipantRow({
+  participant,
+  isFreeEvent,
+}: {
+  participant: EventParticipant;
+  isFreeEvent: boolean;
+}) {
+  const router = useRouter();
   const [state, formAction, isPending] = useActionState(
-    async (_prev: EventActionState, formData: FormData) => updateParticipantStatus(_prev, formData),
+    async (_prev: EventActionState, formData: FormData) => {
+      const result = await updateParticipantPayment(_prev, formData);
+      if (result.ok) router.refresh();
+      return result;
+    },
     { ok: false } as EventActionState,
   );
 
-  const isTerminal = ["CANCELLED", "ATTENDED", "NO_SHOW"].includes(participant.status);
+  const paymentOptions: EventPaymentStatus[] = isFreeEvent ? ["NOT_REQUIRED"] : ["UNPAID", "PAID"];
 
   return (
     <div className="flex flex-wrap items-center gap-3 px-4 py-3">
@@ -63,52 +83,45 @@ function ParticipantRow({ participant }: { participant: EventParticipant }) {
         {participationStatusLabel[participant.status] ?? participant.status}
       </Badge>
 
-      {!isTerminal ? (
-        <div className="flex gap-1">
-          <form action={formAction}>
-            <input type="hidden" name="participantId" value={participant.id} />
-            <input type="hidden" name="status" value="ATTENDED" />
-            <Button
-              type="submit"
-              variant="ghost"
-              size="icon"
-              disabled={isPending}
-              title="Mark attended"
-              className="h-8 w-8 text-emerald-600 hover:text-emerald-700"
-            >
-              <Check className="h-4 w-4" />
-            </Button>
-          </form>
-          <form action={formAction}>
-            <input type="hidden" name="participantId" value={participant.id} />
-            <input type="hidden" name="status" value="NO_SHOW" />
-            <Button
-              type="submit"
-              variant="ghost"
-              size="icon"
-              disabled={isPending}
-              title="Mark no-show"
-              className="h-8 w-8 text-amber-600 hover:text-amber-700"
-            >
-              <X className="h-4 w-4" />
-            </Button>
-          </form>
-          <form action={formAction}>
-            <input type="hidden" name="participantId" value={participant.id} />
-            <input type="hidden" name="status" value="CANCELLED" />
-            <Button
-              type="submit"
-              variant="ghost"
-              size="icon"
-              disabled={isPending}
-              title="Cancel registration"
-              className="h-8 w-8 text-destructive hover:text-destructive/80"
-            >
-              <UserMinus className="h-4 w-4" />
-            </Button>
-          </form>
-        </div>
-      ) : null}
+      <Badge variant={paymentVariant[participant.payment_status] ?? "neutral"}>
+        {eventPaymentStatusLabel[participant.payment_status] ?? participant.payment_status}
+      </Badge>
+
+      <Badge variant={participant.attended ? "solid" : "outline"}>
+        {participant.attended ? "Attended" : "Not attended"}
+      </Badge>
+
+      <form action={formAction} className="flex flex-wrap items-center gap-2">
+        <input type="hidden" name="participantId" value={participant.id} />
+        <select
+          name="payment_status"
+          defaultValue={participant.payment_status}
+          disabled={isPending || isFreeEvent}
+          className="rounded-lg border border-ink-border bg-ink-soft/40 px-2 py-1.5 text-xs"
+          aria-label="Payment status"
+        >
+          {paymentOptions.map((s) => (
+            <option key={s} value={s}>
+              {eventPaymentStatusLabel[s]}
+            </option>
+          ))}
+        </select>
+        <label className="flex items-center gap-1.5 text-xs text-muted">
+          <input
+            type="checkbox"
+            name="attended"
+            value="true"
+            defaultChecked={participant.attended}
+            disabled={isPending}
+            className="h-4 w-4 rounded border-ink-border"
+          />
+          Attended
+        </label>
+        <Button type="submit" variant="secondary" size="sm" disabled={isPending} className="gap-1">
+          {isPending ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : null}
+          Save
+        </Button>
+      </form>
 
       {state.message && !state.ok ? (
         <p className="w-full text-xs text-destructive" role="alert">

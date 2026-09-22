@@ -18,9 +18,7 @@ export const siteConfig = {
     public: [
       { href: "/", label: "Home" },
       { href: "/about", label: "About" },
-      { href: "/services", label: "Services" },
       { href: "/events", label: "Events" },
-      { href: "/pricing", label: "Pricing" },
       { href: "/news", label: "News" },
       { href: "/contact", label: "Contact" },
     ],

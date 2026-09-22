@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { EventCard, type EventItem } from "@/components/marketing/event-card";
+import { EventCard } from "@/components/marketing/event-card";
 import { getPublicEvents, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function EventsPreview() {
@@ -36,7 +36,7 @@ export async function EventsPreview() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {events.map((event, i) => (
               <Reveal key={event.id} delay={i * 80}>
-                <EventCard event={event as EventItem} />
+                <EventCard event={event} />
               </Reveal>
             ))}
           </div>

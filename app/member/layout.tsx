@@ -2,15 +2,12 @@ import type { ReactNode } from "react";
 import { requireUser } from "@/lib/auth/guards";
 import { getUnreadMessageCount, getUnreadNotificationCount } from "@/lib/supabase/queries";
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { DailyMotivationGate } from "@/components/motivation/daily-motivation-gate";
 
 const memberNav = [
   { href: "/member", label: "Overview" },
-  { href: "/member/sessions", label: "Sessions" },
   { href: "/member/schedule", label: "Schedule" },
-  { href: "/member/bookings", label: "My Bookings" },
   { href: "/member/events", label: "Events" },
-  { href: "/member/subscription", label: "Membership" },
-  { href: "/member/payments", label: "Payments" },
   { href: "/member/reviews", label: "My Reviews" },
   { href: "/member/messages", label: "Messages" },
   { href: "/member/notifications", label: "Notifications" },
@@ -28,9 +25,11 @@ export default async function MemberLayout({ children }: { children: ReactNode }
     if (item.href === "/member/notifications") return { ...item, badge: unreadNotifications };
     return item;
   });
+  const firstName = user.fullName?.split(" ")[0] ?? undefined;
   return (
     <DashboardShell user={user} nav={nav}>
       {children}
+      <DailyMotivationGate userFirstName={firstName} />
     </DashboardShell>
   );
 }

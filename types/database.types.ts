@@ -259,6 +259,95 @@ export type Database = {
           },
         ]
       }
+      daily_motivations: {
+        Row: {
+          category: string
+          created_at: string
+          displayed_at: string | null
+          focus: string | null
+          generated_at: string
+          id: string
+          motivation_date: string
+          quote: string
+          source: string
+          user_id: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          displayed_at?: string | null
+          focus?: string | null
+          generated_at?: string
+          id?: string
+          motivation_date: string
+          quote: string
+          source?: string
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          displayed_at?: string | null
+          focus?: string | null
+          generated_at?: string
+          id?: string
+          motivation_date?: string
+          quote?: string
+          source?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "daily_motivations_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          }
+        ]
+      }
+      email_deliveries: {
+        Row: {
+          attempts: number
+          created_at: string
+          delivery_key: string
+          delivery_type: Database["public"]["Enums"]["email_delivery_type"]
+          error_message: string | null
+          id: string
+          message_id: string | null
+          recipient_email: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["email_delivery_status"]
+          subject: string | null
+        }
+        Insert: {
+          attempts?: number
+          created_at?: string
+          delivery_key: string
+          delivery_type: Database["public"]["Enums"]["email_delivery_type"]
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          recipient_email: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["email_delivery_status"]
+          subject?: string | null
+        }
+        Update: {
+          attempts?: number
+          created_at?: string
+          delivery_key?: string
+          delivery_type?: Database["public"]["Enums"]["email_delivery_type"]
+          error_message?: string | null
+          id?: string
+          message_id?: string | null
+          recipient_email?: string
+          sent_at?: string | null
+          status?: Database["public"]["Enums"]["email_delivery_status"]
+          subject?: string | null
+        }
+        Relationships: []
+      }
       event_participants: {
         Row: {
           event_id: string
@@ -266,6 +355,8 @@ export type Database = {
           joined_at: string
           member_id: string
           status: Database["public"]["Enums"]["participation_status"]
+          payment_status: Database["public"]["Enums"]["event_payment_status"]
+          attended: boolean
         }
         Insert: {
           event_id: string
@@ -273,6 +364,8 @@ export type Database = {
           joined_at?: string
           member_id: string
           status?: Database["public"]["Enums"]["participation_status"]
+          payment_status?: Database["public"]["Enums"]["event_payment_status"]
+          attended?: boolean
         }
         Update: {
           event_id?: string
@@ -280,6 +373,8 @@ export type Database = {
           joined_at?: string
           member_id?: string
           status?: Database["public"]["Enums"]["participation_status"]
+          payment_status?: Database["public"]["Enums"]["event_payment_status"]
+          attended?: boolean
         }
         Relationships: [
           {
@@ -306,9 +401,12 @@ export type Database = {
           end_at: string | null
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
+          image_url: string | null
+          is_free: boolean
           is_public: boolean
           location: string | null
           max_participants: number | null
+          price_tnd: number | null
           start_at: string
           title: string
           updated_at: string
@@ -320,9 +418,12 @@ export type Database = {
           end_at?: string | null
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
+          image_url?: string | null
+          is_free?: boolean
           is_public?: boolean
           location?: string | null
           max_participants?: number | null
+          price_tnd?: number | null
           start_at: string
           title: string
           updated_at?: string
@@ -334,9 +435,12 @@ export type Database = {
           end_at?: string | null
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
+          image_url?: string | null
+          is_free?: boolean
           is_public?: boolean
           location?: string | null
           max_participants?: number | null
+          price_tnd?: number | null
           start_at?: string
           title?: string
           updated_at?: string
@@ -542,6 +646,7 @@ export type Database = {
           skill_level: Database["public"]["Enums"]["skill_level"]
           updated_at: string
           weight: number | null
+          ai_motivation_enabled: boolean
         }
         Insert: {
           address?: string | null
@@ -555,6 +660,7 @@ export type Database = {
           skill_level?: Database["public"]["Enums"]["skill_level"]
           updated_at?: string
           weight?: number | null
+          ai_motivation_enabled?: boolean
         }
         Update: {
           address?: string | null
@@ -568,6 +674,7 @@ export type Database = {
           skill_level?: Database["public"]["Enums"]["skill_level"]
           updated_at?: string
           weight?: number | null
+          ai_motivation_enabled?: boolean
         }
         Relationships: [
           {
@@ -1164,6 +1271,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      claim_email_delivery: {
+        Args: {
+          p_key: string
+          p_recipient: string
+          p_subject: string
+          p_type: Database["public"]["Enums"]["email_delivery_type"]
+        }
+        Returns: Database["public"]["Tables"]["email_deliveries"]["Row"]
+      }
       get_available_coaches: {
         Args: { p_coach_id?: string }
         Returns: {
@@ -1204,6 +1320,50 @@ export type Database = {
           id: string
           sender_id: string
           status: Database["public"]["Enums"]["message_status"]
+        }[]
+      }
+      get_event_fingerprint: {
+        Args: { p_event_id: string }
+        Returns: {
+          created_by: string
+          description: string | null
+          end_at: string | null
+          event_type: Database["public"]["Enums"]["event_type"]
+          id: string
+          is_free: boolean
+          is_public: boolean
+          location: string | null
+          max_participants: number | null
+          participant_count: number
+          price_tnd: number | null
+          start_at: string
+          title: string
+        }[]
+      }
+      get_event_joined_participants: {
+        Args: { p_event_id: string }
+        Returns: {
+          email: string
+          full_name: string | null
+          member_id: string
+        }[]
+      }
+      get_events_in_range: {
+        Args: { p_end: string; p_start: string }
+        Returns: {
+          created_by: string
+          description: string | null
+          end_at: string | null
+          event_type: Database["public"]["Enums"]["event_type"]
+          id: string
+          is_free: boolean
+          is_public: boolean
+          location: string | null
+          max_participants: number | null
+          participant_count: number
+          price_tnd: number | null
+          start_at: string
+          title: string
         }[]
       }
       get_my_conversations: {
@@ -1255,9 +1415,23 @@ export type Database = {
           specialization: string
         }[]
       }
+      get_staff_event_participant_counts: {
+        Args: never
+        Returns: {
+          active_count: number
+          event_id: string
+        }[]
+      }
       get_public_event_participant_count: {
         Args: { p_event_id: string }
         Returns: number
+      }
+      get_public_event_participant_counts: {
+        Args: never
+        Returns: {
+          active_count: number
+          event_id: string
+        }[]
       }
       get_public_transformations: {
         Args: { p_featured?: boolean; p_limit?: number }
@@ -1280,13 +1454,48 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_profile_contact: {
+        Args: { p_profile_id: string }
+        Returns: {
+          email: string
+          full_name: string | null
+          id: string
+        }[]
+      }
+      get_staff_recipients: {
+        Args: never
+        Returns: {
+          email: string
+          full_name: string | null
+          id: string
+        }[]
+      }
       get_unread_message_count: { Args: never; Returns: number }
       has_role: { Args: { role_name: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_admin_or_coach: { Args: never; Returns: boolean }
+      mark_email_delivery_failed: {
+        Args: { p_error_message: string; p_id: string }
+        Returns: undefined
+      }
+      mark_email_delivery_sent: {
+        Args: { p_message_id: string; p_id: string }
+        Returns: undefined
+      }
       mark_conversation_read: {
         Args: { p_conversation_id: string }
         Returns: number
+      }
+      upsert_daily_motivation: {
+        Args: {
+          p_user_id: string
+          p_motivation_date: string
+          p_quote: string
+          p_focus: string | null
+          p_category: string
+          p_source: string
+        }
+        Returns: Database["public"]["Tables"]["daily_motivations"]["Row"]
       }
     }
     Enums: {
@@ -1298,7 +1507,15 @@ export type Database = {
         | "COMPLETED"
         | "CANCELLED"
         | "NO_SHOW"
+      email_delivery_status: "PENDING" | "SENT" | "FAILED"
+      email_delivery_type:
+        | "EVENT_REMINDER_COACH"
+        | "EVENT_REMINDER_MEMBER"
+        | "DAILY_COACH_REPORT"
+        | "EVENT_CANCELLATION_ALERT"
+        | "EVENT_EMPTY_ALERT"
       event_type: "TRAINING" | "WORKSHOP" | "COMPETITION" | "SEMINAR" | "OTHER"
+      event_payment_status: "UNPAID" | "PAID" | "NOT_REQUIRED"
       gender: "MALE" | "FEMALE" | "OTHER"
       media_type: "IMAGE" | "VIDEO" | "DOCUMENT"
       message_status: "UNREAD" | "READ" | "REPLIED"

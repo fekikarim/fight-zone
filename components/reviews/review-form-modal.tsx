@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, useActionState } from "react";
+import { useState, useActionState } from "react";
 import { Star, X, Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { submitReview } from "@/lib/actions/reviews";

@@ -47,6 +47,7 @@ export async function updateMemberProfile(
     weight: formData.get("weight"),
     height: formData.get("height"),
     bio: formData.get("bio"),
+    aiMotivationEnabled: formData.get("aiMotivationEnabled"),
   });
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
@@ -78,6 +79,7 @@ export async function updateMemberProfile(
       weight: data.weight ?? null,
       height: data.height ?? null,
       bio: data.bio ?? null,
+      ai_motivation_enabled: data.aiMotivationEnabled,
     },
     { onConflict: "id" },
   );

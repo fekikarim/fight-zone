@@ -1,5 +1,4 @@
 import type { Metadata } from "next";
-import { MessageSquare } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { getAuthorizedMessagingRecipients, getMyConversations } from "@/lib/supabase/queries";
 import { Container } from "@/components/ui/container";
@@ -52,7 +51,7 @@ export default async function MemberMessagesPage() {
               Stay connected to your corner
             </h2>
             <p className="text-base text-zinc-300">
-              No messages yet. When you book a session, you'll be able to communicate directly with Coach Seif right here.
+              No messages yet. When you book a session, you&apos;ll be able to communicate directly with Coach Seif right here.
             </p>
           </div>
         </div>

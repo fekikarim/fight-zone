@@ -24,13 +24,23 @@ export const createEventSchema = z
     max_participants: z
       .preprocess((v) => (v === "" || v === null ? null : Number(v)), z.number().int().positive().nullable())
       .optional(),
+    is_free: z.boolean().default(true),
+    price_tnd: z
+      .preprocess((v) => (v === "" || v === null ? null : Number(v)), z.number().min(0).nullable())
+      .optional(),
+    image_url: z.string().max(500).nullable().optional(),
   })
-  .refine((data) => {
-    if (data.end_at && data.start_at) {
-      return new Date(data.end_at).getTime() > new Date(data.start_at).getTime();
+  .superRefine((data, ctx) => {
+    if (data.end_at && data.start_at && new Date(data.end_at).getTime() <= new Date(data.start_at).getTime()) {
+      ctx.addIssue({ code: "custom", message: "End date must be after start date.", path: ["end_at"] });
     }
-    return true;
-  }, { message: "End date must be after start date.", path: ["end_at"] });
+    if (data.is_free && data.price_tnd != null) {
+      ctx.addIssue({ code: "custom", message: "Free events cannot have a price.", path: ["price_tnd"] });
+    }
+    if (!data.is_free && (data.price_tnd == null || data.price_tnd < 0)) {
+      ctx.addIssue({ code: "custom", message: "Paid events require a price.", path: ["price_tnd"] });
+    }
+  });
 
 export type CreateEventInput = z.infer<typeof createEventSchema>;
 
@@ -47,13 +57,23 @@ export const updateEventSchema = z
     max_participants: z
       .preprocess((v) => (v === "" || v === null ? null : Number(v)), z.number().int().positive().nullable())
       .optional(),
+    is_free: z.boolean().optional(),
+    price_tnd: z
+      .preprocess((v) => (v === "" || v === null ? null : Number(v)), z.number().min(0).nullable())
+      .optional(),
+    image_url: z.string().max(500).nullable().optional(),
   })
-  .refine((data) => {
-    if (data.end_at && data.start_at) {
-      return new Date(data.end_at).getTime() > new Date(data.start_at).getTime();
+  .superRefine((data, ctx) => {
+    if (data.end_at && data.start_at && new Date(data.end_at).getTime() <= new Date(data.start_at).getTime()) {
+      ctx.addIssue({ code: "custom", message: "End date must be after start date.", path: ["end_at"] });
     }
-    return true;
-  }, { message: "End date must be after start date.", path: ["end_at"] });
+    if (data.is_free === true && data.price_tnd != null) {
+      ctx.addIssue({ code: "custom", message: "Free events cannot have a price.", path: ["price_tnd"] });
+    }
+    if (data.is_free === false && (data.price_tnd == null || data.price_tnd < 0)) {
+      ctx.addIssue({ code: "custom", message: "Paid events require a price.", path: ["price_tnd"] });
+    }
+  });
 
 export type UpdateEventInput = z.infer<typeof updateEventSchema>;
 
@@ -70,6 +90,17 @@ export const cancelEventRegistrationSchema = z.object({
 export const updateParticipantStatusSchema = z.object({
   participantId: UUID,
   status: z.enum(["ATTENDED", "NO_SHOW", "CANCELLED"]),
+});
+
+/** Staff confirms local payment / attendance on a participant. */
+export const updateParticipantPaymentSchema = z.object({
+  participantId: UUID,
+  payment_status: z.enum(["UNPAID", "PAID", "NOT_REQUIRED"]),
+  attended: z.boolean(),
+});
+
+export const deleteEventSchema = z.object({
+  eventId: UUID,
 });
 
 // ── Filters ──────────────────────────────────────────────────

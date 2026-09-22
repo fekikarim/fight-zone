@@ -38,6 +38,75 @@ const nextConfig: NextConfig = {
       },
     ];
   },
+  async redirects() {
+    return [
+      {
+        source: "/pricing",
+        destination: "/events",
+        permanent: true,
+      },
+      {
+        source: "/member/subscription",
+        destination: "/member/events",
+        permanent: true,
+      },
+      {
+        source: "/member/payments",
+        destination: "/member/events",
+        permanent: true,
+      },
+      {
+        source: "/member/sessions",
+        destination: "/member/events",
+        permanent: true,
+      },
+      {
+        source: "/member/sessions/:path*",
+        destination: "/member/events",
+        permanent: true,
+      },
+      {
+        source: "/member/bookings",
+        destination: "/member/events",
+        permanent: true,
+      },
+      {
+        source: "/member/bookings/:path*",
+        destination: "/member/events",
+        permanent: true,
+      },
+      {
+        source: "/admin/memberships",
+        destination: "/admin/events",
+        permanent: true,
+      },
+      {
+        source: "/admin/memberships/:path*",
+        destination: "/admin/events",
+        permanent: true,
+      },
+      {
+        source: "/admin/bookings",
+        destination: "/admin/events",
+        permanent: true,
+      },
+      {
+        source: "/admin/bookings/:path*",
+        destination: "/admin/events",
+        permanent: true,
+      },
+      {
+        source: "/coaches",
+        destination: "/about",
+        permanent: true,
+      },
+      {
+        source: "/coaches/:path*",
+        destination: "/about",
+        permanent: true,
+      },
+    ];
+  },
 };
 
 export default nextConfig;

@@ -99,18 +99,43 @@ export const getActiveSessions = cache(async () => {
   return unwrap("sessions", result);
 });
 
-export const getPublicEvents = cache(async (filters: { type?: string; limit?: number } = {}) => {
-  const supabase = await createClient();
-  let query = supabase
-    .from("events")
-    .select("id, title, description, start_at, end_at, location, event_type")
-    .eq("is_public", true)
-    .gte("start_at", new Date().toISOString())
-    .order("start_at", { ascending: true });
-  if (filters.type) query = query.eq("event_type", filters.type as Database["public"]["Enums"]["event_type"]);
-  if (filters.limit) query = query.limit(filters.limit);
-  return unwrap("events", await query);
-});
+export const getPublicEvents = cache(
+  async (
+    filters: { type?: string; limit?: number } = {},
+  ): Promise<Array<EventDetail>> => {
+    const supabase = await createClient();
+    let query = supabase
+      .from("events")
+      .select(
+        `id, title, description, start_at, end_at, location, event_type,
+         is_public, max_participants, is_free, price_tnd, image_url, created_at, created_by`,
+      )
+      .eq("is_public", true)
+      .gte("start_at", new Date().toISOString())
+      .order("start_at", { ascending: true });
+    if (filters.type) query = query.eq("event_type", filters.type as Database["public"]["Enums"]["event_type"]);
+    if (filters.limit) query = query.limit(filters.limit);
+
+    const { data, error } = await query;
+    if (error) {
+      logError("Query failed: public events", error);
+      return [];
+    }
+
+    // Attach active participant counts (non-cancelled) in one call to avoid N+1.
+    const { data: counts, error: countsError } = await supabase.rpc(
+      "get_public_event_participant_counts",
+    );
+    const countMap = new Map<string, number>();
+    if (!countsError && Array.isArray(counts)) {
+      for (const row of counts) countMap.set(row.event_id, row.active_count);
+    }
+
+    return (data ?? []).map((event) =>
+      buildEventDetail(event, countMap.get(event.id) ?? 0),
+    );
+  },
+);
 
 export const getPublishedNews = cache(async (limit?: number) => {
   const supabase = await createClient();
@@ -236,7 +261,7 @@ export const getMemberProfileData = cache(async () => {
       .maybeSingle(),
     supabase
       .from("member_profiles")
-      .select("id, date_of_birth, gender, address, skill_level, weight, height, bio, is_verified")
+      .select("id, date_of_birth, gender, address, skill_level, weight, height, bio, is_verified, ai_motivation_enabled")
       .eq("id", user.id)
       .maybeSingle(),
   ]);
@@ -779,6 +804,34 @@ export const getNotificationCenter = cache(
 // Events & Schedule (public + member + admin)
 // ---------------------------------------------------------------------------
 
+/** Build an EventDetail from a raw events row + active participant count. */
+function buildEventDetail(
+  event: Omit<Database["public"]["Tables"]["events"]["Row"], "updated_at">,
+  participantCount: number,
+): EventDetail {
+  const max = event.max_participants;
+  const spots_left = max != null ? Math.max(0, max - participantCount) : null;
+  return {
+    id: event.id,
+    title: event.title,
+    description: event.description,
+    start_at: event.start_at,
+    end_at: event.end_at,
+    location: event.location,
+    event_type: event.event_type,
+    is_public: event.is_public,
+    max_participants: event.max_participants,
+    is_free: event.is_free,
+    price_tnd: event.price_tnd,
+    image_url: event.image_url,
+    created_at: event.created_at,
+    created_by: event.created_by,
+    participant_count: participantCount,
+    spots_left,
+    is_private_coaching: !event.is_public && event.max_participants === 1,
+  };
+}
+
 /**
  * Public event detail with participant count.  The count is derived via a
  * lateral join — no separate query needed.  Returns null for non-public
@@ -791,7 +844,8 @@ export const getPublicEventById = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, created_at, created_by`,
+         is_public, max_participants, is_free, price_tnd, image_url,
+         created_at, created_by`,
       )
       .eq("id", eventId)
       .eq("is_public", true)
@@ -813,7 +867,7 @@ export const getPublicEventById = cache(
       logError("Query failed: public event participant count", rpcError, { eventId });
       throw new DatabaseError(undefined, { cause: rpcError });
     }
-    return { ...data, participant_count: (count as number) ?? 0 } as EventDetail;
+    return buildEventDetail(data, (count as number) ?? 0);
   },
 );
 
@@ -831,8 +885,8 @@ export const getStaffEventById = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, created_at, created_by,
-         event_participants!inner ( id )`,
+         is_public, max_participants, is_free, price_tnd, image_url,
+         created_at, created_by`,
       )
       .eq("id", eventId)
       .single();
@@ -843,10 +897,56 @@ export const getStaffEventById = cache(
       throw new DatabaseError(undefined, { cause: error });
     }
 
-    const rows = data.event_participants ?? [];
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars -- discard event_participants from rest spread
-    const { event_participants: _, ...event } = data;
-    return { ...event, participant_count: rows.length } as EventDetail;
+    // Active (non-cancelled) participant count.
+    const { data: count, error: rpcError } = await supabase.rpc(
+      "get_public_event_participant_count",
+      { p_event_id: eventId },
+    );
+    if (rpcError) {
+      logError("Query failed: staff event participant count", rpcError, { eventId });
+      throw new DatabaseError(undefined, { cause: rpcError });
+    }
+    return buildEventDetail(data, (count as number) ?? 0);
+  },
+);
+
+/**
+ * Event detail for a signed-in member, relying on RLS
+ * (`events_select_authenticated` exposes public events and private
+ * capacity-1 coaching events).  Used by the member events detail page so
+ * registered members can view their private coaching events.
+ */
+export const getMemberEventViewById = cache(
+  async (eventId: string): Promise<EventDetail | null> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("events")
+      .select(
+        `id, title, description, start_at, end_at, location, event_type,
+         is_public, max_participants, is_free, price_tnd, image_url,
+         created_at, created_by`,
+      )
+      .eq("id", eventId)
+      .single();
+
+    if (error) {
+      if (error.code === "PGRST116") return null;
+      logError("Query failed: member event detail", error, { eventId });
+      throw new DatabaseError(undefined, { cause: error });
+    }
+
+    const { data: count, error: rpcError } = await supabase.rpc(
+      "get_public_event_participant_count",
+      { p_event_id: eventId },
+    );
+    if (rpcError) {
+      logError("Query failed: member event participant count", rpcError, { eventId });
+      throw new DatabaseError(undefined, { cause: rpcError });
+    }
+    return buildEventDetail(data, (count as number) ?? 0);
   },
 );
 
@@ -898,7 +998,7 @@ export const getMemberRegisteredEvents = cache(
       .from("event_participants")
       .select(
         `event_id, status, joined_at,
-         events ( id, title, description, start_at, end_at, location, event_type, is_public, created_at )`,
+         events ( id, title, description, start_at, end_at, location, event_type, is_public, max_participants, is_free, price_tnd, image_url, created_at, created_by )`,
       )
       .eq("member_id", user.id)
       .order("joined_at", { ascending: false });
@@ -933,7 +1033,7 @@ export const getEventParticipants = cache(
     let query = supabase
       .from("event_participants")
       .select(
-        `id, event_id, member_id, status, joined_at,
+        `id, event_id, member_id, status, payment_status, attended, joined_at,
          member_profiles ( profiles ( full_name, avatar_url ) )`,
       )
       .eq("event_id", eventId)
@@ -959,6 +1059,8 @@ export const getEventParticipants = cache(
       event_id: string;
       member_id: string;
       status: string;
+      payment_status: string;
+      attended: boolean;
       joined_at: string;
       member_profiles: { profiles: { full_name: string | null; avatar_url: string | null } | null } | null;
     }>).map((r) => ({
@@ -966,6 +1068,8 @@ export const getEventParticipants = cache(
       event_id: r.event_id,
       member_id: r.member_id,
       status: r.status as EventParticipant["status"],
+      payment_status: r.payment_status as EventParticipant["payment_status"],
+      attended: r.attended,
       joined_at: r.joined_at,
       member_name: r.member_profiles?.profiles?.full_name ?? null,
       member_avatar: r.member_profiles?.profiles?.avatar_url ?? null,
@@ -985,9 +1089,7 @@ export const getEventParticipants = cache(
  * private events.  Ordered by start_at DESC (upcoming first).
  */
 export const getAdminEvents = cache(
-  async (): Promise<
-    Array<EventSummary & { participant_count: number }>
-  > => {
+  async (): Promise<Array<EventDetail>> => {
     const user = await getCurrentUser();
     if (!user) throw new AuthenticationError();
 
@@ -996,8 +1098,7 @@ export const getAdminEvents = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, created_at,
-         event_participants!inner ( id )`,
+         is_public, max_participants, is_free, price_tnd, image_url, created_at, created_by`,
       )
       .order("start_at", { ascending: false });
 
@@ -1006,18 +1107,62 @@ export const getAdminEvents = cache(
       return [];
     }
 
-    return (data ?? []).map((row) => {
-      const count = row.event_participants?.length ?? 0;
-      // eslint-disable-next-line @typescript-eslint/no-unused-vars -- discard event_participants from rest spread
-      const { event_participants: _, ...event } = row;
-      return { ...event, participant_count: count } as EventSummary & { participant_count: number };
-    });
+    const { data: counts, error: countsError } = await supabase.rpc(
+      "get_public_event_participant_counts",
+    );
+    const countMap = new Map<string, number>();
+    if (!countsError && Array.isArray(counts)) {
+      for (const row of counts) countMap.set(row.event_id, row.active_count);
+    }
+
+    return (data ?? []).map((event) => buildEventDetail(event, countMap.get(event.id) ?? 0));
   },
 );
 
 /**
- * Combined member schedule: upcoming confirmed bookings + registered events,
- * ordered chronologically.  Bounded to 50 items total.
+ * Events overlapping a date range for the admin calendar (staff only).
+ * Includes ALL events (public + private / coaching) with accurate active
+ * participant counts derived from the staff-only aggregate RPC — unlike
+ * `get_public_event_participant_counts`, which only covers public events.
+ * Ordered chronologically (start_at ASC) for calendar rendering.
+ */
+export const getCalendarEvents = cache(
+  async (from: string, to: string): Promise<Array<EventDetail>> => {
+    const user = await getCurrentUser();
+    if (!user) throw new AuthenticationError();
+
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("events")
+      .select(
+        `id, title, description, start_at, end_at, location, event_type,
+         is_public, max_participants, is_free, price_tnd, image_url, created_at, created_by`,
+      )
+      .gte("start_at", from)
+      .lte("start_at", to)
+      .order("start_at", { ascending: true });
+
+    if (error) {
+      logError("Query failed: admin calendar events", error, { from, to });
+      return [];
+    }
+
+    const { data: counts, error: countsError } = await supabase.rpc(
+      "get_staff_event_participant_counts",
+    );
+    const countMap = new Map<string, number>();
+    if (!countsError && Array.isArray(counts)) {
+      for (const row of counts) countMap.set(row.event_id, row.active_count);
+    }
+
+    return (data ?? []).map((event) => buildEventDetail(event, countMap.get(event.id) ?? 0));
+  },
+);
+
+/**
+ * Combined member schedule: registered events, ordered chronologically.
+ * Bounded to 50 items total. (Bookings were consolidated into events in
+ * Update V1 — the schedule is now events-only.)
  */
 export const getMemberSchedule = cache(
   async (): Promise<ScheduleItem[]> => {
@@ -1026,50 +1171,23 @@ export const getMemberSchedule = cache(
 
     const supabase = await createClient();
 
-    const [bookingsResult, eventsResult] = await Promise.all([
-      supabase
-        .from("bookings")
-        .select(
-          `id, scheduled_at, status,
-           sessions ( title )`,
-        )
-        .eq("member_id", user.id)
-        .in("status", ["PENDING", "CONFIRMED"])
-        .gte("scheduled_at", new Date().toISOString())
-        .order("scheduled_at", { ascending: true })
-        .limit(25),
-      supabase
-        .from("event_participants")
-        .select(
-          `event_id, status,
-           events ( id, title, start_at, end_at, location )`,
-        )
-        .eq("member_id", user.id)
-        .in("status", ["JOINED", "INTERESTED"])
-        .order("joined_at", { ascending: false })
-        .limit(25),
-    ]);
+    const { data, error } = await supabase
+      .from("event_participants")
+      .select(
+        `event_id, status,
+         events ( id, title, start_at, end_at, location, is_public, max_participants, is_free, price_tnd, image_url )`,
+      )
+      .eq("member_id", user.id)
+      .in("status", ["JOINED"])
+      .order("created_at", { ascending: false })
+      .limit(50);
 
-    if (bookingsResult.error) {
-      logError("Query failed: member schedule (bookings)", bookingsResult.error);
-      return [];
-    }
-    if (eventsResult.error) {
-      logError("Query failed: member schedule (events)", eventsResult.error);
+    if (error) {
+      logError("Query failed: member schedule", error);
       return [];
     }
 
-    const bookingItems: ScheduleItem[] = (bookingsResult.data ?? []).map((b) => ({
-      kind: "booking" as const,
-      id: b.id,
-      title: b.sessions?.title ?? "Session",
-      start_at: b.scheduled_at,
-      end_at: null,
-      location: null,
-      status: b.status,
-    }));
-
-    const eventItems: ScheduleItem[] = (eventsResult.data ?? [])
+    const eventItems: ScheduleItem[] = (data ?? [])
       .filter((e) => e.events)
       .map((e) => ({
         kind: "event" as const,
@@ -1079,13 +1197,10 @@ export const getMemberSchedule = cache(
         end_at: e.events!.end_at,
         location: e.events!.location,
         status: e.status,
-      }));
+      }))
+      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
 
-    const all = [...bookingItems, ...eventItems].sort(
-      (a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime(),
-    );
-
-    return all.slice(0, 50);
+    return eventItems.slice(0, 50);
   },
 );
 

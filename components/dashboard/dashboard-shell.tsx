@@ -6,12 +6,8 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
-  Dumbbell,
   CalendarClock,
-  BookOpen,
   Trophy,
-  Crown,
-  CreditCard,
   Star,
   MessageSquare,
   Bell,
@@ -19,9 +15,6 @@ import {
   Home,
   Info,
   Newspaper,
-  Users,
-  Wrench,
-  Tag,
   ExternalLink,
   Menu,
   X,
@@ -47,12 +40,8 @@ interface DashboardShellProps {
 
 const MEMBER_NAV_ICONS: Record<string, ReactNode> = {
   "/member": <LayoutDashboard className="h-4 w-4 shrink-0" />,
-  "/member/sessions": <Dumbbell className="h-4 w-4 shrink-0" />,
   "/member/schedule": <CalendarClock className="h-4 w-4 shrink-0" />,
-  "/member/bookings": <BookOpen className="h-4 w-4 shrink-0" />,
   "/member/events": <Trophy className="h-4 w-4 shrink-0" />,
-  "/member/subscription": <Crown className="h-4 w-4 shrink-0" />,
-  "/member/payments": <CreditCard className="h-4 w-4 shrink-0" />,
   "/member/reviews": <Star className="h-4 w-4 shrink-0" />,
   "/member/messages": <MessageSquare className="h-4 w-4 shrink-0" />,
   "/member/notifications": <Bell className="h-4 w-4 shrink-0" />,
@@ -61,8 +50,6 @@ const MEMBER_NAV_ICONS: Record<string, ReactNode> = {
 
 const MOBILE_NAV_PRIMARY = [
   "/member",
-  "/member/sessions",
-  "/member/bookings",
   "/member/messages",
   "/member/notifications",
 ];
@@ -71,10 +58,7 @@ const PUBLIC_NAV = [
   { href: "/", label: "Home", icon: <Home className="h-4 w-4 shrink-0" /> },
   { href: "/about", label: "About", icon: <Info className="h-4 w-4 shrink-0" /> },
   { href: "/news", label: "News", icon: <Newspaper className="h-4 w-4 shrink-0" /> },
-  { href: "/coaches", label: "Coaches", icon: <Users className="h-4 w-4 shrink-0" /> },
-  { href: "/services", label: "Services", icon: <Wrench className="h-4 w-4 shrink-0" /> },
   { href: "/events", label: "Events", icon: <Trophy className="h-4 w-4 shrink-0" /> },
-  { href: "/pricing", label: "Pricing", icon: <Tag className="h-4 w-4 shrink-0" /> },
 ];
 
 function SidebarNavItem({
@@ -125,48 +109,28 @@ function SidebarNavItem({
   );
 }
 
-export function DashboardShell({ user, nav, children }: DashboardShellProps) {
-  const pathname = usePathname();
-  const [drawerOpen, setDrawerOpen] = useState(false);
+function isActiveNav(pathname: string, href: string, nav: DashboardNavLink[]): boolean {
+  if (pathname === href) return true;
+  const rest = pathname.slice(href.length);
+  if (!rest.startsWith("/")) return false;
+  return !nav.some(
+    (other) =>
+      other.href !== href &&
+      other.href.length > href.length &&
+      (pathname === other.href || pathname.startsWith(`${other.href}/`)),
+  );
+}
 
-  // Close drawer on route change
-  useEffect(() => {
-    setDrawerOpen(false);
-  }, [pathname]);
-
-  // Prevent body scroll when drawer is open
-  useEffect(() => {
-    if (drawerOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
-  }, [drawerOpen]);
-
-  const initials = (user.fullName ?? user.email)
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  const isActive = (href: string) => {
-    if (pathname === href) return true;
-    const rest = pathname.slice(href.length);
-    if (!rest.startsWith("/")) return false;
-    return !nav.some(
-      (other) =>
-        other.href !== href &&
-        other.href.length > href.length &&
-        (pathname === other.href || pathname.startsWith(`${other.href}/`)),
-    );
-  };
-
-  const primaryMobileNav = nav.filter((item) => MOBILE_NAV_PRIMARY.includes(item.href));
-
-  const SidebarContent = ({ onLinkClick }: { onLinkClick?: () => void }) => (
+function SidebarContent({
+  nav,
+  pathname,
+  onLinkClick,
+}: {
+  nav: DashboardNavLink[];
+  pathname: string;
+  onLinkClick?: () => void;
+}) {
+  return (
     <div className="flex h-full flex-col">
       {/* Member Nav */}
       <div className="flex-1 overflow-y-auto">
@@ -182,7 +146,7 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
                 label={item.label}
                 badge={item.badge}
                 icon={MEMBER_NAV_ICONS[item.href]}
-                active={isActive(item.href)}
+                active={isActiveNav(pathname, item.href, nav)}
                 onClick={onLinkClick}
               />
             ))}
@@ -226,6 +190,33 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
       </div>
     </div>
   );
+}
+
+export function DashboardShell({ user, nav, children }: DashboardShellProps) {
+  const pathname = usePathname();
+  const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // Prevent body scroll when drawer is open
+  useEffect(() => {
+    if (drawerOpen) {
+      document.body.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "";
+    }
+    return () => { document.body.style.overflow = ""; };
+  }, [drawerOpen]);
+
+  const initials = (user.fullName ?? user.email)
+    .split(" ")
+    .map((part) => part[0])
+    .filter(Boolean)
+    .slice(0, 2)
+    .join("")
+    .toUpperCase();
+
+  const isActive = (href: string) => isActiveNav(pathname, href, nav);
+
+  const primaryMobileNav = nav.filter((item) => MOBILE_NAV_PRIMARY.includes(item.href));
 
   return (
     <div className="flex min-h-dvh flex-col">
@@ -263,12 +254,6 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
                   {item.label}
                 </Link>
               ))}
-              <Link
-                href="/pricing"
-                className="ml-1 flex items-center gap-1.5 rounded-md border border-primary/40 bg-primary/10 px-2.5 py-1.5 text-xs font-semibold text-primary transition-colors hover:bg-primary/20"
-              >
-                Pricing
-              </Link>
             </nav>
 
             <div className="h-5 w-px bg-ink-border hidden lg:block" />
@@ -291,7 +276,7 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
         {/* ─── Desktop Sidebar ─────────────────────────────────────── */}
         <aside className="hidden w-56 shrink-0 border-r border-ink-border bg-ink-soft/20 md:block">
           <div className="sticky top-16 h-[calc(100dvh-4rem)] overflow-y-auto">
-            <SidebarContent />
+            <SidebarContent nav={nav} pathname={pathname} />
           </div>
         </aside>
 
@@ -348,7 +333,7 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
 
             {/* Nav content */}
             <div className="flex-1 overflow-y-auto">
-              <SidebarContent onLinkClick={() => setDrawerOpen(false)} />
+              <SidebarContent nav={nav} pathname={pathname} onLinkClick={() => setDrawerOpen(false)} />
             </div>
 
             {/* Sign out */}

@@ -1,7 +1,9 @@
+import { Suspense } from "react";
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { EventDetailDisplay } from "@/components/events/event-detail";
+import { EventEditForm, DeleteEventButton } from "@/components/events/event-edit-form";
 import { ParticipantList } from "@/components/events/event-participant-list";
 import { getStaffEventById, getEventParticipants } from "@/lib/supabase/queries";
 
@@ -32,11 +34,24 @@ export default async function AdminEventDetailPage({ params, searchParams }: Pro
         showParticipants={true}
       />
 
+      <section className="space-y-4">
+        <h2 className="font-display text-xl font-semibold uppercase tracking-tight">
+          Edit event
+        </h2>
+        <div className="rounded-xl border border-ink-border bg-ink-soft/40 p-6">
+          <Suspense
+            fallback={<p className="text-sm text-muted">Loading editor…</p>}
+          >
+            <EventEditForm event={event} />
+          </Suspense>
+        </div>
+      </section>
+
       <section>
         <h2 className="mb-4 font-display text-xl font-semibold uppercase tracking-tight">
           Participants ({event.participant_count})
         </h2>
-        <ParticipantList participants={participants} />
+        <ParticipantList participants={participants} isFreeEvent={event.is_free} />
         {nextCursor ? (
           <p className="mt-3 text-center text-xs text-muted">
             <a
@@ -47,6 +62,10 @@ export default async function AdminEventDetailPage({ params, searchParams }: Pro
             </a>
           </p>
         ) : null}
+      </section>
+
+      <section>
+        <DeleteEventButton eventId={event.id} />
       </section>
     </Container>
   );

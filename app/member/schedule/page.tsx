@@ -5,7 +5,7 @@ import { getMemberSchedule } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = {
   title: "Schedule",
-  description: "Your upcoming bookings and events at Fight Zone.",
+  description: "Your upcoming registered events at Fight Zone.",
 };
 
 export default async function MemberSchedulePage() {
@@ -18,11 +18,11 @@ export default async function MemberSchedulePage() {
           Schedule
         </h1>
         <p className="text-sm text-muted">
-          All your upcoming bookings and registered events in one place.
+          Your upcoming registered events in one place.
         </p>
       </div>
 
-      <ScheduleList items={items} basePath="/member" />
+      <ScheduleList items={items} />
     </Container>
   );
 }

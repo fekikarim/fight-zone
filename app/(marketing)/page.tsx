@@ -13,10 +13,6 @@ import {
   ServicesPreviewSkeleton,
 } from "@/components/marketing/sections/services-preview";
 import {
-  PricingPreview,
-  PricingPreviewSkeleton,
-} from "@/components/marketing/sections/pricing-preview";
-import {
   PalmaresPreview,
   PalmaresPreviewSkeleton,
 } from "@/components/marketing/sections/palmares-preview";
@@ -54,9 +50,6 @@ export default function HomePage() {
       </Suspense>
       <Suspense fallback={<ServicesPreviewSkeleton />}>
         <ServicesPreview />
-      </Suspense>
-      <Suspense fallback={<PricingPreviewSkeleton />}>
-        <PricingPreview />
       </Suspense>
       <Suspense fallback={<PalmaresPreviewSkeleton />}>
         <PalmaresPreview />

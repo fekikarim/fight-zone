@@ -638,3 +638,52 @@ Stabilization pass covering authorization guards, RLS hardening, error boundarie
 - [ ] Verify error boundaries render fallback UI
 - [ ] Test notification mark-read scoping
 - [ ] Test event create/update requires ADMIN/COACH role
+
+## 23. Daily AI Motivational Coach (Update V4)
+
+A daily, personalized motivational quote dialog for authenticated members.
+See `docs/daily-ai-motivation.md` for the full design + validation notes.
+
+### Architecture
+
+Internal backend integration with a **replaceable provider abstraction**
+(`lib/ai/`). Netlify (serverless) cannot host a persistent local LLM, so:
+
+- **Fallback library** (`lib/ai/fallback-provider.ts`) is the **default** —
+  curated original quotes, deterministic per member per day. Never fails.
+- **Gemini provider** (`lib/ai/gemini-provider.ts`) is optional and only
+  reached when `AI_MOTIVATION_ENABLED=true` + `GEMINI_API_KEY` are set; any
+  failure degrades to the library. The AI is **never a single point of
+  failure**.
+
+### Schema
+
+`daily_motivations`: `UNIQUE(user_id, motivation_date)`; member-owned RLS
+(SELECT own only); **no client INSERT/UPDATE/DELETE** policies; writes
+only via a SECURITY DEFINER `upsert_daily_motivation(...)` (atomic
+`ON CONFLICT ... DO UPDATE ... WHERE quote IS NULL` — Tab A generates, Tab
+B gets the same row). `motivation_date` is the business timezone
+(`Africa/Tunis`), same boundary as the V3 daily report.
+
+### Key files
+
+| Area | Files |
+|------|-------|
+| AI layer | `lib/ai/motivation-provider.ts`, `lib/ai/gemini-provider.ts`, `lib/ai/fallback-provider.ts`, `lib/ai/index.ts` |
+| Validation | `lib/validations/motivation.ts` (Zod: 1–4 sentences, ≤600 chars, allowed categories) |
+| Backend | `lib/actions/motivation.ts` (`getTodayMotivation`, atomic get-or-create) |
+| UI | `components/motivation/daily-motivation-dialog.tsx`, `daily-motivation-gate.tsx`, `today-motivation-card.tsx` |
+| Wiring | `app/member/layout.tsx` (gate, once/day), `app/member/page.tsx` (card) |
+| Migration | `supabase/migrations/20260905000000_update_v4_daily_motivations.sql` |
+
+### Once-per-day semantics
+
+DB uniqueness is the source of truth. `sessionStorage`
+(`fz_motivation_shown:<YYYY-MM-DD>`) is used only as a client optimization
+so the dialog does not re-open on every refresh mid-session; the day key
+rolls over so it re-opens on the next business day.
+
+### Pending migration
+
+`20260905000000_update_v4_daily_motivations.sql` — validated locally +
+dry-run, **NOT PUSHED** (needs owner approval). See `roadmap.md`.

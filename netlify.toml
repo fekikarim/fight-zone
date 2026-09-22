@@ -3,4 +3,10 @@
   publish = ".next"
 
 [build.environment]
-  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SITE_URL"
+  SECRETS_SCAN_OMIT_KEYS = "NEXT_PUBLIC_SUPABASE_URL, NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY, NEXT_PUBLIC_SITE_URL, CRON_SECRET"
+
+# Scheduled Functions (see netlify/functions/*.mjs). Each uses the
+# `@netlify/functions` `schedule()` handler; the schedule is declared in the
+# function file so no per-function config block is required here.
+#   - email-reminders:  */15 * * * *   -> app/api/cron/reminders
+#   - daily-report:     0 7 * * *      -> app/api/cron/daily-report

@@ -12,6 +12,13 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // Local scratch/evidence directories (screenshots, diagnostic JS):
+    ".p15/**",
+    ".p16/**",
+    ".p17/**",
+    ".p18/**",
+    ".p19/**",
+    ".p20/**",
   ]),
 ]);
 

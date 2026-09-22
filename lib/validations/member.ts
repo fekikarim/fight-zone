@@ -69,6 +69,10 @@ export const memberProfileSchema = z.object({
   weight: optionalNumber(400, "Weight must be a number between 0 and 400 kg."),
   height: optionalNumber(250, "Height must be a number between 0 and 250 cm."),
   bio: optionalText(1000, "Bio is too long."),
+  aiMotivationEnabled: z.preprocess(
+    (value) => value === "on" || value === true || value === "true",
+    z.boolean(),
+  ),
 });
 
 export const bookingSchema = z.object({
