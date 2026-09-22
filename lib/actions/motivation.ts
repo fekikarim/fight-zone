@@ -54,17 +54,38 @@ export async function getTodayMotivation(): Promise<MotivationActionState> {
 
     const content = await getDailyMotivation(user.id, new Date(), aiMotivationEnabled);
 
-    const admin = createAdminClient();
-    const { data, error } = await admin.rpc("upsert_daily_motivation", {
-      p_user_id: user.id,
-      p_motivation_date: motivationDate,
-      p_quote: content.quote,
-      p_focus: content.focus ?? null,
-      p_category: content.category,
-      p_source: content.source,
-    });
+    // Persistence is best-effort and must NEVER sink the read path. Even if
+    // the admin client is misconfigured (missing service-role key) or the
+    // RPC fails, the member still receives today's generated quote; the DB
+    // remains the source of truth on the next load.
+    try {
+      const admin = createAdminClient();
+      const { data, error } = await admin.rpc("upsert_daily_motivation", {
+        p_user_id: user.id,
+        p_motivation_date: motivationDate,
+        p_quote: content.quote,
+        p_focus: content.focus ?? null,
+        p_category: content.category,
+        p_source: content.source,
+      });
 
-    if (error || !data) {
+      if (error || !data) {
+        logDegradation("Could not persist daily motivation; returning generated quote", error, {
+          domain: "motivation",
+          op: "getTodayMotivation",
+          userId: user.id,
+        });
+        return {
+          ok: true,
+          quote: content.quote,
+          focus: content.focus ?? null,
+          category: content.category,
+          source: content.source,
+        };
+      }
+
+      return toState(data);
+    } catch (error) {
       logDegradation("Could not persist daily motivation; returning generated quote", error, {
         domain: "motivation",
         op: "getTodayMotivation",
@@ -78,8 +99,6 @@ export async function getTodayMotivation(): Promise<MotivationActionState> {
         source: content.source,
       };
     }
-
-    return toState(data);
   } catch (error) {
     logError("Failed to retrieve daily motivation", error, {
       domain: "motivation",

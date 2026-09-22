@@ -145,7 +145,15 @@ export const getPublishedNews = cache(async (limit?: number) => {
     .eq("is_published", true)
     .order("published_at", { ascending: false });
   if (limit) query = query.limit(limit);
-  return unwrap("news", await query);
+  const { data, error } = await query;
+  if (error) {
+    // Display query: degrade to the empty state (the pages already render
+    // one) instead of crashing the whole page on a transient failure —
+    // same contract as getPublicEvents. Failures stay observable via logs.
+    logError("Query failed: published news", error);
+    return [];
+  }
+  return data ?? [];
 });
 
 export const getNewsBySlug = cache(async (slug: string) => {

@@ -19,9 +19,11 @@ import type { Database } from "@/types/database.types";
  *     email-processing step needs RLS-bypassing admin access.
  *
  * This is the ONE place where the service_role key is used, and it is
- * used ONLY for trusted, server-side email-automation reads/writes:
+ * used ONLY for trusted, server-side automation:
  *   * reading events, participation, profiles for building emails;
- *   * INSERT/UPDATE on the `email_deliveries` idempotency log.
+ *   * INSERT/UPDATE on the `email_deliveries` idempotency log;
+ *   * the atomic `upsert_daily_motivation` persistence behind Update V4
+ *     (the member always receives a quote even if this step fails).
  * It is NEVER exposed to the browser, NEVER used to serve user-facing
  * data, and NEVER used to mutate business data on a user's behalf.
  * The key is never logged and never leaves the server.
