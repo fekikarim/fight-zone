@@ -13,7 +13,7 @@ import {
   parseDateKey,
   startOfDay,
 } from "@/lib/calendar";
-import { eventTypeLabel, getEventLifecycleStatus } from "@/lib/types/events";
+import { eventTypeLabel, getEventHref, getEventLifecycleStatus } from "@/lib/types/events";
 import { formatDate } from "@/lib/utils";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -34,7 +34,6 @@ interface CalendarClientProps {
   dateKey: string;
   rangeLabel: string;
   events: EventDetail[];
-  getEventHref: (role: "staff", eventId: string) => string;
 }
 
 export function CalendarClient({
@@ -42,7 +41,6 @@ export function CalendarClient({
   dateKey,
   rangeLabel,
   events,
-  getEventHref,
 }: CalendarClientProps) {
   const router = useRouter();
   const pathname = usePathname();

@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
 import { getCalendarEvents } from "@/lib/supabase/queries";
-import { getEventHref } from "@/lib/types/events";
 import {
   toDateKey,
   startOfWeek,
@@ -83,7 +82,6 @@ export default async function AdminCalendarPage({ searchParams }: AdminCalendarP
       dateKey={toDateKey(anchor)}
       rangeLabel={rangeLabel}
       events={eventProps}
-      getEventHref={getEventHref}
     />
   );
 }
