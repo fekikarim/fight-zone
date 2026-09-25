@@ -2,12 +2,13 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays } from "lucide-react";
+import { ArrowLeft, CalendarDays, User } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Separator } from "@/components/ui/separator";
-import { PlaceholderImage } from "@/components/ui/placeholder-image";
+import { DEFAULT_NEWS_IMAGE } from "@/components/marketing/news-card";
 import { getNewsBySlug, getPublishedNews } from "@/lib/supabase/queries";
 import { formatDate } from "@/lib/utils";
+import { newsCategoryLabel } from "@/lib/types/content";
 import { NotFoundError } from "@/lib/errors";
 
 interface NewsArticlePageProps {
@@ -23,7 +24,7 @@ export async function generateMetadata({
     if (!article) return { title: "Article not found | Fight Zone" };
     return {
       title: article.title,
-      description: article.content?.slice(0, 160),
+      description: article.excerpt ?? undefined,
     };
   } catch (error) {
     if (error instanceof NotFoundError) {
@@ -53,12 +54,23 @@ export default async function NewsArticlePage({ params }: NewsArticlePageProps) 
             Back to news
           </Link>
           <div className="max-w-3xl">
-            {article.published_at ? (
-              <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
-                <CalendarDays className="h-4 w-4" />
-                {formatDate(article.published_at)}
+            <div className="flex flex-wrap items-center gap-3">
+              <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
+                {newsCategoryLabel[article.category] ?? article.category}
               </span>
-            ) : null}
+              {article.published_at ? (
+                <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
+                  <CalendarDays className="h-4 w-4" />
+                  {formatDate(article.published_at)}
+                </span>
+              ) : null}
+              {article.author_name ? (
+                <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted">
+                  <User className="h-4 w-4" />
+                  {article.author_name}
+                </span>
+              ) : null}
+            </div>
             <h1 className="mt-4 font-display text-3xl font-bold uppercase leading-tight tracking-tight text-balance sm:text-5xl">
               {article.title}
             </h1>
@@ -68,20 +80,16 @@ export default async function NewsArticlePage({ params }: NewsArticlePageProps) 
 
       <article className="py-10 lg:py-14">
         <Container className="max-w-4xl">
-          {article.cover_image_url ? (
-            <div className="relative mb-10 aspect-[16/8] overflow-hidden rounded-2xl border border-ink-border">
-              <Image
-                src={article.cover_image_url}
-                alt={article.title}
-                fill
-                sizes="(min-width: 1024px) 896px, 100vw"
-                className="object-cover"
-                priority
-              />
-            </div>
-          ) : (
-            <PlaceholderImage label="Article image" className="mb-10 aspect-[16/8]" />
-          )}
+          <div className="relative mb-10 aspect-[16/8] overflow-hidden rounded-2xl border border-ink-border">
+            <Image
+              src={article.cover_image_url || DEFAULT_NEWS_IMAGE}
+              alt={article.title}
+              fill
+              sizes="(min-width: 1024px) 896px, 100vw"
+              className="object-cover"
+              priority
+            />
+          </div>
 
           {article.content ? (
             <div className="prose prose-invert max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-p:text-muted prose-p:leading-relaxed prose-a:text-primary hover:prose-a:text-primary">

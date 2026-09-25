@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
-import { NewsCard, type NewsItem } from "@/components/marketing/news-card";
+import { NewsCard } from "@/components/marketing/news-card";
 import { getPublishedNews, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function NewsPreview() {
@@ -36,7 +36,7 @@ export async function NewsPreview() {
           <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {articles.map((article, i) => (
               <Reveal key={article.id} delay={i * 80}>
-                <NewsCard article={article as NewsItem} />
+                <NewsCard article={article} />
               </Reveal>
             ))}
           </div>

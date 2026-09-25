@@ -48,6 +48,11 @@ function revalidateEvents(eventId?: string) {
  * Registers the current member for an event.  The database trigger
  * enforces capacity and deadline — the action merely inserts the row
  * with member_id derived from the session.
+ *
+ * Re-join: cancelling keeps the row (UNIQUE guard), so a duplicate-key
+ * error may mean the member cancelled before. In that case we reactivate
+ * their own CANCELLED row — the transition trigger re-checks deadline
+ * and capacity under the event lock, so this stays race-safe.
  */
 export async function registerForEvent(
   _prev: EventActionState,
@@ -67,41 +72,89 @@ export async function registerForEvent(
     status: "JOINED",
   });
 
-  if (error) {
-    logError("Failed to register for event", error, { eventId: parsed.data.eventId });
-    if (error.code === "23505") {
-      return {
-        ok: false,
-        code: "already",
-        message: "You are already registered for this event.",
-      };
-    }
-    if (error.code === "42501" || error.message?.includes("fully booked")) {
-      return { ok: false, code: "full", message: "This event is fully booked." };
-    }
-    if (error.message?.includes("already started")) {
-      return {
-        ok: false,
-        code: "closed",
-        message: "Registration is closed — this event has already started.",
-      };
-    }
-    if (error.message?.includes("not available")) {
-      return {
-        ok: false,
-        code: "not_available",
-        message: "Registration is not available for this event.",
-      };
-    }
+  if (!error) {
+    revalidateEvents(parsed.data.eventId);
+    return { ok: true, code: "ok", eventId: parsed.data.eventId };
+  }
+
+  // Duplicate row: it can only be the member's own (UNIQUE includes
+  // member_id = session user). A CANCELLED own row means "re-join".
+  if (error.code === "23505") {
+    return rejoinEvent(supabase, parsed.data.eventId, user.id);
+  }
+
+  logError("Failed to register for event", error, { eventId: parsed.data.eventId });
+  return mapRegistrationError(error);
+}
+
+/** Reactivates the member's own CANCELLED registration, if one exists. */
+async function rejoinEvent(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  eventId: string,
+  userId: string,
+): Promise<EventActionState> {
+  const { data: own, error: fetchError } = await supabase
+    .from("event_participants")
+    .select("status")
+    .eq("event_id", eventId)
+    .eq("member_id", userId)
+    .maybeSingle();
+
+  if (fetchError || !own) {
     return {
       ok: false,
-      code: "error",
-      message: "We could not complete your registration. Please try again.",
+      code: "already",
+      message: "You are already registered for this event.",
+    };
+  }
+  if (own.status !== "CANCELLED") {
+    return {
+      ok: false,
+      code: "already",
+      message: "You are already registered for this event.",
     };
   }
 
-  revalidateEvents(parsed.data.eventId);
-  return { ok: true, code: "ok", eventId: parsed.data.eventId };
+  const { error } = await supabase
+    .from("event_participants")
+    .update({ status: "JOINED" })
+    .eq("event_id", eventId)
+    .eq("member_id", userId)
+    .eq("status", "CANCELLED");
+
+  if (error) {
+    logError("Failed to re-join event", error, { eventId });
+    return mapRegistrationError(error);
+  }
+
+  revalidateEvents(eventId);
+  return { ok: true, code: "ok", eventId };
+}
+
+/** Maps registration/re-join database errors to UI outcomes. */
+function mapRegistrationError(error: { code?: string; message?: string }): EventActionState {
+  if (error.code === "42501" || error.message?.includes("fully booked")) {
+    return { ok: false, code: "full", message: "This event is fully booked." };
+  }
+  if (error.message?.includes("already started")) {
+    return {
+      ok: false,
+      code: "closed",
+      message: "Registration is closed — this event has already started.",
+    };
+  }
+  if (error.message?.includes("not available")) {
+    return {
+      ok: false,
+      code: "not_available",
+      message: "Registration is not available for this event.",
+    };
+  }
+  return {
+    ok: false,
+    code: "error",
+    message: "We could not complete your registration. Please try again.",
+  };
 }
 
 /**
@@ -157,6 +210,7 @@ export async function createEvent(
     title: formData.get("title"),
     description: formData.get("description") || undefined,
     event_type: formData.get("event_type"),
+    event_format: formData.get("event_format") || undefined,
     start_at: formData.get("start_at"),
     end_at: formData.get("end_at") || undefined,
     location: formData.get("location") || undefined,
@@ -175,17 +229,22 @@ export async function createEvent(
   const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
+  // Individual coaching is always private, capacity 1 — enforced here so
+  // no client can create a "private" individual event with open capacity.
+  const isIndividual = parsed.data.event_format === "INDIVIDUAL";
+
   const { data, error } = await supabase
     .from("events")
     .insert({
       title: parsed.data.title,
       description: parsed.data.description,
       event_type: parsed.data.event_type,
+      event_format: parsed.data.event_format,
       start_at: parsed.data.start_at,
       end_at: parsed.data.end_at,
       location: parsed.data.location,
-      is_public: parsed.data.is_public,
-      max_participants: parsed.data.max_participants ?? null,
+      is_public: isIndividual ? false : parsed.data.is_public,
+      max_participants: isIndividual ? 1 : parsed.data.max_participants,
       is_free: parsed.data.is_free,
       price_tnd: parsed.data.is_free ? null : parsed.data.price_tnd ?? null,
       image_url: parsed.data.image_url ?? null,
@@ -215,6 +274,7 @@ export async function updateEvent(
     title: formData.get("title") || undefined,
     description: formData.get("description") || undefined,
     event_type: formData.get("event_type") || undefined,
+    event_format: formData.get("event_format") || undefined,
     start_at: formData.get("start_at") || undefined,
     end_at: formData.get("end_at") || undefined,
     location: formData.get("location") || undefined,
@@ -230,9 +290,14 @@ export async function updateEvent(
     return { ok: false, message: msg };
   }
 
-  const { is_free, price_tnd, eventId, ...rest } = parsed.data;
+  const { is_free, price_tnd, eventId, event_format, ...rest } = parsed.data;
+  const forcingIndividual = event_format === "INDIVIDUAL";
   const updates = {
     ...rest,
+    ...(event_format !== undefined && { event_format }),
+    // Switching to individual coaching re-applies the private/capacity-1
+    // invariant regardless of what the form submitted.
+    ...(forcingIndividual && { is_public: false, max_participants: 1 }),
     is_free,
     price_tnd: is_free ? null : price_tnd ?? null,
   };
@@ -246,6 +311,12 @@ export async function updateEvent(
 
   if (error) {
     logError("Failed to update event", error, { eventId });
+    if (error.message?.includes("active participants")) {
+      return {
+        ok: false,
+        message: "Cannot reduce capacity below the current number of registered participants.",
+      };
+    }
     return { ok: false, message: "We could not update the event. Please try again." };
   }
 

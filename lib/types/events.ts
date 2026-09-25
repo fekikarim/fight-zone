@@ -5,6 +5,9 @@
 
 export type EventType = "TRAINING" | "WORKSHOP" | "COMPETITION" | "SEMINAR" | "OTHER";
 
+/** Individual (one-on-one coaching) vs collective (group) event format. */
+export type EventFormat = "INDIVIDUAL" | "COLLECTIVE";
+
 export type ParticipationStatus =
   | "JOINED"
   | "INTERESTED"
@@ -22,6 +25,7 @@ export interface EventSummary {
   end_at: string | null;
   location: string | null;
   event_type: EventType;
+  event_format: EventFormat;
   is_public: boolean;
   max_participants: number | null;
   is_free: boolean;
@@ -38,6 +42,10 @@ export interface EventDetail extends EventSummary {
   /** True when this is a private one-on-one coaching event (capacity 1). */
   is_private_coaching: boolean;
 }
+
+/** Cash-payment notice shown on every paid event (no online payments). */
+export const CASH_PAYMENT_NOTICE =
+  "Paid in cash with the coach before the event starts.";
 
 export interface EventParticipant {
   id: string;

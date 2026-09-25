@@ -10,7 +10,7 @@ export type Database = {
   // Allows to automatically instantiate createClient with right options
   // instead of createClient<Database, { PostgrestVersion: 'XX' }>(URL, KEY)
   __InternalSupabase: {
-    PostgrestVersion: "14.15"
+    PostgrestVersion: "14.5"
   }
   graphql_public: {
     Tables: {
@@ -262,7 +262,6 @@ export type Database = {
       daily_motivations: {
         Row: {
           category: string
-          created_at: string
           displayed_at: string | null
           focus: string | null
           generated_at: string
@@ -274,7 +273,6 @@ export type Database = {
         }
         Insert: {
           category?: string
-          created_at?: string
           displayed_at?: string | null
           focus?: string | null
           generated_at?: string
@@ -286,7 +284,6 @@ export type Database = {
         }
         Update: {
           category?: string
-          created_at?: string
           displayed_at?: string | null
           focus?: string | null
           generated_at?: string
@@ -303,7 +300,7 @@ export type Database = {
             isOneToOne: false
             referencedRelation: "profiles"
             referencedColumns: ["id"]
-          }
+          },
         ]
       }
       email_deliveries: {
@@ -350,31 +347,31 @@ export type Database = {
       }
       event_participants: {
         Row: {
+          attended: boolean
           event_id: string
           id: string
           joined_at: string
           member_id: string
-          status: Database["public"]["Enums"]["participation_status"]
           payment_status: Database["public"]["Enums"]["event_payment_status"]
-          attended: boolean
+          status: Database["public"]["Enums"]["participation_status"]
         }
         Insert: {
+          attended?: boolean
           event_id: string
           id?: string
           joined_at?: string
           member_id: string
-          status?: Database["public"]["Enums"]["participation_status"]
           payment_status?: Database["public"]["Enums"]["event_payment_status"]
-          attended?: boolean
+          status?: Database["public"]["Enums"]["participation_status"]
         }
         Update: {
+          attended?: boolean
           event_id?: string
           id?: string
           joined_at?: string
           member_id?: string
-          status?: Database["public"]["Enums"]["participation_status"]
           payment_status?: Database["public"]["Enums"]["event_payment_status"]
-          attended?: boolean
+          status?: Database["public"]["Enums"]["participation_status"]
         }
         Relationships: [
           {
@@ -399,6 +396,7 @@ export type Database = {
           created_by: string
           description: string | null
           end_at: string | null
+          event_format: string
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           image_url: string | null
@@ -416,6 +414,7 @@ export type Database = {
           created_by: string
           description?: string | null
           end_at?: string | null
+          event_format?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           image_url?: string | null
@@ -433,6 +432,7 @@ export type Database = {
           created_by?: string
           description?: string | null
           end_at?: string | null
+          event_format?: string
           event_type?: Database["public"]["Enums"]["event_type"]
           id?: string
           image_url?: string | null
@@ -636,6 +636,7 @@ export type Database = {
       member_profiles: {
         Row: {
           address: string | null
+          ai_motivation_enabled: boolean
           bio: string | null
           created_at: string
           date_of_birth: string | null
@@ -646,10 +647,10 @@ export type Database = {
           skill_level: Database["public"]["Enums"]["skill_level"]
           updated_at: string
           weight: number | null
-          ai_motivation_enabled: boolean
         }
         Insert: {
           address?: string | null
+          ai_motivation_enabled?: boolean
           bio?: string | null
           created_at?: string
           date_of_birth?: string | null
@@ -660,10 +661,10 @@ export type Database = {
           skill_level?: Database["public"]["Enums"]["skill_level"]
           updated_at?: string
           weight?: number | null
-          ai_motivation_enabled?: boolean
         }
         Update: {
           address?: string | null
+          ai_motivation_enabled?: boolean
           bio?: string | null
           created_at?: string
           date_of_birth?: string | null
@@ -674,7 +675,6 @@ export type Database = {
           skill_level?: Database["public"]["Enums"]["skill_level"]
           updated_at?: string
           weight?: number | null
-          ai_motivation_enabled?: boolean
         }
         Relationships: [
           {
@@ -844,10 +844,12 @@ export type Database = {
       }
       news: {
         Row: {
+          category: string
           content: string | null
           cover_image_url: string | null
           created_at: string
           created_by: string
+          excerpt: string | null
           id: string
           is_published: boolean
           published_at: string | null
@@ -856,10 +858,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          category?: string
           content?: string | null
           cover_image_url?: string | null
           created_at?: string
           created_by: string
+          excerpt?: string | null
           id?: string
           is_published?: boolean
           published_at?: string | null
@@ -868,10 +872,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          category?: string
           content?: string | null
           cover_image_url?: string | null
           created_at?: string
           created_by?: string
+          excerpt?: string | null
           id?: string
           is_published?: boolean
           published_at?: string | null
@@ -1278,7 +1284,25 @@ export type Database = {
           p_subject: string
           p_type: Database["public"]["Enums"]["email_delivery_type"]
         }
-        Returns: Database["public"]["Tables"]["email_deliveries"]["Row"]
+        Returns: {
+          attempts: number
+          created_at: string
+          delivery_key: string
+          delivery_type: Database["public"]["Enums"]["email_delivery_type"]
+          error_message: string | null
+          id: string
+          message_id: string | null
+          recipient_email: string
+          sent_at: string | null
+          status: Database["public"]["Enums"]["email_delivery_status"]
+          subject: string | null
+        }
+        SetofOptions: {
+          from: "*"
+          to: "email_deliveries"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
       get_available_coaches: {
         Args: { p_coach_id?: string }
@@ -1326,16 +1350,16 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: {
           created_by: string
-          description: string | null
-          end_at: string | null
+          description: string
+          end_at: string
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           is_free: boolean
           is_public: boolean
-          location: string | null
-          max_participants: number | null
+          location: string
+          max_participants: number
           participant_count: number
-          price_tnd: number | null
+          price_tnd: number
           start_at: string
           title: string
         }[]
@@ -1344,7 +1368,7 @@ export type Database = {
         Args: { p_event_id: string }
         Returns: {
           email: string
-          full_name: string | null
+          full_name: string
           member_id: string
         }[]
       }
@@ -1352,16 +1376,16 @@ export type Database = {
         Args: { p_end: string; p_start: string }
         Returns: {
           created_by: string
-          description: string | null
-          end_at: string | null
+          description: string
+          end_at: string
           event_type: Database["public"]["Enums"]["event_type"]
           id: string
           is_free: boolean
           is_public: boolean
-          location: string | null
-          max_participants: number | null
+          location: string
+          max_participants: number
           participant_count: number
-          price_tnd: number | null
+          price_tnd: number
           start_at: string
           title: string
         }[]
@@ -1377,6 +1401,14 @@ export type Database = {
           other_full_name: string
           other_participant_id: string
           unread_count: number
+        }[]
+      }
+      get_profile_contact: {
+        Args: { p_profile_id: string }
+        Returns: {
+          email: string
+          full_name: string
+          id: string
         }[]
       }
       get_public_approved_reviews: {
@@ -1403,6 +1435,13 @@ export type Database = {
           updated_at: string
         }[]
       }
+      get_public_author_names: {
+        Args: { p_author_ids: string[] }
+        Returns: {
+          full_name: string
+          id: string
+        }[]
+      }
       get_public_coach: {
         Args: never
         Returns: {
@@ -1413,13 +1452,6 @@ export type Database = {
           id: string
           is_available: boolean
           specialization: string
-        }[]
-      }
-      get_staff_event_participant_counts: {
-        Args: never
-        Returns: {
-          active_count: number
-          event_id: string
         }[]
       }
       get_public_event_participant_count: {
@@ -1454,19 +1486,18 @@ export type Database = {
           updated_at: string
         }[]
       }
-      get_profile_contact: {
-        Args: { p_profile_id: string }
+      get_staff_event_participant_counts: {
+        Args: never
         Returns: {
-          email: string
-          full_name: string | null
-          id: string
+          active_count: number
+          event_id: string
         }[]
       }
       get_staff_recipients: {
         Args: never
         Returns: {
           email: string
-          full_name: string | null
+          full_name: string
           id: string
         }[]
       }
@@ -1474,28 +1505,44 @@ export type Database = {
       has_role: { Args: { role_name: string }; Returns: boolean }
       is_admin: { Args: never; Returns: boolean }
       is_admin_or_coach: { Args: never; Returns: boolean }
+      mark_conversation_read: {
+        Args: { p_conversation_id: string }
+        Returns: number
+      }
       mark_email_delivery_failed: {
         Args: { p_error_message: string; p_id: string }
         Returns: undefined
       }
       mark_email_delivery_sent: {
-        Args: { p_message_id: string; p_id: string }
+        Args: { p_id: string; p_message_id: string }
         Returns: undefined
-      }
-      mark_conversation_read: {
-        Args: { p_conversation_id: string }
-        Returns: number
       }
       upsert_daily_motivation: {
         Args: {
-          p_user_id: string
+          p_category: string
+          p_focus: string
           p_motivation_date: string
           p_quote: string
-          p_focus: string | null
-          p_category: string
           p_source: string
+          p_user_id: string
         }
-        Returns: Database["public"]["Tables"]["daily_motivations"]["Row"]
+        Returns: {
+          category: string
+          displayed_at: string | null
+          focus: string | null
+          generated_at: string
+          id: string
+          motivation_date: string
+          quote: string
+          source: string
+          user_id: string
+        }
+        SetofOptions: {
+          from: "*"
+          to: "daily_motivations"
+          isOneToOne: true
+          isSetofReturn: false
+        }
       }
     }
     Enums: {
@@ -1514,8 +1561,8 @@ export type Database = {
         | "DAILY_COACH_REPORT"
         | "EVENT_CANCELLATION_ALERT"
         | "EVENT_EMPTY_ALERT"
-      event_type: "TRAINING" | "WORKSHOP" | "COMPETITION" | "SEMINAR" | "OTHER"
       event_payment_status: "UNPAID" | "PAID" | "NOT_REQUIRED"
+      event_type: "TRAINING" | "WORKSHOP" | "COMPETITION" | "SEMINAR" | "OTHER"
       gender: "MALE" | "FEMALE" | "OTHER"
       media_type: "IMAGE" | "VIDEO" | "DOCUMENT"
       message_status: "UNREAD" | "READ" | "REPLIED"
@@ -1561,12 +1608,12 @@ export type Tables<
   DefaultSchemaTableNameOrOptions extends
     | keyof (DefaultSchema["Tables"] & DefaultSchema["Views"])
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof (DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"] &
         DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Views"])
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1590,11 +1637,11 @@ export type TablesInsert<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1615,11 +1662,11 @@ export type TablesUpdate<
   DefaultSchemaTableNameOrOptions extends
     | keyof DefaultSchema["Tables"]
     | { schema: keyof DatabaseWithoutInternals },
-  TableName extends DefaultSchemaTableNameOrOptions extends {
+  TableName extends (DefaultSchemaTableNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaTableNameOrOptions["schema"]]["Tables"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaTableNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1640,11 +1687,11 @@ export type Enums<
   DefaultSchemaEnumNameOrOptions extends
     | keyof DefaultSchema["Enums"]
     | { schema: keyof DatabaseWithoutInternals },
-  EnumName extends DefaultSchemaEnumNameOrOptions extends {
+  EnumName extends (DefaultSchemaEnumNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[DefaultSchemaEnumNameOrOptions["schema"]]["Enums"]
-    : never = never,
+    : never) = never,
 > = DefaultSchemaEnumNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1657,11 +1704,11 @@ export type CompositeTypes<
   PublicCompositeTypeNameOrOptions extends
     | keyof DefaultSchema["CompositeTypes"]
     | { schema: keyof DatabaseWithoutInternals },
-  CompositeTypeName extends PublicCompositeTypeNameOrOptions extends {
+  CompositeTypeName extends (PublicCompositeTypeNameOrOptions extends {
     schema: keyof DatabaseWithoutInternals
   }
     ? keyof DatabaseWithoutInternals[PublicCompositeTypeNameOrOptions["schema"]]["CompositeTypes"]
-    : never = never,
+    : never) = never,
 > = PublicCompositeTypeNameOrOptions extends {
   schema: keyof DatabaseWithoutInternals
 }
@@ -1685,6 +1732,15 @@ export const Constants = {
         "CANCELLED",
         "NO_SHOW",
       ],
+      email_delivery_status: ["PENDING", "SENT", "FAILED"],
+      email_delivery_type: [
+        "EVENT_REMINDER_COACH",
+        "EVENT_REMINDER_MEMBER",
+        "DAILY_COACH_REPORT",
+        "EVENT_CANCELLATION_ALERT",
+        "EVENT_EMPTY_ALERT",
+      ],
+      event_payment_status: ["UNPAID", "PAID", "NOT_REQUIRED"],
       event_type: ["TRAINING", "WORKSHOP", "COMPETITION", "SEMINAR", "OTHER"],
       gender: ["MALE", "FEMALE", "OTHER"],
       media_type: ["IMAGE", "VIDEO", "DOCUMENT"],

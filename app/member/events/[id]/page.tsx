@@ -3,6 +3,7 @@ import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { EventDetailDisplay } from "@/components/events/event-detail";
 import { EventRegisterButton } from "@/components/events/event-register-button";
+import { EventParticipantsRealtime } from "@/components/events/event-participants-realtime";
 import {
   getMemberEventViewById,
   getMemberEventRegistration,
@@ -26,7 +27,10 @@ export default async function MemberEventDetailPage({ params }: Props) {
   if (!event) notFound();
 
   const registration = await getMemberEventRegistration(id);
-  const isRegistered = registration !== null;
+  // Only an active registration counts as "registered" — a CANCELLED row
+  // means the member left and may join again (re-join path).
+  const isRegistered = registration !== null && registration.status !== "CANCELLED";
+  const isRejoin = registration?.status === "CANCELLED";
   const isFull = event.spots_left !== null && event.spots_left === 0;
   const isPast = new Date(event.end_at ?? event.start_at) < new Date();
 
@@ -38,21 +42,18 @@ export default async function MemberEventDetailPage({ params }: Props) {
           <EventRegisterButton
             eventId={id}
             isRegistered={isRegistered}
+            isRejoin={isRejoin}
             isFull={isFull}
             isPast={isPast}
           />
         }
       />
-      {!event.is_free ? (
+      <EventParticipantsRealtime eventId={id} />
+      {registration ? (
         <div className="flex flex-col gap-1 rounded-xl border border-ink-border bg-ink-soft/40 px-5 py-4">
-          <p className="text-sm text-muted">
-            Fee paid locally — staff track payment on site.
+          <p className="text-xs text-muted">
+            Your status: {participationStatusLabel[registration.status] ?? registration.status}
           </p>
-          {registration ? (
-            <p className="text-xs text-muted">
-              Status: {participationStatusLabel[registration.status] ?? registration.status}
-            </p>
-          ) : null}
         </div>
       ) : null}
     </Container>

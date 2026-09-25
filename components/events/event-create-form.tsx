@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createEvent } from "@/lib/actions/events";
 import type { EventActionState } from "@/lib/actions/events";
+import { ImageUploadField } from "@/components/ui/image-upload-field";
 import type { EventType } from "@/lib/types/events";
 
 const EVENT_TYPES: Array<{ value: EventType; label: string }> = [
@@ -30,11 +31,11 @@ export function EventCreateForm() {
     { ok: false } as EventActionState,
   );
 
-  const [format, setFormat] = useState<"standard" | "private">("standard");
+  const [format, setFormat] = useState<"COLLECTIVE" | "INDIVIDUAL">("COLLECTIVE");
   const [visibility, setVisibility] = useState<"public" | "private">("public");
   const [isFree, setIsFree] = useState(true);
 
-  const privateCoaching = format === "private";
+  const privateCoaching = format === "INDIVIDUAL";
   const paid = !isFree;
 
   return (
@@ -137,24 +138,24 @@ export function EventCreateForm() {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                name="format"
-                value="standard"
+                name="event_format"
+                value="COLLECTIVE"
                 checked={!privateCoaching}
-                onChange={() => setFormat("standard")}
+                onChange={() => setFormat("COLLECTIVE")}
                 className="accent-primary"
               />
-              Standard event
+              Collective event
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                name="format"
-                value="private"
+                name="event_format"
+                value="INDIVIDUAL"
                 checked={privateCoaching}
-                onChange={() => setFormat("private")}
+                onChange={() => setFormat("INDIVIDUAL")}
                 className="accent-primary"
               />
-              Private coaching (1-on-1)
+              Individual coaching (1-on-1)
             </label>
           </div>
         </div>
@@ -210,16 +211,21 @@ export function EventCreateForm() {
             ) : (
               <>
                 <label htmlFor="max_participants" className={labelClass}>
-                  Max participants
+                  Max participants <span className="text-destructive">*</span>
                 </label>
                 <input
                   id="max_participants"
                   name="max_participants"
                   type="number"
                   min={1}
+                  step={1}
+                  required
                   className={inputClass}
-                  placeholder="Leave empty for unlimited"
+                  placeholder="e.g. 20"
                 />
+                <p className="text-xs text-muted">
+                  Required — registration closes automatically once full.
+                </p>
               </>
             )}
           </div>
@@ -253,6 +259,9 @@ export function EventCreateForm() {
                 className={inputClass}
                 placeholder="e.g. 25.00"
               />
+              <p className="text-xs text-muted">
+                Paid in cash with the coach before the event starts. No online payments.
+              </p>
             </div>
           </>
         ) : (
@@ -262,17 +271,7 @@ export function EventCreateForm() {
         )}
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="image_url" className={labelClass}>
-          Image URL
-        </label>
-        <input
-          id="image_url"
-          name="image_url"
-          className={inputClass}
-          placeholder="https://… (optional — a default image will be used)"
-        />
-      </div>
+      <ImageUploadField name="image_url" kind="events" label="Event image" />
 
       <Button type="submit" disabled={isPending} className="gap-2">
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}

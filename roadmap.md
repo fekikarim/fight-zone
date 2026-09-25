@@ -32,21 +32,23 @@
 | V4 provider abstraction      | DONE — `lib/ai/` (fallback default + optional Gemini) + Zod validation |
 | V4 daily dialog/card         | DONE — once/day dialog in member layout + read-only dashboard card |
 | V4 concurrency + RLS         | DONE — atomic upsert, member-owned rows, no client insert (8 SQL tests pass) |
-| V1 migration                  | VALIDATED locally — **UNPUSHED** (needs owner approval) |
-| V2 migration (realtime + RPC) | VALIDATED locally + dry-run — **UNPUSHED** (needs owner approval) |
-| V3 migration (email log + RPCs)| VALIDATED locally + dry-run — **UNPUSHED** (needs owner approval) |
-| V4 migration (daily_motivations)| VALIDATED locally + dry-run — **UNPUSHED** (needs owner approval) |
+| V1 migration                  | PUSHED — verified live (remote == local) |
+| V2 migration (realtime + RPC) | PUSHED — verified live (remote == local) |
+| V3 migration (email log + RPCs)| PUSHED — verified live (remote == local) |
+| V4 migration (daily_motivations)| PUSHED — verified live (remote == local) |
+| Coach News & Events system  | DONE — gates green (tsc 0, eslint 0/0, `npm run build`); 19 SQL tests pass |
+| News/Event migration        | PUSHED + types regenerated + gates green — **LIVE** |
+| Author RPC migration        | PUSHED + types regenerated + gates green — **LIVE** |
 | Live re-serve on production   | **PENDING** — after migration push + redeploy + env vars |
 
 ## Next steps (in order)
 
-1. **Owner:** approve `supabase db push --linked` (applies **all four** additive pending
-   migrations: `20260902000000_update_v1_events.sql`,
-   `20260903000000_update_v2_realtime.sql`,
-   `20260904000000_update_v3_emails.sql`,
-   `20260905000000_update_v4_daily_motivations.sql`).
-2. Regenerate `types/database.types.ts` (`npm run db:types`) after push; re-mark V1/V2,
-   V3, and V4 in their final reports.
+1. **Owner:** approve `supabase db push` (applies the one pending additive
+   migration: `20260907000000_coach_news_events.sql` — news excerpt/category,
+   `event_format`, payment defaults, re-join, capacity guard).
+2. Regenerate `types/database.types.ts` (`npm run db:types`) after push
+   (news `excerpt`/`category` + events `event_format` were added by hand to
+   match; regen converges them).
 3. **Set V3 env vars** on Netlify: `SUPABASE_SERVICE_ROLE_KEY`, `CRON_SECRET` (long random
    string), and optionally `RESEND_FROM_EMAIL`/`RESEND_REPLY_TO_EMAIL` (verified Resend
    sender domain). Keep `NEXT_PUBLIC_SITE_URL` = deployed domain. V4 requires no new env

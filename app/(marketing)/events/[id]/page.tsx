@@ -8,7 +8,8 @@ import { EventDetailDisplay } from "@/components/events/event-detail";
 import { getPublicEventById } from "@/lib/supabase/queries";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { resolveEventImage } from "@/lib/events/images";
-import { getEventHref } from "@/lib/types/events";
+import { getEventHref, CASH_PAYMENT_NOTICE } from "@/lib/types/events";
+import { EventParticipantsRealtime } from "@/components/events/event-participants-realtime";
 import { siteConfig } from "@/lib/site";
 
 interface Props {
@@ -54,6 +55,7 @@ export default async function PublicEventDetailPage({ params }: Props) {
       <section className="py-16 lg:py-24">
         <Container>
           <div className="mx-auto max-w-3xl">
+            {user ? <EventParticipantsRealtime eventId={id} /> : null}
             <EventDetailDisplay
               event={event}
               action={
@@ -66,15 +68,6 @@ export default async function PublicEventDetailPage({ params }: Props) {
             />
 
             <div className="mt-8 grid gap-6 sm:grid-cols-2">
-              <div className="rounded-xl border border-ink-border bg-ink-soft/40 p-5">
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-                  Price
-                </p>
-                <p className="mt-2 font-display text-2xl font-bold uppercase tracking-tight">
-                  {event.is_free ? "Free" : `${event.price_tnd ?? 0} TND`}
-                </p>
-                <p className="mt-1 text-sm text-muted">Paid locally — pay at the desk.</p>
-              </div>
               <div className="rounded-xl border border-ink-border bg-ink-soft/40 p-5">
                 <p className="text-xs font-semibold uppercase tracking-widest text-muted">
                   Hosted by
@@ -94,7 +87,7 @@ export default async function PublicEventDetailPage({ params }: Props) {
                 Signing up is free and takes a minute.{" "}
                 {event.is_free
                   ? "This event is free — just show up at the gym."
-                  : `The ${event.price_tnd ?? 0} TND fee is paid locally at the gym desk — there is no online payment.`}
+                  : `The ${event.price_tnd ?? 0} TND fee applies. ${CASH_PAYMENT_NOTICE} No online payments.`}
               </p>
             </div>
           </div>

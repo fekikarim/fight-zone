@@ -1,14 +1,35 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createNews } from "@/lib/actions/content";
 import type { ContentActionState } from "@/lib/actions/content";
+import { ImageUploadField } from "@/components/ui/image-upload-field";
+import { NEWS_CATEGORIES } from "@/lib/validations/content";
+import { newsCategoryLabel } from "@/lib/types/content";
+
+/** Slugifies a title for the URL identifier (mirrors the server regex). */
+function slugify(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9\s-]/g, "")
+    .trim()
+    .replace(/[\s_]+/g, "-")
+    .replace(/-+/g, "-")
+    .replace(/^-|-$/g, "");
+}
+
+const inputClass =
+  "w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm";
 
 export function NewsCreateForm() {
   const router = useRouter();
+  const [title, setTitle] = useState("");
+  const [slug, setSlug] = useState("");
+  const [slugTouched, setSlugTouched] = useState(false);
   const [state, formAction, isPending] = useActionState(
     async (_prev: ContentActionState, formData: FormData) => {
       const result = await createNews(_prev, formData);
@@ -34,7 +55,12 @@ export function NewsCreateForm() {
           id="title"
           name="title"
           required
-          className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm"
+          value={title}
+          onChange={(e) => {
+            setTitle(e.target.value);
+            if (!slugTouched) setSlug(slugify(e.target.value));
+          }}
+          className={inputClass}
           placeholder="e.g. Training Tips for Beginners"
         />
       </div>
@@ -48,24 +74,46 @@ export function NewsCreateForm() {
           name="slug"
           required
           pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-          className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm font-mono"
+          value={slug}
+          onChange={(e) => {
+            setSlug(e.target.value);
+            setSlugTouched(true);
+          }}
+          className={`${inputClass} font-mono`}
           placeholder="training-tips-for-beginners"
         />
         <p className="text-xs text-muted">
-          URL-friendly identifier. Lowercase letters, numbers, and hyphens only.
+          Auto-generated from the title; you can edit it. Lowercase letters, numbers, and hyphens only.
         </p>
       </div>
 
+      <div className="grid gap-6 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor="category" className="text-sm font-medium">
+            Category
+          </label>
+          <select id="category" name="category" defaultValue="GENERAL" className={inputClass}>
+            {NEWS_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {newsCategoryLabel[c]}
+              </option>
+            ))}
+          </select>
+        </div>
+      <ImageUploadField name="cover_image_url" kind="news" label="Cover image" />
+      </div>
+
       <div className="space-y-1.5">
-        <label htmlFor="cover_image_url" className="text-sm font-medium">
-          Cover image URL
+        <label htmlFor="excerpt" className="text-sm font-medium">
+          Excerpt
         </label>
-        <input
-          id="cover_image_url"
-          name="cover_image_url"
-          type="url"
-          className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm"
-          placeholder="https://..."
+        <textarea
+          id="excerpt"
+          name="excerpt"
+          rows={2}
+          maxLength={300}
+          className={inputClass}
+          placeholder="Short summary for cards and previews (auto-derived from content if left empty)."
         />
       </div>
 
@@ -77,7 +125,7 @@ export function NewsCreateForm() {
           id="content"
           name="content"
           rows={12}
-          className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm"
+          className={inputClass}
           placeholder="Write your article content here. Separate paragraphs with blank lines."
         />
       </div>

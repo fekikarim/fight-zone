@@ -4,6 +4,24 @@ import { z } from "zod";
 // News CRUD
 // ---------------------------------------------------------------------------
 
+export const NEWS_CATEGORIES = [
+  "GENERAL",
+  "TRAINING",
+  "NUTRITION",
+  "COMPETITION",
+  "COMMUNITY",
+  "ANNOUNCEMENT",
+] as const;
+
+export type NewsCategory = (typeof NEWS_CATEGORIES)[number];
+
+const excerptField = z
+  .string()
+  .trim()
+  .max(300, "Excerpt must be at most 300 characters.")
+  .optional()
+  .or(z.literal(""));
+
 export const createNewsSchema = z.object({
   title: z
     .string()
@@ -16,6 +34,8 @@ export const createNewsSchema = z.object({
     .min(1, "Slug is required.")
     .max(200)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Slug must contain only lowercase letters, numbers, and hyphens."),
+  excerpt: excerptField,
+  category: z.enum(NEWS_CATEGORIES).default("GENERAL"),
   content: z.string().max(50000).optional(),
   cover_image_url: z.string().url("Must be a valid URL.").optional().or(z.literal("")),
   is_published: z.boolean().default(false),
@@ -33,6 +53,8 @@ export const updateNewsSchema = z.object({
     .max(200)
     .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/)
     .optional(),
+  excerpt: excerptField,
+  category: z.enum(NEWS_CATEGORIES).optional(),
   content: z.string().max(50000).optional(),
   cover_image_url: z.string().url().optional().or(z.literal("")),
   is_published: z.boolean().optional(),

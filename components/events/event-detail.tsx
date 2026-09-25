@@ -1,7 +1,7 @@
 import { CalendarDays, Clock, MapPin, Users } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
-import { eventTypeLabel, getEventLifecycleStatus } from "@/lib/types/events";
+import { eventTypeLabel, getEventLifecycleStatus, CASH_PAYMENT_NOTICE } from "@/lib/types/events";
 import type { EventDetail } from "@/lib/types/events";
 
 interface EventDetailDisplayProps {
@@ -42,7 +42,15 @@ export function EventDetailDisplay({
     <div className="space-y-6">
       <div className="flex flex-wrap items-center gap-2">
         <Badge variant="neutral">{eventTypeLabel[event.event_type] ?? event.event_type}</Badge>
+        <Badge variant="neutral">
+          {event.event_format === "INDIVIDUAL" ? "Individual" : "Collective"}
+        </Badge>
         <Badge variant={lifecycleVariant[lifecycle]}>{lifecycleLabel[lifecycle]}</Badge>
+        {!event.is_free ? (
+          <Badge variant="outline">
+            {event.price_tnd ?? 0} TND · Paid event
+          </Badge>
+        ) : null}
         {isFull ? <Badge variant="outline">Fully booked</Badge> : null}
       </div>
 
@@ -90,6 +98,12 @@ export function EventDetailDisplay({
         <div className="prose prose-invert max-w-none text-sm leading-relaxed text-foreground/80">
           {event.description}
         </div>
+      ) : null}
+
+      {!event.is_free ? (
+        <p className="rounded-xl border border-ink-border bg-ink-soft/40 px-5 py-4 text-sm text-muted">
+          {CASH_PAYMENT_NOTICE}
+        </p>
       ) : null}
 
       {action ? <div>{action}</div> : null}

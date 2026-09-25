@@ -15,7 +15,7 @@ values
 on conflict (name) do nothing;
 
 -- ------------------------------------------------------------
--- Demo auth users (passwords: Coach-1234 / Member-1234)
+-- Demo auth users (passwords: Coach-1234 / Member-1234 / Admin-1234)
 -- The on_auth_user_created trigger creates profiles + MEMBER role.
 -- ------------------------------------------------------------
 insert into auth.users (
@@ -43,18 +43,29 @@ values
         '{"provider":"email","providers":["email"]}',
         '{"full_name":"Karim Feki"}',
         now(), now()
+    ),
+    (
+        '00000000-0000-0000-0000-000000000000',
+        '00000000-0000-0000-0000-000000000003',
+        'authenticated', 'authenticated', 'admin@fightzone.example',
+        crypt('Admin-1234', gen_salt('bf')),
+        now(),
+        '{"provider":"email","providers":["email"]}',
+        '{"full_name":"Test Admin"}',
+        now(), now()
     )
 on conflict (id) do nothing;
 
 -- ------------------------------------------------------------
--- Roles: coach is ADMIN + COACH, member stays MEMBER
+-- Roles: coach is ADMIN + COACH, member stays MEMBER, test admin is ADMIN
 -- ------------------------------------------------------------
 insert into public.user_role_assignments (user_id, role_id)
 select p.id, r.id
 from public.profiles p
 join public.roles r
   on ((p.email = 'coach@fightzone.example' and r.name in ('ADMIN', 'COACH'))
-      or (p.email = 'member@fightzone.example' and r.name = 'MEMBER'))
+      or (p.email = 'member@fightzone.example' and r.name = 'MEMBER')
+      or (p.email = 'admin@fightzone.example' and r.name = 'ADMIN'))
 on conflict (user_id, role_id) do nothing;
 
 -- ------------------------------------------------------------

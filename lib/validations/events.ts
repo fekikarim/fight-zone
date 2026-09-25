@@ -7,6 +7,32 @@ import { z } from "zod";
 
 const UUID = z.string().uuid("Invalid ID.");
 
+export const EVENT_FORMATS = ["INDIVIDUAL", "COLLECTIVE"] as const;
+export type EventFormat = (typeof EVENT_FORMATS)[number];
+
+/**
+ * Capacity is mandatory: every event declares a positive whole-number
+ * participant limit (individual coaching is coerced to 1 server-side).
+ * Empty, non-numeric, fractional, zero and negative inputs are rejected
+ * with explicit messages — the DB CHECK (> 0) remains as defense in depth.
+ */
+const requiredCapacity = z.preprocess(
+  (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
+  z
+    .number({ error: "Max participants is required." })
+    .int("Max participants must be a whole number.")
+    .positive("Max participants must be at least 1."),
+);
+
+const optionalCapacity = z.preprocess(
+  (v) => (v === "" || v === null || v === undefined ? undefined : Number(v)),
+  z
+    .number({ error: "Max participants must be a number." })
+    .int("Max participants must be a whole number.")
+    .positive("Max participants must be at least 1.")
+    .optional(),
+);
+
 // ── Event CRUD ──────────────────────────────────────────────
 
 export const createEventSchema = z
@@ -17,13 +43,12 @@ export const createEventSchema = z
       .max(200, "Title must be at most 200 characters."),
     description: z.string().max(5000).optional(),
     event_type: z.enum(["TRAINING", "WORKSHOP", "COMPETITION", "SEMINAR", "OTHER"]),
+    event_format: z.enum(EVENT_FORMATS).default("COLLECTIVE"),
     start_at: z.string().min(1, "Start date is required."),
     end_at: z.string().optional(),
     location: z.string().max(300).optional(),
     is_public: z.boolean().default(false),
-    max_participants: z
-      .preprocess((v) => (v === "" || v === null ? null : Number(v)), z.number().int().positive().nullable())
-      .optional(),
+    max_participants: requiredCapacity,
     is_free: z.boolean().default(true),
     price_tnd: z
       .preprocess((v) => (v === "" || v === null ? null : Number(v)), z.number().min(0).nullable())
@@ -50,13 +75,14 @@ export const updateEventSchema = z
     title: z.string().min(1).max(200).optional(),
     description: z.string().max(5000).optional(),
     event_type: z.enum(["TRAINING", "WORKSHOP", "COMPETITION", "SEMINAR", "OTHER"]).optional(),
+    event_format: z.enum(EVENT_FORMATS).optional(),
     start_at: z.string().optional(),
     end_at: z.string().optional(),
     location: z.string().max(300).optional(),
     is_public: z.boolean().optional(),
-    max_participants: z
-      .preprocess((v) => (v === "" || v === null ? null : Number(v)), z.number().int().positive().nullable())
-      .optional(),
+    // Partial updates: omitted or blank keeps the current value (which is
+    // always set — capacity can no longer be cleared back to unlimited).
+    max_participants: optionalCapacity,
     is_free: z.boolean().optional(),
     price_tnd: z
       .preprocess((v) => (v === "" || v === null ? null : Number(v)), z.number().min(0).nullable())
@@ -89,7 +115,7 @@ export const cancelEventRegistrationSchema = z.object({
 
 export const updateParticipantStatusSchema = z.object({
   participantId: UUID,
-  status: z.enum(["ATTENDED", "NO_SHOW", "CANCELLED"]),
+  status: z.enum(["JOINED", "ATTENDED", "NO_SHOW", "CANCELLED"]),
 });
 
 /** Staff confirms local payment / attendance on a participant. */

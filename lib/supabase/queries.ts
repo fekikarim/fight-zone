@@ -21,6 +21,7 @@ import type { NotificationPage, NotificationRow } from "@/lib/types/notification
 import type { EventDetail, EventParticipant, EventSummary, ScheduleItem } from "@/lib/types/events";
 import type { SessionDetail, CoachSummary, CoachDetail } from "@/lib/types/services";
 import type { AdminNewsItem, AdminMediaItem, AdminAchievementItem } from "@/lib/types/content";
+import { deriveExcerpt } from "@/lib/types/content";
 import type { MembershipPlan, MemberSubscriptionWithPlan, PaymentRecord } from "@/lib/types/memberships";
 import type { ReviewItem, ReviewWithAuthor, TransformationItem, ReviewStats } from "@/lib/types/reviews";
 
@@ -108,7 +109,7 @@ export const getPublicEvents = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, created_at, created_by`,
+         is_public, max_participants, is_free, price_tnd, image_url, event_format, created_at, created_by`,
       )
       .eq("is_public", true)
       .gte("start_at", new Date().toISOString())
@@ -141,7 +142,9 @@ export const getPublishedNews = cache(async (limit?: number) => {
   const supabase = await createClient();
   let query = supabase
     .from("news")
-    .select("id, title, slug, content, cover_image_url, published_at")
+    .select(
+      "id, title, slug, excerpt, category, content, cover_image_url, published_at, created_by",
+    )
     .eq("is_published", true)
     .order("published_at", { ascending: false });
   if (limit) query = query.limit(limit);
@@ -153,14 +156,18 @@ export const getPublishedNews = cache(async (limit?: number) => {
     logError("Query failed: published news", error);
     return [];
   }
-  return data ?? [];
+  const rows = (data ?? []).map(withExcerpt);
+  const authors = await getNewsAuthorNames(rows.map((r) => r.created_by));
+  return rows.map((r) => ({ ...r, author_name: authors.get(r.created_by) ?? null }));
 });
 
 export const getNewsBySlug = cache(async (slug: string) => {
   const supabase = await createClient();
   const result = await supabase
     .from("news")
-    .select("id, title, slug, content, cover_image_url, published_at")
+    .select(
+      "id, title, slug, excerpt, category, content, cover_image_url, published_at, created_at, updated_at, created_by, is_published",
+    )
     .eq("slug", slug)
     .eq("is_published", true)
     .maybeSingle();
@@ -171,8 +178,49 @@ export const getNewsBySlug = cache(async (slug: string) => {
   // Unknown slug is a normal outcome: return null so the page can call
   // notFound() instead of tripping the generic error boundary.
   if (!result.data) return null;
-  return result.data;
+  const row = withExcerpt(result.data);
+  const authors = await getNewsAuthorNames([row.created_by]);
+  return { ...row, author_name: authors.get(row.created_by) ?? null };
 });
+
+/** Guarantees a display excerpt, deriving from content when empty. */
+function withExcerpt<T extends { excerpt?: string | null; content?: string | null }>(
+  row: T,
+): T {
+  if (row.excerpt || !row.content) return row;
+  return { ...row, excerpt: deriveExcerpt(row.content) };
+}
+
+/**
+ * Resolves display names for news authors. The `profiles` table is
+ * private (no anon grant), so names come from the staff-only-safe
+ * `get_public_author_names` RPC, which exposes id + full_name for
+ * ADMIN/COACH authors only. One batched call per page — never N+1.
+ * Failures degrade to anonymous bylines, never to a broken page.
+ */
+const getNewsAuthorNames = async (
+  authorIds: string[],
+): Promise<Map<string, string>> => {
+  const names = new Map<string, string>();
+  const unique = [...new Set(authorIds.filter(Boolean))];
+  if (unique.length === 0) return names;
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_public_author_names", {
+      p_author_ids: unique,
+    });
+    if (error) {
+      logError("Query failed: news author names", error);
+      return names;
+    }
+    for (const row of (data ?? []) as Array<{ id: string; full_name: string | null }>) {
+      if (row.full_name) names.set(row.id, row.full_name);
+    }
+  } catch (error) {
+    logError("Query failed: news author names", error);
+  }
+  return names;
+};
 
 export const getPublicMedia = cache(async (limit?: number) => {
   const supabase = await createClient();
@@ -827,6 +875,7 @@ function buildEventDetail(
     end_at: event.end_at,
     location: event.location,
     event_type: event.event_type,
+    event_format: (event.event_format ?? "COLLECTIVE") as EventDetail["event_format"],
     is_public: event.is_public,
     max_participants: event.max_participants,
     is_free: event.is_free,
@@ -852,7 +901,7 @@ export const getPublicEventById = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url,
+         is_public, max_participants, is_free, price_tnd, image_url, event_format,
          created_at, created_by`,
       )
       .eq("id", eventId)
@@ -893,7 +942,7 @@ export const getStaffEventById = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url,
+         is_public, max_participants, is_free, price_tnd, image_url, event_format,
          created_at, created_by`,
       )
       .eq("id", eventId)
@@ -905,16 +954,19 @@ export const getStaffEventById = cache(
       throw new DatabaseError(undefined, { cause: error });
     }
 
-    // Active (non-cancelled) participant count.
-    const { data: count, error: rpcError } = await supabase.rpc(
-      "get_public_event_participant_count",
-      { p_event_id: eventId },
+    // Staff aggregate covers ALL events (the public count RPC only counts
+    // public ones, so private-coaching counts would wrongly read 0).
+    const { data: counts, error: rpcError } = await supabase.rpc(
+      "get_staff_event_participant_counts",
     );
     if (rpcError) {
       logError("Query failed: staff event participant count", rpcError, { eventId });
       throw new DatabaseError(undefined, { cause: rpcError });
     }
-    return buildEventDetail(data, (count as number) ?? 0);
+    const row = (Array.isArray(counts) ? counts : []).find(
+      (r) => (r as { event_id: string }).event_id === eventId,
+    ) as { active_count: number } | undefined;
+    return buildEventDetail(data, row?.active_count ?? 0);
   },
 );
 
@@ -934,7 +986,7 @@ export const getMemberEventViewById = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url,
+         is_public, max_participants, is_free, price_tnd, image_url, event_format,
          created_at, created_by`,
       )
       .eq("id", eventId)
@@ -946,15 +998,30 @@ export const getMemberEventViewById = cache(
       throw new DatabaseError(undefined, { cause: error });
     }
 
-    const { data: count, error: rpcError } = await supabase.rpc(
-      "get_public_event_participant_count",
-      { p_event_id: eventId },
-    );
-    if (rpcError) {
-      logError("Query failed: member event participant count", rpcError, { eventId });
-      throw new DatabaseError(undefined, { cause: rpcError });
+    // Public events use the shared aggregate. Private coaching rows are
+    // invisible to it (and other members' rows are RLS-private), so for
+    // non-public events the count is derived from the member's own
+    // registration: their active seat, if any.
+    if (data.is_public) {
+      const { data: count, error: rpcError } = await supabase.rpc(
+        "get_public_event_participant_count",
+        { p_event_id: eventId },
+      );
+      if (rpcError) {
+        logError("Query failed: member event participant count", rpcError, { eventId });
+        throw new DatabaseError(undefined, { cause: rpcError });
+      }
+      return buildEventDetail(data, (count as number) ?? 0);
     }
-    return buildEventDetail(data, (count as number) ?? 0);
+
+    const { data: own } = await supabase
+      .from("event_participants")
+      .select("status")
+      .eq("event_id", eventId)
+      .eq("member_id", user.id)
+      .maybeSingle();
+    const ownActive = own && own.status !== "CANCELLED" ? 1 : 0;
+    return buildEventDetail(data, ownActive);
   },
 );
 
@@ -1006,7 +1073,7 @@ export const getMemberRegisteredEvents = cache(
       .from("event_participants")
       .select(
         `event_id, status, joined_at,
-         events ( id, title, description, start_at, end_at, location, event_type, is_public, max_participants, is_free, price_tnd, image_url, created_at, created_by )`,
+         events ( id, title, description, start_at, end_at, location, event_type, is_public, max_participants, is_free, price_tnd, image_url, event_format, created_at, created_by )`,
       )
       .eq("member_id", user.id)
       .order("joined_at", { ascending: false });
@@ -1106,7 +1173,7 @@ export const getAdminEvents = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, created_at, created_by`,
+         is_public, max_participants, is_free, price_tnd, image_url, event_format, created_at, created_by`,
       )
       .order("start_at", { ascending: false });
 
@@ -1115,8 +1182,10 @@ export const getAdminEvents = cache(
       return [];
     }
 
+    // Staff aggregate covers ALL events (the public batch RPC only counts
+    // public ones, so private-coaching rows would wrongly read 0).
     const { data: counts, error: countsError } = await supabase.rpc(
-      "get_public_event_participant_counts",
+      "get_staff_event_participant_counts",
     );
     const countMap = new Map<string, number>();
     if (!countsError && Array.isArray(counts)) {
@@ -1144,7 +1213,7 @@ export const getCalendarEvents = cache(
       .from("events")
       .select(
         `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, created_at, created_by`,
+         is_public, max_participants, is_free, price_tnd, image_url, event_format, created_at, created_by`,
       )
       .gte("start_at", from)
       .lte("start_at", to)
@@ -1542,7 +1611,7 @@ export const getAdminNews = cache(
     const supabase = await createClient();
     const { data, error } = await supabase
       .from("news")
-      .select("id, title, slug, is_published, published_at, created_at, updated_at")
+      .select("id, title, slug, excerpt, category, is_published, published_at, created_at, updated_at")
       .order("created_at", { ascending: false });
 
     if (error) {
@@ -1565,7 +1634,7 @@ export const getAdminNewsById = cache(
     const { data, error } = await supabase
       .from("news")
       .select(
-        "id, title, slug, content, cover_image_url, is_published, published_at, created_at, updated_at, created_by",
+        "id, title, slug, excerpt, category, content, cover_image_url, is_published, published_at, created_at, updated_at, created_by",
       )
       .eq("id", articleId)
       .maybeSingle();

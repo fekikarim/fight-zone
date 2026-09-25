@@ -15,6 +15,7 @@ import {
   deleteAchievementSchema,
 } from "@/lib/validations/content";
 import { logError } from "@/lib/errors";
+import { deriveExcerpt } from "@/lib/types/content";
 
 // ---------------------------------------------------------------------------
 // Action state
@@ -30,13 +31,15 @@ export interface ContentActionState {
 // Revalidation
 // ---------------------------------------------------------------------------
 
-function revalidateNews(articleId?: string) {
+function revalidateNews(articleId?: string, slug?: string) {
   revalidatePath("/news");
   revalidatePath("/admin/content");
   revalidatePath("/admin/content/news");
   if (articleId) {
-    revalidatePath(`/news/${articleId}`);
     revalidatePath(`/admin/content/news/${articleId}`);
+  }
+  if (slug) {
+    revalidatePath(`/news/${slug}`);
   }
 }
 
@@ -63,6 +66,8 @@ export async function createNews(
   const parsed = createNewsSchema.safeParse({
     title: formData.get("title"),
     slug: formData.get("slug"),
+    excerpt: formData.get("excerpt") || undefined,
+    category: formData.get("category") || undefined,
     content: formData.get("content") || undefined,
     cover_image_url: formData.get("cover_image_url") || undefined,
     is_published: formData.get("is_published") === "true",
@@ -76,18 +81,24 @@ export async function createNews(
   const user = await requireRole(["ADMIN"]);
   const supabase = await createClient();
 
+  const excerpt =
+    parsed.data.excerpt ||
+    (parsed.data.content ? deriveExcerpt(parsed.data.content) : null);
+
   const { data, error } = await supabase
     .from("news")
     .insert({
       title: parsed.data.title,
       slug: parsed.data.slug,
+      excerpt,
+      category: parsed.data.category,
       content: parsed.data.content ?? null,
       cover_image_url: parsed.data.cover_image_url || null,
       is_published: parsed.data.is_published,
       published_at: parsed.data.is_published ? new Date().toISOString() : null,
       created_by: user.id,
     })
-    .select("id")
+    .select("id, slug")
     .single();
 
   if (error) {
@@ -98,7 +109,7 @@ export async function createNews(
     return { ok: false, message: "Could not create article. Please try again." };
   }
 
-  revalidateNews(data.id);
+  revalidateNews(data.id, data.slug);
   return { ok: true, id: data.id, message: "Article created." };
 }
 
@@ -106,13 +117,19 @@ export async function updateNews(
   _prev: ContentActionState,
   formData: FormData,
 ): Promise<ContentActionState> {
+  const rawExcerpt = formData.get("excerpt");
+  const rawPublished = formData.get("is_published");
   const parsed = updateNewsSchema.safeParse({
     articleId: formData.get("articleId"),
     title: formData.get("title") || undefined,
     slug: formData.get("slug") || undefined,
+    excerpt: rawExcerpt === null ? undefined : String(rawExcerpt),
+    category: formData.get("category") || undefined,
     content: formData.get("content") || undefined,
     cover_image_url: formData.get("cover_image_url") || undefined,
-    is_published: formData.get("is_published") === "true" ? true : undefined,
+    // The edit form always submits is_published ("true"/"false"), so
+    // unpublishing is a real, persisted transition — not a skipped field.
+    is_published: rawPublished === null ? undefined : rawPublished === "true",
   });
 
   if (!parsed.success) {
@@ -123,21 +140,25 @@ export async function updateNews(
   await requireRole(["ADMIN"]);
   const supabase = await createClient();
 
-  const { articleId, title, slug, content, cover_image_url, is_published } = parsed.data;
+  const { articleId, title, slug, excerpt, category, content, cover_image_url, is_published } = parsed.data;
 
-  const { error } = await supabase
+  const { data, error } = await supabase
     .from("news")
     .update({
       ...(title !== undefined && { title }),
       ...(slug !== undefined && { slug }),
+      ...(excerpt !== undefined && { excerpt: excerpt || null }),
+      ...(category !== undefined && { category }),
       ...(content !== undefined && { content }),
       ...(cover_image_url !== undefined && { cover_image_url: cover_image_url || null }),
       ...(is_published !== undefined && {
         is_published,
-        ...(is_published && { published_at: new Date().toISOString() }),
+        published_at: is_published ? new Date().toISOString() : null,
       }),
     })
-    .eq("id", articleId);
+    .eq("id", articleId)
+    .select("slug")
+    .single();
 
   if (error) {
     logError("Failed to update news", error, { articleId });
@@ -147,7 +168,7 @@ export async function updateNews(
     return { ok: false, message: "Could not update article. Please try again." };
   }
 
-  revalidateNews(articleId);
+  revalidateNews(articleId, data?.slug ?? undefined);
   return { ok: true, id: articleId, message: "Article updated." };
 }
 
@@ -161,6 +182,13 @@ export async function deleteNews(
   await requireRole(["ADMIN"]);
   const supabase = await createClient();
 
+  // Fetch the slug first so the public article page can be purged too.
+  const { data: existing } = await supabase
+    .from("news")
+    .select("slug")
+    .eq("id", parsed.data.articleId)
+    .maybeSingle();
+
   const { error } = await supabase.from("news").delete().eq("id", parsed.data.articleId);
 
   if (error) {
@@ -168,7 +196,7 @@ export async function deleteNews(
     return { ok: false, message: "Could not delete article. Please try again." };
   }
 
-  revalidateNews();
+  revalidateNews(undefined, existing?.slug ?? undefined);
   return { ok: true, message: "Article deleted." };
 }
 

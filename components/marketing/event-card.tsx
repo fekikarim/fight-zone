@@ -14,6 +14,10 @@ export function EventCard({ event }: { event: EventItem }) {
     "is_private_coaching" in event
       ? event.is_private_coaching
       : !event.is_public && event.max_participants === 1;
+  const isIndividual =
+    "event_format" in event && event.event_format != null
+      ? event.event_format === "INDIVIDUAL"
+      : isPrivateCoaching;
 
   const image = resolveEventImage({
     image_url: event.image_url,
@@ -43,9 +47,14 @@ export function EventCard({ event }: { event: EventItem }) {
             aria-hidden
           />
           <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
-            <Badge className="backdrop-blur-sm">
-              {eventTypeLabel[event.event_type] ?? event.event_type}
-            </Badge>
+            <span className="flex flex-wrap gap-1.5">
+              <Badge className="backdrop-blur-sm">
+                {eventTypeLabel[event.event_type] ?? event.event_type}
+              </Badge>
+              <Badge variant="neutral" className="backdrop-blur-sm">
+                {isIndividual ? "Individual" : "Collective"}
+              </Badge>
+            </span>
             <Badge
               variant={event.is_free ? "neutral" : "solid"}
               className="backdrop-blur-sm"

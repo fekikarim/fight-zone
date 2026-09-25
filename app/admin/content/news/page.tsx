@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { getAdminNews } from "@/lib/supabase/queries";
+import { newsCategoryLabel } from "@/lib/types/content";
 
 export const metadata: Metadata = {
   title: "News Management",
@@ -44,7 +45,7 @@ export default async function AdminNewsPage() {
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{article.title}</p>
                 <p className="mt-0.5 text-xs text-muted">
-                  /{article.slug}
+                  /{article.slug} · {newsCategoryLabel[article.category] ?? article.category}
                 </p>
               </div>
               <div className="flex shrink-0 items-center gap-3 text-xs text-muted">

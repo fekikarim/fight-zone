@@ -1,12 +1,16 @@
 "use client";
 
-import { useActionState } from "react";
+import { useActionState, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateNews, deleteNews } from "@/lib/actions/content";
 import type { ContentActionState } from "@/lib/actions/content";
+import { ImageUploadField } from "@/components/ui/image-upload-field";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { AdminNewsItem } from "@/lib/types/content";
+import { NEWS_CATEGORIES } from "@/lib/validations/content";
+import { newsCategoryLabel } from "@/lib/types/content";
 
 interface NewsEditFormProps {
   article: AdminNewsItem & {
@@ -16,12 +20,19 @@ interface NewsEditFormProps {
   };
 }
 
+const inputClass =
+  "w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm";
+
 export function NewsEditForm({ article }: NewsEditFormProps) {
   const router = useRouter();
+  const deleteFormRef = useRef<HTMLFormElement>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
 
   const [updateState, updateAction, isPending] = useActionState(
     async (_prev: ContentActionState, formData: FormData) => {
       formData.set("articleId", article.id);
+      // Always submit an explicit publish state so unpublishing persists.
+      formData.set("is_published", formData.get("is_published") === "true" ? "true" : "false");
       const result = await updateNews(_prev, formData);
       if (result.ok) router.refresh();
       return result;
@@ -33,7 +44,10 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
     async (_prev: ContentActionState, formData: FormData) => {
       formData.set("articleId", article.id);
       const result = await deleteNews(_prev, formData);
-      if (result.ok) router.push("/admin/content/news");
+      if (result.ok) {
+        setConfirmOpen(false);
+        router.push("/admin/content/news");
+      }
       return result;
     },
     { ok: false } as ContentActionState,
@@ -41,25 +55,37 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
 
   return (
     <div className="space-y-8">
-      {/* Delete section */}
+      {/* Delete section with confirmation dialog */}
       <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-        <div className="flex items-center justify-between">
+        <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm font-medium">Danger zone</p>
             <p className="text-xs text-muted">Permanently delete this article.</p>
           </div>
-          <form action={deleteAction}>
+          <form ref={deleteFormRef} action={deleteAction}>
             <input type="hidden" name="articleId" value={article.id} />
             <Button
-              type="submit"
+              type="button"
               variant="outline"
               size="sm"
               disabled={isDeleting}
+              onClick={() => setConfirmOpen(true)}
               className="gap-2 border-destructive/50 text-destructive hover:bg-destructive/10 hover:text-destructive"
             >
-              {isDeleting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+              <Trash2 className="h-4 w-4" />
               Delete
             </Button>
+            <ConfirmDialog
+              open={confirmOpen}
+              title="Delete this article?"
+              description={`"${article.title}" will be permanently removed from the news and blog. This cannot be undone.`}
+              confirmLabel="Delete article"
+              pending={isDeleting}
+              onClose={() => {
+                if (!isDeleting) setConfirmOpen(false);
+              }}
+              onConfirm={() => deleteFormRef.current?.requestSubmit()}
+            />
           </form>
         </div>
         {deleteState.message && !deleteState.ok ? (
@@ -89,7 +115,7 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
             name="title"
             defaultValue={article.title}
             required
-            className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
 
@@ -103,20 +129,43 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
             defaultValue={article.slug}
             required
             pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-            className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm font-mono"
+            className={`${inputClass} font-mono`}
           />
         </div>
 
+        <div className="grid gap-6 sm:grid-cols-2">
+          <div className="space-y-1.5">
+            <label htmlFor="category" className="text-sm font-medium">
+              Category
+            </label>
+            <select id="category" name="category" defaultValue={article.category} className={inputClass}>
+              {NEWS_CATEGORIES.map((c) => (
+                <option key={c} value={c}>
+                  {newsCategoryLabel[c]}
+                </option>
+              ))}
+            </select>
+          </div>
+        <ImageUploadField
+          name="cover_image_url"
+          kind="news"
+          label="Cover image"
+          defaultValue={article.cover_image_url}
+        />
+        </div>
+
         <div className="space-y-1.5">
-          <label htmlFor="cover_image_url" className="text-sm font-medium">
-            Cover image URL
+          <label htmlFor="excerpt" className="text-sm font-medium">
+            Excerpt
           </label>
-          <input
-            id="cover_image_url"
-            name="cover_image_url"
-            type="url"
-            defaultValue={article.cover_image_url ?? ""}
-            className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm"
+          <textarea
+            id="excerpt"
+            name="excerpt"
+            rows={2}
+            maxLength={300}
+            defaultValue={article.excerpt ?? ""}
+            className={inputClass}
+            placeholder="Short summary for cards and previews. Clear to re-derive from content on next save."
           />
         </div>
 
@@ -129,7 +178,7 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
             name="content"
             rows={16}
             defaultValue={article.content ?? ""}
-            className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm"
+            className={inputClass}
           />
         </div>
 

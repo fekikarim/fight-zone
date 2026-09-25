@@ -64,7 +64,10 @@ export async function getTodayMotivation(): Promise<MotivationActionState> {
         p_user_id: user.id,
         p_motivation_date: motivationDate,
         p_quote: content.quote,
-        p_focus: content.focus ?? null,
+        // The SQL parameter is nullable `text`; `supabase gen` emits it as
+        // `string`, so null needs a scoped cast. NULL (not "") is stored
+        // for "no focus", matching the validated V4 design.
+        p_focus: (content.focus ?? null) as unknown as string,
         p_category: content.category,
         p_source: content.source,
       });

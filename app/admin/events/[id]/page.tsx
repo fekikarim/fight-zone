@@ -51,7 +51,7 @@ export default async function AdminEventDetailPage({ params, searchParams }: Pro
         <h2 className="mb-4 font-display text-xl font-semibold uppercase tracking-tight">
           Participants ({event.participant_count})
         </h2>
-        <ParticipantList participants={participants} isFreeEvent={event.is_free} />
+        <ParticipantList participants={participants} isFreeEvent={event.is_free} eventId={event.id} />
         {nextCursor ? (
           <p className="mt-3 text-center text-xs text-muted">
             <a

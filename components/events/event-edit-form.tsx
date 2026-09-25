@@ -1,11 +1,13 @@
 "use client";
 
-import { useState, useActionState } from "react";
+import { useRef, useState, useActionState } from "react";
 import { useRouter } from "next/navigation";
 import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateEvent, deleteEvent } from "@/lib/actions/events";
 import type { EventActionState } from "@/lib/actions/events";
+import { ImageUploadField } from "@/components/ui/image-upload-field";
+import { ConfirmDialog } from "@/components/ui/confirm-dialog";
 import type { EventDetail, EventType } from "@/lib/types/events";
 
 const EVENT_TYPES: Array<{ value: EventType; label: string }> = [
@@ -36,15 +38,15 @@ export function EventEditForm({ event }: { event: EventDetail }) {
     { ok: false } as EventActionState,
   );
 
-  const [format, setFormat] = useState<"standard" | "private">(
-    event.is_private_coaching ? "private" : "standard",
+  const [format, setFormat] = useState<"COLLECTIVE" | "INDIVIDUAL">(
+    event.event_format === "INDIVIDUAL" ? "INDIVIDUAL" : "COLLECTIVE",
   );
   const [visibility, setVisibility] = useState<"public" | "private">(
     event.is_public ? "public" : "private",
   );
   const [isFree, setIsFree] = useState(event.is_free);
 
-  const privateCoaching = format === "private";
+  const privateCoaching = format === "INDIVIDUAL";
   const paid = !isFree;
 
   return (
@@ -157,24 +159,24 @@ export function EventEditForm({ event }: { event: EventDetail }) {
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                name="format"
-                value="standard"
+                name="event_format"
+                value="COLLECTIVE"
                 checked={!privateCoaching}
-                onChange={() => setFormat("standard")}
+                onChange={() => setFormat("COLLECTIVE")}
                 className="accent-primary"
               />
-              Standard event
+              Collective event
             </label>
             <label className="flex items-center gap-2 text-sm">
               <input
                 type="radio"
-                name="format"
-                value="private"
+                name="event_format"
+                value="INDIVIDUAL"
                 checked={privateCoaching}
-                onChange={() => setFormat("private")}
+                onChange={() => setFormat("INDIVIDUAL")}
                 className="accent-primary"
               />
-              Private coaching (1-on-1)
+              Individual coaching (1-on-1)
             </label>
           </div>
         </div>
@@ -230,17 +232,22 @@ export function EventEditForm({ event }: { event: EventDetail }) {
             ) : (
               <>
                 <label htmlFor="max_participants" className={labelClass}>
-                  Max participants
+                  Max participants <span className="text-destructive">*</span>
                 </label>
                 <input
                   id="max_participants"
                   name="max_participants"
                   type="number"
                   min={1}
+                  step={1}
+                  required
                   defaultValue={event.max_participants ?? ""}
                   className={inputClass}
-                  placeholder="Leave empty for unlimited"
+                  placeholder="e.g. 20"
                 />
+                <p className="text-xs text-muted">
+                  Required — cannot go below the current registered count.
+                </p>
               </>
             )}
           </div>
@@ -273,6 +280,9 @@ export function EventEditForm({ event }: { event: EventDetail }) {
                 defaultValue={event.price_tnd ?? ""}
                 className={inputClass}
               />
+              <p className="text-xs text-muted">
+                Paid in cash with the coach before the event starts. No online payments.
+              </p>
             </div>
           </>
         ) : (
@@ -282,18 +292,12 @@ export function EventEditForm({ event }: { event: EventDetail }) {
         )}
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="image_url" className={labelClass}>
-          Image URL
-        </label>
-        <input
-          id="image_url"
-          name="image_url"
-          defaultValue={event.image_url ?? ""}
-          className={inputClass}
-          placeholder="https://… (optional — a default image will be used)"
-        />
-      </div>
+      <ImageUploadField
+        name="image_url"
+        kind="events"
+        label="Event image"
+        defaultValue={event.image_url}
+      />
 
       <Button type="submit" disabled={isPending} className="gap-2">
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
@@ -305,10 +309,15 @@ export function EventEditForm({ event }: { event: EventDetail }) {
 
 export function DeleteEventButton({ eventId }: { eventId: string }) {
   const router = useRouter();
+  const formRef = useRef<HTMLFormElement>(null);
+  const [confirmOpen, setConfirmOpen] = useState(false);
   const [state, formAction, isPending] = useActionState(
     async (_prev: EventActionState, formData: FormData) => {
       const result = await deleteEvent(_prev, formData);
-      if (result.ok) router.push("/admin/events");
+      if (result.ok) {
+        setConfirmOpen(false);
+        router.push("/admin/events");
+      }
       return result;
     },
     { ok: false } as EventActionState,
@@ -316,24 +325,29 @@ export function DeleteEventButton({ eventId }: { eventId: string }) {
 
   return (
     <div className="space-y-2">
-      <form
-        action={formAction}
-        onSubmit={(e) => {
-          if (!window.confirm("Delete this event? This cannot be undone.")) {
-            e.preventDefault();
-          }
-        }}
-      >
+      <form ref={formRef} action={formAction}>
         <input type="hidden" name="eventId" value={eventId} />
         <Button
-          type="submit"
+          type="button"
           variant="outline"
           disabled={isPending}
-          className="border-destructive/40 text-destructive hover:border-destructive hover:text-destructive"
+          onClick={() => setConfirmOpen(true)}
+          className="gap-2 border-destructive/40 text-destructive hover:border-destructive hover:text-destructive"
         >
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
-          {isPending ? "Deleting…" : "Delete event"}
+          <Trash2 className="h-4 w-4" />
+          Delete event
         </Button>
+        <ConfirmDialog
+          open={confirmOpen}
+          title="Delete this event?"
+          description="The event and all its registrations will be permanently removed. This cannot be undone."
+          confirmLabel="Delete event"
+          pending={isPending}
+          onClose={() => {
+            if (!isPending) setConfirmOpen(false);
+          }}
+          onConfirm={() => formRef.current?.requestSubmit()}
+        />
       </form>
       {state.message && !state.ok ? (
         <p className="text-xs text-destructive" role="alert">

@@ -39,6 +39,10 @@
   --color-primary-ring: var(--primary-ring);
   --color-primary-readable: var(--primary-readable);
 
+  /* Destructive (danger) actions use the brand rose scale — this theme has
+     no separate red. Maps every bg-/text-/border-destructive utility. */
+  --color-destructive: var(--primary);
+
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-ink-softer: var(--ink-softer);

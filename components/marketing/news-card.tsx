@@ -1,42 +1,47 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, CalendarDays } from "lucide-react";
+import { ArrowRight, CalendarDays, User } from "lucide-react";
 import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { PlaceholderImage } from "@/components/ui/placeholder-image";
 import { formatDate } from "@/lib/utils";
-import type { Database } from "@/types/database.types";
+import { newsCategoryLabel } from "@/lib/types/content";
+import type { NewsItemWithAuthor } from "@/lib/types/content";
 
-export type NewsItem = Pick<
-  Database["public"]["Tables"]["news"]["Row"],
-  "id" | "title" | "slug" | "content" | "cover_image_url" | "published_at"
->;
+/** Shown when the article has no custom cover. */
+export const DEFAULT_NEWS_IMAGE = "/assets/default_news.jpg";
 
-export function NewsCard({ article }: { article: NewsItem }) {
+export function NewsCard({ article }: { article: NewsItemWithAuthor }) {
   return (
     <Card className="group h-full overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10">
       <div className="relative aspect-[16/10] overflow-hidden bg-ink-softer">
-        {article.cover_image_url ? (
-          <Image
-            src={article.cover_image_url}
-            alt={article.title}
-            fill
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <PlaceholderImage label="Article image" className="h-full rounded-none border-0" />
-        )}
+        <Image
+          src={article.cover_image_url || DEFAULT_NEWS_IMAGE}
+          alt={article.title}
+          fill
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover transition-transform duration-500 group-hover:scale-105"
+        />
+        <span className="absolute left-3 top-3 rounded-full border border-primary/25 bg-ink-base/80 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary backdrop-blur-sm">
+          {newsCategoryLabel[article.category] ?? article.category}
+        </span>
       </div>
       <CardContent className="flex flex-col gap-3 p-5">
-        {article.published_at ? (
-          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {formatDate(article.published_at)}
-          </span>
-        ) : null}
+        <span className="inline-flex flex-wrap items-center gap-x-3 gap-y-1 text-xs font-semibold uppercase tracking-widest text-primary">
+          {article.published_at ? (
+            <span className="inline-flex items-center gap-2">
+              <CalendarDays className="h-3.5 w-3.5" />
+              {formatDate(article.published_at)}
+            </span>
+          ) : null}
+          {article.author_name ? (
+            <span className="inline-flex items-center gap-1.5 text-muted">
+              <User className="h-3.5 w-3.5" />
+              {article.author_name}
+            </span>
+          ) : null}
+        </span>
         <CardTitle className="line-clamp-2 text-lg">{article.title}</CardTitle>
-        {article.content ? (
-          <p className="line-clamp-3 text-sm leading-relaxed text-muted">{article.content}</p>
+        {article.excerpt ? (
+          <p className="line-clamp-3 text-sm leading-relaxed text-muted">{article.excerpt}</p>
         ) : null}
         <Link
           href={`/news/${article.slug}`}

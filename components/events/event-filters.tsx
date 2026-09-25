@@ -9,6 +9,7 @@ const FILTERS = [
   { value: "WORKSHOP", label: "Workshop" },
   { value: "COMPETITION", label: "Competition" },
   { value: "SEMINAR", label: "Seminar" },
+  { value: "OTHER", label: "Other" },
 ] as const;
 
 export function EventFilters() {

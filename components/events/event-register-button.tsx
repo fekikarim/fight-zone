@@ -19,6 +19,8 @@ const INITIAL: EventActionState = { ok: false };
 interface EventRegisterButtonProps {
   eventId: string;
   isRegistered: boolean;
+  /** Member cancelled before and may take a spot again. */
+  isRejoin?: boolean;
   isFull: boolean;
   isPast: boolean;
 }
@@ -26,6 +28,7 @@ interface EventRegisterButtonProps {
 export function EventRegisterButton({
   eventId,
   isRegistered,
+  isRejoin = false,
   isFull,
   isPast,
 }: EventRegisterButtonProps) {
@@ -59,10 +62,10 @@ export function EventRegisterButton({
     );
   }
 
-  return <RegisterControl eventId={eventId} />;
+  return <RegisterControl eventId={eventId} rejoin={isRejoin} />;
 }
 
-function RegisterControl({ eventId }: { eventId: string }) {
+function RegisterControl({ eventId, rejoin = false }: { eventId: string; rejoin?: boolean }) {
   const [showSuccess, setShowSuccess] = useState(false);
   const [state, formAction, isPending] = useActionState(
     async (prev: EventActionState, formData: FormData) => {
@@ -83,7 +86,7 @@ function RegisterControl({ eventId }: { eventId: string }) {
           ) : (
             <UserPlus className="h-4 w-4" />
           )}
-          {isPending ? "Checking your spot…" : "Register for event"}
+          {isPending ? "Checking your spot…" : rejoin ? "Join event again" : "Register for event"}
         </Button>
       </form>
 
