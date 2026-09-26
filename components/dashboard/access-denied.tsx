@@ -29,12 +29,6 @@ export function AccessDenied({ returnHref = "/", returnLabel = "Back home" }: {
         >
           {returnLabel}
         </Link>
-        <Link
-          href="/contact"
-          className="inline-flex h-11 items-center justify-center rounded-md border border-ink-border px-7 text-sm font-medium text-foreground transition-colors hover:border-primary hover:text-primary"
-        >
-          Contact us
-        </Link>
       </div>
     </div>
   );

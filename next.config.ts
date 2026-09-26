@@ -51,6 +51,11 @@ const nextConfig: NextConfig = {
   async redirects() {
     return [
       {
+        // News management moved from /admin/content/news to /admin/news.
+        source: "/admin/content/news/:path*",
+        destination: "/admin/news/:path*",
+        permanent: true,
+      },      {
         source: "/pricing",
         destination: "/events",
         permanent: true,

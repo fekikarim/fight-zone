@@ -6,6 +6,7 @@ import { getCurrentUserNotifications, getUnreadMessageCount, getUnreadNotificati
 import { Badge } from "@/components/ui/badge";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { EnterPreviewButton } from "@/components/preview/enter-preview-button";
 import { formatDate } from "@/lib/utils";
 import { createClient } from "@/lib/supabase/server";
 
@@ -41,7 +42,9 @@ export default async function AdminPage() {
               {role}
             </Badge>
           ))}
-        </div>
+          <div className="ml-auto">
+            <EnterPreviewButton returnTo="/events" />
+          </div>        </div>
         <p className="max-w-2xl text-sm text-muted">
           A live view of your chat, notifications and membership activity.
         </p>

@@ -9,7 +9,7 @@ import type { EventDetail, EventSummary } from "@/lib/types/events";
 
 export type EventItem = EventDetail | EventSummary;
 
-export function EventCard({ event }: { event: EventItem }) {
+export function EventCard({ event, href }: { event: EventItem; href?: string }) {
   const isPrivateCoaching =
     "is_private_coaching" in event
       ? event.is_private_coaching
@@ -34,7 +34,7 @@ export function EventCard({ event }: { event: EventItem }) {
   const isFull = spotsLeft !== null && spotsLeft === 0;
 
   return (
-    <Link href={getEventHref("public", event.id)} className="group block h-full">
+    <Link href={href ?? getEventHref("public", event.id)} className="group block h-full">
       <Card className="flex h-full flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10">
         <div className="relative aspect-[16/10] bg-ink-softer">
           <div

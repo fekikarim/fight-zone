@@ -33,7 +33,7 @@ export function NewsCreateForm() {
   const [state, formAction, isPending] = useActionState(
     async (_prev: ContentActionState, formData: FormData) => {
       const result = await createNews(_prev, formData);
-      if (result.ok && result.id) router.push(`/admin/content/news/${result.id}`);
+      if (result.ok && result.id) router.push(`/admin/news/${result.id}`);
       return result;
     },
     { ok: false } as ContentActionState,

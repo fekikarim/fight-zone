@@ -27,7 +27,7 @@ export default async function AdminNewsEditPage({ params }: PageProps) {
     <div className="mx-auto max-w-2xl space-y-8">
       <div>
         <Link
-          href="/admin/content/news"
+          href="/admin/news"
           className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground"
         >
           <ArrowLeft className="h-3 w-3" />

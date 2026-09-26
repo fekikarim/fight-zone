@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/auth/sign-out-button";
+import { FreshnessDot } from "@/components/content/freshness-dot";
+import type { ContentMarker } from "@/lib/supabase/queries";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/lib/auth/guards";
 
@@ -36,7 +38,16 @@ interface DashboardShellProps {
   user: CurrentUser;
   nav: DashboardNavLink[];
   children: ReactNode;
+  /** "New content" snapshot for nav indicators (member dashboards). */
+  freshness?: {
+    news: ContentMarker | null;
+    events: ContentMarker | null;
+  } | null;
 }
+
+/** Pages that clear each feed's indicator (shared seen-key per feed). */
+const NEWS_HREFS = ["/news"];
+const EVENTS_HREFS = ["/events", "/member/events"];
 
 const MEMBER_NAV_ICONS: Record<string, ReactNode> = {
   "/member": <LayoutDashboard className="h-4 w-4 shrink-0" />,
@@ -69,6 +80,7 @@ function SidebarNavItem({
   active,
   external,
   onClick,
+  trailing,
 }: {
   href: string;
   label: string;
@@ -77,6 +89,7 @@ function SidebarNavItem({
   active?: boolean;
   external?: boolean;
   onClick?: () => void;
+  trailing?: ReactNode;
 }) {
   return (
     <Link
@@ -95,6 +108,7 @@ function SidebarNavItem({
         {icon}
       </span>
       <span className="flex-1 truncate">{label}</span>
+      {trailing}
       {badge ? (
         <span
           className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold leading-none text-ink-base"
@@ -125,11 +139,38 @@ function SidebarContent({
   nav,
   pathname,
   onLinkClick,
+  userId,
+  freshness,
 }: {
   nav: DashboardNavLink[];
   pathname: string;
   onLinkClick?: () => void;
+  userId: string | null;
+  freshness?: DashboardShellProps["freshness"];
 }) {
+  const dotFor = (href: string) => {
+    if (href === "/member/events") {
+      return (
+        <FreshnessDot
+          kind="events"
+          hrefs={EVENTS_HREFS}
+          userId={userId}
+          initial={freshness?.events ?? null}
+        />
+      );
+    }
+    if (href === "/news") {
+      return (
+        <FreshnessDot
+          kind="news"
+          hrefs={NEWS_HREFS}
+          userId={userId}
+          initial={freshness?.news ?? null}
+        />
+      );
+    }
+    return null;
+  };
   return (
     <div className="flex h-full flex-col">
       {/* Member Nav */}
@@ -148,6 +189,7 @@ function SidebarContent({
                 icon={MEMBER_NAV_ICONS[item.href]}
                 active={isActiveNav(pathname, item.href, nav)}
                 onClick={onLinkClick}
+                trailing={dotFor(item.href)}
               />
             ))}
           </nav>
@@ -170,6 +212,7 @@ function SidebarContent({
                 icon={item.icon}
                 active={pathname === item.href}
                 onClick={onLinkClick}
+                trailing={dotFor(item.href)}
               />
             ))}
           </nav>
@@ -192,7 +235,7 @@ function SidebarContent({
   );
 }
 
-export function DashboardShell({ user, nav, children }: DashboardShellProps) {
+export function DashboardShell({ user, nav, children, freshness }: DashboardShellProps) {
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
@@ -276,7 +319,7 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
         {/* ─── Desktop Sidebar ─────────────────────────────────────── */}
         <aside className="hidden w-56 shrink-0 border-r border-ink-border bg-ink-soft/20 md:block">
           <div className="sticky top-16 h-[calc(100dvh-4rem)] overflow-y-auto">
-            <SidebarContent nav={nav} pathname={pathname} />
+            <SidebarContent nav={nav} pathname={pathname} userId={user.id} freshness={freshness} />
           </div>
         </aside>
 
@@ -333,7 +376,7 @@ export function DashboardShell({ user, nav, children }: DashboardShellProps) {
 
             {/* Nav content */}
             <div className="flex-1 overflow-y-auto">
-              <SidebarContent nav={nav} pathname={pathname} onLinkClick={() => setDrawerOpen(false)} />
+              <SidebarContent nav={nav} pathname={pathname} onLinkClick={() => setDrawerOpen(false)} userId={user.id} freshness={freshness} />
             </div>
 
             {/* Sign out */}

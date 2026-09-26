@@ -37,6 +37,7 @@ export default async function PublicEventDetailPage({ params }: Props) {
   if (!event) notFound();
 
   const user = await getCurrentUser();
+  const isStaff = user?.roles.some((role) => role === "ADMIN" || role === "COACH") ?? false;
   const image = resolveEventImage({
     image_url: event.image_url,
     event_type: event.event_type,
@@ -59,11 +60,17 @@ export default async function PublicEventDetailPage({ params }: Props) {
             <EventDetailDisplay
               event={event}
               action={
-                <Button asChild size="lg" className="gap-2">
-                  <Link href={user ? getEventHref("member", event.id) : "/sign-in"}>
-                    {user ? "Register for this event" : "Log in to register"}
-                  </Link>
-                </Button>
+                isStaff ? (
+                  <Button asChild size="lg" className="gap-2">
+                    <Link href={`/admin/events/${event.id}`}>Manage this event</Link>
+                  </Button>
+                ) : (
+                  <Button asChild size="lg" className="gap-2">
+                    <Link href={user ? getEventHref("member", event.id) : "/sign-in"}>
+                      {user ? "Register for this event" : "Log in to register"}
+                    </Link>
+                  </Button>
+                )
               }
             />
 

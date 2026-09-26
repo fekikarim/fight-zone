@@ -183,6 +183,67 @@ export const getNewsBySlug = cache(async (slug: string) => {
   return { ...row, author_name: authors.get(row.created_by) ?? null };
 });
 
+/** Latest published article marker for "new content" indicators. */
+export interface ContentMarker {
+  id: string;
+  at: string;
+}
+
+/**
+ * Newest published article (id + timestamp only — one cheap indexed read).
+ * Powers navbar "new" indicators. Degrades to null, never throws.
+ */
+export const getLatestPublishedNews = cache(async (): Promise<ContentMarker | null> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("news")
+      .select("id, published_at")
+      .eq("is_published", true)
+      .order("published_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data?.published_at) return null;
+    return { id: data.id, at: data.published_at };
+  } catch (error) {
+    logError("Query failed: latest published news", error);
+    return null;
+  }
+});
+
+/**
+ * Newest public event (id + creation timestamp only). Same contract.
+ */
+export const getLatestPublicEvent = cache(async (): Promise<ContentMarker | null> => {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("events")
+      .select("id, created_at")
+      .eq("is_public", true)
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    if (error || !data?.created_at) return null;
+    return { id: data.id, at: data.created_at };
+  } catch (error) {
+    logError("Query failed: latest public event", error);
+    return null;
+  }
+});
+
+/** Snapshot of both feeds for nav indicators (single parallel fetch). */
+export async function getContentFreshness(): Promise<{
+  news: ContentMarker | null;
+  events: ContentMarker | null;
+}> {
+  const [news, events] = await Promise.all([
+    getLatestPublishedNews(),
+    getLatestPublicEvent(),
+  ]);
+  return { news, events };
+}
+
 /** Guarantees a display excerpt, deriving from content when empty. */
 function withExcerpt<T extends { excerpt?: string | null; content?: string | null }>(
   row: T,

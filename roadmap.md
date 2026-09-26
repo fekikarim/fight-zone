@@ -39,6 +39,11 @@
 | Coach News & Events system  | DONE — gates green (tsc 0, eslint 0/0, `npm run build`); 19 SQL tests pass |
 | News/Event migration        | PUSHED + types regenerated + gates green — **LIVE** |
 | Author RPC migration        | PUSHED + types regenerated + gates green — **LIVE** |
+| News/Events indicators      | DONE — FreshnessDot (SSR snapshot + realtime, per-user seen-tracking, 22 tests) |
+| Coach View-as-Member        | DONE — /preview (ADMIN/COACH-gated, read-only); /member + participation MEMBER-gated |
+| News realtime migration     | PUSHED — 36/36 synced, zero pending — **LIVE** |
+| News admin section          | DONE — moved to /admin/news (+nav, redirects); gates green |
+| Preview mode (cookie)       | DONE — staff-only enter/exit, banners on /events + /news, 10 allowlist tests |
 | Live re-serve on production   | **PENDING** — after migration push + redeploy + env vars |
 
 ## Next steps (in order)

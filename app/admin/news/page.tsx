@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { PreviewEntryBar } from "@/components/preview/preview-entry-bar";
 import { getAdminNews } from "@/lib/supabase/queries";
 import { newsCategoryLabel } from "@/lib/types/content";
 
@@ -15,6 +16,7 @@ export default async function AdminNewsPage() {
 
   return (
     <div className="space-y-8">
+      <PreviewEntryBar returnTo="/news" subject="articles" />
       <div className="flex items-center justify-between">
         <header>
           <h1 className="text-2xl font-bold tracking-tight">News & Articles</h1>
@@ -22,12 +24,14 @@ export default async function AdminNewsPage() {
             {articles.length} article{articles.length !== 1 ? "s" : ""}
           </p>
         </header>
-        <Button asChild size="sm" className="gap-2">
-          <Link href="/admin/content/news/new">
-            <Plus className="h-4 w-4" />
-            New article
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild size="sm" className="gap-2">
+            <Link href="/admin/news/new">
+              <Plus className="h-4 w-4" />
+              New article
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {articles.length === 0 ? (
@@ -39,7 +43,7 @@ export default async function AdminNewsPage() {
           {articles.map((article) => (
             <Link
               key={article.id}
-              href={`/admin/content/news/${article.id}`}
+              href={`/admin/news/${article.id}`}
               className="flex items-center gap-4 rounded-lg border border-ink-border bg-ink-soft/30 p-4 transition-colors hover:border-primary/30 hover:bg-primary/5"
             >
               <div className="min-w-0 flex-1">

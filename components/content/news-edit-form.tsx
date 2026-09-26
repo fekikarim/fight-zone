@@ -46,7 +46,7 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
       const result = await deleteNews(_prev, formData);
       if (result.ok) {
         setConfirmOpen(false);
-        router.push("/admin/content/news");
+        router.push("/admin/news");
       }
       return result;
     },

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Plus, CalendarDays } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { PreviewEntryBar } from "@/components/preview/preview-entry-bar";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { getAdminEvents } from "@/lib/supabase/queries";
@@ -25,6 +26,7 @@ export default async function AdminEventsPage() {
 
   return (
     <Container className="flex max-w-none flex-col gap-8 px-0">
+      <PreviewEntryBar returnTo="/events" subject="events" />
       <div className="flex items-center justify-between">
         <div className="flex flex-col gap-2">
           <h1 className="font-display text-3xl font-bold uppercase tracking-tight">
@@ -34,12 +36,14 @@ export default async function AdminEventsPage() {
             Manage events and track registrations.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/admin/events/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New event
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button asChild>
+            <Link href="/admin/events/new">
+              <Plus className="mr-2 h-4 w-4" />
+              New event
+            </Link>
+          </Button>
+        </div>
       </div>
 
       {events.length > 0 ? (

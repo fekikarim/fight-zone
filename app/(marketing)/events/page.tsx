@@ -5,6 +5,7 @@ import { Reveal } from "@/components/ui/reveal";
 import { EventCard } from "@/components/marketing/event-card";
 import { PageHero } from "@/components/marketing/page-hero";
 import { EventFilters } from "@/components/events/event-filters";
+import { PreviewModeBanner } from "@/components/preview/preview-mode-banner";
 import { getPublicEvents } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = {
@@ -29,6 +30,7 @@ export default async function EventsPage({ searchParams }: Props) {
         description="Sparring nights, workshops, seminars and competitions hosted by Fight Zone — open to members and visitors alike."
         image="/components/fit-cartoon-women-training-4096x4096.jpg"
       />
+      <PreviewModeBanner />
 
       <section className="py-16 lg:py-24">
         <Container>

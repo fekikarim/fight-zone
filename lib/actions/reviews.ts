@@ -47,8 +47,7 @@ function revalidateTransformations() {
 export async function submitReview(
   _prev: ReviewActionState,
   formData: FormData,
-): Promise<ReviewActionState> {
-  const parsed = submitReviewSchema.safeParse({
+): Promise<ReviewActionState> {  const parsed = submitReviewSchema.safeParse({
     rating: formData.get("rating"),
     title: formData.get("title"),
     content: formData.get("content"),
@@ -62,7 +61,7 @@ export async function submitReview(
     return { ok: false, message: first?.message ?? "Invalid data." };
   }
 
-  const user = await requireUser();
+  const user = await requireRole(["MEMBER"]);
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -239,7 +238,7 @@ export async function submitTransformation(
     return { ok: false, message: first?.message ?? "Invalid data." };
   }
 
-  const user = await requireUser();
+  const user = await requireRole(["MEMBER"]);
   const supabase = await createClient();
 
   const { data, error } = await supabase

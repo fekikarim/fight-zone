@@ -1,28 +1,20 @@
 import type { Metadata } from "next";
-import { Newspaper, Image as ImageIcon, Trophy } from "lucide-react";
+import { Image as ImageIcon, Trophy } from "lucide-react";
 import Link from "next/link";
-import { getAdminNews, getAdminMedia, getAdminAchievements } from "@/lib/supabase/queries";
+import { getAdminMedia, getAdminAchievements } from "@/lib/supabase/queries";
 
 export const metadata: Metadata = {
   title: "Content Management",
-  description: "Manage news articles, media, and achievements.",
+  description: "Manage media and achievements.",
 };
 
 export default async function AdminContentPage() {
-  const [news, media, achievements] = await Promise.all([
-    getAdminNews(),
+  const [media, achievements] = await Promise.all([
     getAdminMedia(),
     getAdminAchievements(),
   ]);
 
   const sections = [
-    {
-      label: "News & Articles",
-      description: "Write and publish training tips, event recaps, and announcements.",
-      href: "/admin/content/news",
-      icon: Newspaper,
-      count: news.length,
-    },
     {
       label: "Media Library",
       description: "Upload and manage photos, videos, and documents.",
@@ -44,11 +36,12 @@ export default async function AdminContentPage() {
       <header>
         <h1 className="text-2xl font-bold tracking-tight">Content Management</h1>
         <p className="mt-1 text-sm text-muted">
-          Manage your public content: news articles, media, and achievement records.
+          Manage your public content: media and achievement records. News articles
+          live in their own <Link href="/admin/news" className="text-primary hover:underline">News section</Link>.
         </p>
       </header>
 
-      <div className="grid gap-4 sm:grid-cols-3">
+      <div className="grid gap-4 sm:grid-cols-2">
         {sections.map((section) => {
           const Icon = section.icon;
           return (

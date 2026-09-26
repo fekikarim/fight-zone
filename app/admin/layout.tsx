@@ -9,6 +9,7 @@ const adminNav = [
   { href: "/admin", label: "Overview" },
   { href: "/admin/events", label: "Events" },
   { href: "/admin/calendar", label: "Calendar" },
+  { href: "/admin/news", label: "News" },
   { href: "/admin/reviews", label: "Reviews" },
   { href: "/admin/messages", label: "Messages" },
   { href: "/admin/notifications", label: "Notifications" },

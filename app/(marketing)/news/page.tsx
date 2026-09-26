@@ -4,6 +4,7 @@ import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import { NewsCard } from "@/components/marketing/news-card";
 import { PageHero } from "@/components/marketing/page-hero";
+import { PreviewModeBanner } from "@/components/preview/preview-mode-banner";
 import { getPublishedNews } from "@/lib/supabase/queries";
 import { NEWS_CATEGORIES } from "@/lib/validations/content";
 import { newsCategoryLabel } from "@/lib/types/content";
@@ -36,6 +37,7 @@ export default async function NewsPage({ searchParams }: NewsPageProps) {
         description="Insights, recaps and the philosophy that drives Fight Zone athletes."
         image="/components/flat-sport-medals-illustration-2000x2000.jpg"
       />
+      <PreviewModeBanner />
 
       <section className="py-16 lg:py-24">
         <Container>

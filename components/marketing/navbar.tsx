@@ -8,6 +8,8 @@ import { Menu, X, LogIn, User, LayoutDashboard, LogOut } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
+import { FreshnessDot } from "@/components/content/freshness-dot";
+import type { ContentMarker } from "@/lib/supabase/queries";
 import { siteConfig } from "@/lib/site";
 import { cn } from "@/lib/utils";
 
@@ -19,9 +21,23 @@ interface NavbarProps {
     avatarUrl: string | null;
     roles: string[];
   } | null;
+  freshness: {
+    news: ContentMarker | null;
+    events: ContentMarker | null;
+  };
 }
 
-export function NavbarClient({ user }: NavbarProps) {
+/** Pages that clear each feed's indicator (shared seen-key per feed). */
+const NEWS_HREFS = ["/news"];
+const EVENTS_HREFS = ["/events", "/member/events"];
+
+function freshnessFor(href: string, freshness: NavbarProps["freshness"]): ContentMarker | null {
+  if (href === "/news") return freshness.news;
+  if (href === "/events") return freshness.events;
+  return null;
+}
+
+export function NavbarClient({ user, freshness }: NavbarProps) {
   const pathname = usePathname();
   const [open, setOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
@@ -70,6 +86,11 @@ export function NavbarClient({ user }: NavbarProps) {
     };
   }, [open]);
 
+  // Staff (coach/admin) never use the member dashboard: they get the
+  // admin entry instead, so they can't land on MEMBER-gated routes.
+  const isStaff =
+    user?.roles.some((role) => role === "ADMIN" || role === "COACH") ?? false;
+
   const getInitials = (name: string | null) => {
     if (!name) return "U";
     return name
@@ -95,18 +116,27 @@ export function NavbarClient({ user }: NavbarProps) {
         <nav aria-label="Main" className="hidden items-center gap-7 lg:flex">
           {siteConfig.nav.public.map((link) => {
             const active = pathname === link.href;
+            const kind = link.href === "/news" ? "news" : link.href === "/events" ? "events" : null;
             return (
               <Link
                 key={link.href}
                 href={link.href}
                 className={cn(
-                  "text-sm font-medium tracking-wide transition-colors",
+                  "inline-flex items-center text-sm font-medium tracking-wide transition-colors",
                   active
                     ? "text-primary"
                     : "text-muted hover:text-foreground",
                 )}
               >
                 {link.label}
+                {kind ? (
+                  <FreshnessDot
+                    kind={kind}
+                    hrefs={kind === "news" ? NEWS_HREFS : EVENTS_HREFS}
+                    userId={user?.id ?? null}
+                    initial={freshnessFor(link.href, freshness)}
+                  />
+                ) : null}
               </Link>
             );
           })}
@@ -147,24 +177,38 @@ export function NavbarClient({ user }: NavbarProps) {
                   className="absolute right-0 top-full mt-2 w-48 rounded-md border border-ink-border bg-ink shadow-lg"
                 >
                   <div className="p-2">
-                    <Link
-                      href="/member"
-                      role="menuitem"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
-                      onClick={() => setAccountMenuOpen(false)}
-                    >
-                      <LayoutDashboard className="h-4 w-4" />
-                      Dashboard
-                    </Link>
-                    <Link
-                      href="/member/profile"
-                      role="menuitem"
-                      className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
-                      onClick={() => setAccountMenuOpen(false)}
-                    >
-                      <User className="h-4 w-4" />
-                      Profile
-                    </Link>
+                    {isStaff ? (
+                      <Link
+                        href="/admin"
+                        role="menuitem"
+                        className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                        onClick={() => setAccountMenuOpen(false)}
+                      >
+                        <LayoutDashboard className="h-4 w-4" />
+                        Admin dashboard
+                      </Link>
+                    ) : (
+                      <>
+                        <Link
+                          href="/member"
+                          role="menuitem"
+                          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                          onClick={() => setAccountMenuOpen(false)}
+                        >
+                          <LayoutDashboard className="h-4 w-4" />
+                          Dashboard
+                        </Link>
+                        <Link
+                          href="/member/profile"
+                          role="menuitem"
+                          className="flex items-center gap-2 rounded-md px-3 py-2 text-sm text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                          onClick={() => setAccountMenuOpen(false)}
+                        >
+                          <User className="h-4 w-4" />
+                          Profile
+                        </Link>
+                      </>
+                    )}
                     <hr className="my-2 border-ink-border" />
                     <form action="/sign-out" method="POST">
                       <button
@@ -222,6 +266,7 @@ export function NavbarClient({ user }: NavbarProps) {
         <Container className="flex flex-col gap-1 py-4">
           {siteConfig.nav.public.map((link, i) => {
             const active = pathname === link.href;
+            const kind = link.href === "/news" ? "news" : link.href === "/events" ? "events" : null;
             return (
               <Link
                 key={link.href}
@@ -234,27 +279,49 @@ export function NavbarClient({ user }: NavbarProps) {
                     : "text-muted hover:bg-ink-soft hover:text-foreground",
                 )}
               >
-                {link.label}
+                <span className="inline-flex items-center">
+                  {link.label}
+                  {kind ? (
+                    <FreshnessDot
+                      kind={kind}
+                      hrefs={kind === "news" ? NEWS_HREFS : EVENTS_HREFS}
+                      userId={user?.id ?? null}
+                      initial={freshnessFor(link.href, freshness)}
+                    />
+                  ) : null}
+                </span>
               </Link>
             );
           })}
           {user ? (
             <>
               <hr className="my-2 border-ink-border" />
-              <Link
-                href="/member/dashboard"
-                className="flex items-center gap-2 rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
-              >
-                <LayoutDashboard className="h-5 w-5" />
-                Dashboard
-              </Link>
-              <Link
-                href="/member/profile"
-                className="flex items-center gap-2 rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
-              >
-                <User className="h-5 w-5" />
-                Profile
-              </Link>
+              {isStaff ? (
+                <Link
+                  href="/admin"
+                  className="flex items-center gap-2 rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                >
+                  <LayoutDashboard className="h-5 w-5" />
+                  Admin dashboard
+                </Link>
+              ) : (
+                <>
+                  <Link
+                    href="/member"
+                    className="flex items-center gap-2 rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                  >
+                    <LayoutDashboard className="h-5 w-5" />
+                    Dashboard
+                  </Link>
+                  <Link
+                    href="/member/profile"
+                    className="flex items-center gap-2 rounded-md px-3 py-3 text-base font-medium text-muted transition-colors hover:bg-ink-soft hover:text-foreground"
+                  >
+                    <User className="h-5 w-5" />
+                    Profile
+                  </Link>
+                </>
+              )}
               <form action="/sign-out" method="POST">
                 <button
                   type="submit"

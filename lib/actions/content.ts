@@ -34,9 +34,9 @@ export interface ContentActionState {
 function revalidateNews(articleId?: string, slug?: string) {
   revalidatePath("/news");
   revalidatePath("/admin/content");
-  revalidatePath("/admin/content/news");
+  revalidatePath("/admin/news");
   if (articleId) {
-    revalidatePath(`/admin/content/news/${articleId}`);
+    revalidatePath(`/admin/news/${articleId}`);
   }
   if (slug) {
     revalidatePath(`/news/${slug}`);

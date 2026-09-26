@@ -2,7 +2,7 @@
 
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
-import { assertAuthenticated, requireRole } from "@/lib/auth/guards";
+import { requireRole } from "@/lib/auth/guards";
 import {
   createEventSchema,
   updateEventSchema,
@@ -63,7 +63,10 @@ export async function registerForEvent(
   });
   if (!parsed.success) return { ok: false, message: "Invalid event." };
 
-  const user = await assertAuthenticated();
+  // Participation is a member-only action: coaches/staff manage events
+  // through /admin and can never take member slots (enforced here, not
+  // just by hiding the button — RLS + triggers back it up).
+  const user = await requireRole(["MEMBER"]);
   const supabase = await createClient();
 
   const { error } = await supabase.from("event_participants").insert({
@@ -170,7 +173,8 @@ export async function cancelEventRegistration(
   });
   if (!parsed.success) return { ok: false, message: "Invalid event." };
 
-  const user = await assertAuthenticated();
+  // Member-only, like registration above.
+  const user = await requireRole(["MEMBER"]);
   const supabase = await createClient();
 
   const { error } = await supabase
