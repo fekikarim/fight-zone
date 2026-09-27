@@ -51,6 +51,7 @@ export async function deliverEmail(input: {
       to: input.recipient,
       subject: payload.subject,
       html: payload.html,
+      text: payload.text,
     });
     await markDelivered(claim.id, result.messageId);
     return { claimed: true, sent: true, messageId: result.messageId };

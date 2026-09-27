@@ -1,5 +1,14 @@
 # Resend Email Integration
 
+> Current structure (redesigned): all rendering lives in pure builders in
+> `templates.ts` on the shared branded shell in `layout.ts` (dark header
+> band with logo, rose accents, coded footer contact). Every payload is
+> `{ subject, html, text }` (HTML + plain-text alternative). The senders in
+> `resend.ts` (welcome/reset/contact/booking/notification) and the V3 durable
+> path (`send.ts` → `transport.ts`) only transmit. Supabase-native auth
+> emails (confirmation, verification resend, reset link) are sent by Supabase
+> with its own templates and are not built here. Tests: `tests/email.test.ts`.
+
 ## Overview
 
 Fight Zone uses Resend for email services, providing a production-ready email integration for:

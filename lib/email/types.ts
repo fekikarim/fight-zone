@@ -31,6 +31,8 @@ export interface EmailEvent {
 export interface EmailPayload {
   subject: string;
   html: string;
+  /** Plain-text alternative for clients that prefer it. */
+  text: string;
 }
 
 export interface CoachReminderData {
