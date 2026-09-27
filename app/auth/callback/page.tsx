@@ -53,9 +53,14 @@ export default function AuthCallbackPage() {
           return;
         }
 
-        const next = type === "recovery" ? "/reset-password" : "/member";
-        router.replace(next);
+        const next = type === "recovery" ? "/reset-password" : "/";
+        // Refresh FIRST to invalidate the client-side RSC cache while the
+        // fresh session cookies are in place, then navigate: the landing
+        // page (and its navbar) server-renders authenticated on arrival.
+        // The previous order (replace-then-refresh) refreshed the callback
+        // route instead, leaving stale Login/Join buttons behind.
         router.refresh();
+        router.replace(next);
       } catch {
         setError(
           "Something went wrong while completing this link. Please try again.",
