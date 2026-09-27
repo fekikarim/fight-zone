@@ -32,6 +32,25 @@ import type { ReviewItem, ReviewWithAuthor, TransformationItem, ReviewStats } fr
  */
 
 /**
+ * True for Next.js's static-prerender bailout ("Dynamic server usage ...
+ * couldn't be rendered statically because it used `cookies`").
+ *
+ * Context: pages with a personalized navbar read the session via cookies(),
+ * so Next attempts a static render at build time, bails to dynamic, and
+ * every in-flight query observes this framework error. It is NOT a database
+ * failure — callers return their display fallback silently in exactly this
+ * case (production build only). At request time cookies() resolves and any
+ * error is a genuine failure that must be logged.
+ */
+function isPrerenderBailout(error: unknown): boolean {
+  return (
+    process.env.NEXT_PHASE === "phase-production-build" &&
+    error instanceof Error &&
+    error.message.includes("Dynamic server usage")
+  );
+}
+
+/**
  * Marketing/display queries resolve to a fallback value instead of throwing,
  * so a transient database hiccup degrades a section to its empty state rather
  * than crashing the whole page. Failures are still logged for observability.
@@ -43,11 +62,7 @@ export async function resolveOrFallback<T>(run: () => Promise<T>, fallback: T): 
   } catch (error) {
     // Static prerender intentionally trips `cookies()` — framework flow,
     // not a failure. Silence during build so runtime signals stay clean.
-    const isPrerenderFlow =
-      process.env.NEXT_PHASE === "phase-production-build" &&
-      error instanceof Error &&
-      error.message.includes("Dynamic server usage");
-    if (!isPrerenderFlow) {
+    if (!isPrerenderBailout(error)) {
       logDegradation("Optional query failed; degrading to fallback", error, {
         domain: "query",
         durationMs: Date.now() - startedAt,
@@ -206,7 +221,11 @@ export const getLatestPublishedNews = cache(async (): Promise<ContentMarker | nu
     if (error || !data?.published_at) return null;
     return { id: data.id, at: data.published_at };
   } catch (error) {
-    logError("Query failed: latest published news", error);
+    // Prerender bailout (see isPrerenderBailout): the route renders
+    // dynamically per request, so there is nothing to report.
+    if (!isPrerenderBailout(error)) {
+      logError("Query failed: latest published news", error);
+    }
     return null;
   }
 });
@@ -227,7 +246,10 @@ export const getLatestPublicEvent = cache(async (): Promise<ContentMarker | null
     if (error || !data?.created_at) return null;
     return { id: data.id, at: data.created_at };
   } catch (error) {
-    logError("Query failed: latest public event", error);
+    // Prerender bailout (see isPrerenderBailout): silent, like above.
+    if (!isPrerenderBailout(error)) {
+      logError("Query failed: latest public event", error);
+    }
     return null;
   }
 });
