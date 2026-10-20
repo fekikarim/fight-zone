@@ -70,17 +70,14 @@
    `email_deliveries` retention sweep, extend realtime to member-side availability, broader
    notification preferences, switch AI provider or add a hosted alternative in `lib/ai/`.
 
-## Historical planning artifacts
+## Canonical documentation artifacts
 
-- `updates/update-v1.md` — authoritative Update V1 spec (29 sections).
-- `updates/update-v2.md` — authoritative Update V2 spec (26 parts).
-- `updates/update-v3.md` — authoritative Update V3 spec (27 parts).
-- `updates/update-v4.md` — authoritative Update V4 spec (Daily AI Motivational Coach).
-- `docs/update-v1-audit.md` — Phase 1 audit (gap map).
-- `docs/update-v1-architecture.md` — Phase 2 owner-approved architecture decisions.
-- `docs/update-v1.md` — Update V1 final implementation report (19-section, classified).
-- `docs/update-v2.md` — Update V2 final implementation report (17-section, classified).
-- `docs/update-v3.md` — Update V3 final implementation report (21-section, classified).
+- `docs/SYSTEM_ARCHITECTURE_AND_SPECIFICATION.md` — Authoritative master system architecture and technical specifications.
 - `docs/daily-ai-motivation.md` — Update V4 implementation note (design + validation).
-- `docs/production-readiness.md` — Phase 19/20 readiness + launch (GO WITH EXPLICIT
-  ACCEPTED RISKS).
+- `docs/coach-news-events.md` — Coach News & Events management specifications.
+- `docs/operations/disaster-recovery.md` — Verified disaster recovery procedures and backup targets.
+- `docs/operations/observability.md` — Structured logging taxonomy and alerting thresholds.
+- `../updates/update-v1.md` — authoritative Update V1 spec.
+- `../updates/update-v2.md` — authoritative Update V2 spec.
+- `../updates/update-v3.md` — authoritative Update V3 spec.
+- `../updates/update-v4.md` — authoritative Update V4 spec (Daily AI Motivational Coach).

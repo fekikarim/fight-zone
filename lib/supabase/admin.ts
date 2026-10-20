@@ -7,7 +7,7 @@ import type { Database } from "@/types/database.types";
 /**
  * Server-only SUPABASE ADMIN client (service_role key).
  *
- * WHY THIS FILE EXISTS (Update V3 audit — see `docs/update-v3.md` §13):
+ * WHY THIS FILE EXISTS (Event automation & background jobs — see `docs/SYSTEM_ARCHITECTURE_AND_SPECIFICATION.md` §7):
  * The event-email automation runs in contexts with NO authenticated user
  * session:
  *   * Scheduled cron jobs (daily coach report + 30-minute reminders) run

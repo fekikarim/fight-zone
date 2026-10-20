@@ -164,5 +164,5 @@ Consequences:
   owner business decision and is intentionally out of scope for
   implementation prompts. No upgrade action is recommended or performed
   here. Until such a decision, this limitation stands as an **accepted
-  operational blocker** recorded in `docs/production-readiness.md`
-  (Phase 18) and in the header of this file.
+  operational constraint** recorded in `docs/SYSTEM_ARCHITECTURE_AND_SPECIFICATION.md`
+  and in the header of this file.

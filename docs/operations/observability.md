@@ -83,4 +83,4 @@ attached when the monitoring provider is chosen.
   saved-searches/monitors on `level`, `category`, `dbCode`, `domain`.
 - Uptime: external synthetic probe (provider-independent).
 - Until then: **monitoring classification = UNVERIFIED**; logging itself is
-  ACTIVE and verified (see Phase 17 evidence in docs/production-readiness.md).
+  ACTIVE and verified (see `docs/SYSTEM_ARCHITECTURE_AND_SPECIFICATION.md`).
