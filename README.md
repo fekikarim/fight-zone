@@ -7,6 +7,9 @@
 ### The Official Digital Platform of Coach Seif Dridi
 **Train. Fight. Win.**
 
+🌐 **Live Platform:** [**https://fight-zone.app**](https://fight-zone.app)
+
+[![Website](https://img.shields.io/badge/Live_Website-fight--zone.app-e11d48?style=for-the-badge&logo=googlechrome&logoColor=white)](https://fight-zone.app)
 [![Next.js 16](https://img.shields.io/badge/Next.js-16.3.0-black?style=for-the-badge&logo=next.js)](https://nextjs.org/)
 [![React 19](https://img.shields.io/badge/React-19.2.8-blue?style=for-the-badge&logo=react)](https://react.dev/)
 [![TypeScript 5](https://img.shields.io/badge/TypeScript-5.0-3178C6?style=for-the-badge&logo=typescript)](https://www.typescriptlang.org/)
@@ -20,7 +23,7 @@
 
 ---
 
-**Fight Zone** is an enterprise-grade, event-centric athletic platform engineered specifically for **Coach Seif Dridi** — elite boxing coach, athlete, and mentor. Designed from the ground up for high concurrency, real-time schedule synchronization, and frictionless athlete engagement, the platform connects Coach Seif directly with his fighters and fitness enthusiasts.
+**Fight Zone** ([fight-zone.app](https://fight-zone.app)) is an enterprise-grade, event-centric athletic platform engineered specifically for **Coach Seif Dridi** — elite boxing coach, athlete, and mentor. Designed from the ground up for high concurrency, real-time schedule synchronization, and frictionless athlete engagement, the platform connects Coach Seif directly with his fighters and fitness enthusiasts.
 
 </div>
 
@@ -38,6 +41,7 @@ This official software platform was designed, engineered, and deployed by **Kari
 ### 🥊 Client & Head Coach
 * **Client / Head Coach**: [**Seif Dridi**](https://www.facebook.com/seif.dridi2) (Head Coach & Founder, Fight Zone)
 * **Official Facebook**: [facebook.com/seif.dridi2](https://www.facebook.com/seif.dridi2)
+* **Official Platform**: [https://fight-zone.app](https://fight-zone.app)
 * **Specialization**: Professional Boxing, Kickboxing, Physical Conditioning, Athlete Development
 
 ---
