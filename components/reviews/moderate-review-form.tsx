@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { runActionWithToast } from "@/components/ui/form-feedback";
 import { Check, X, Star, Loader2 } from "lucide-react";
 import { moderateReview, toggleReviewFeatured } from "@/lib/actions/reviews";
 import type { ReviewActionState } from "@/lib/actions/reviews";
@@ -33,7 +34,9 @@ export function ModerateReviewForm({
 }
 
 function ApproveButton({ reviewId }: { reviewId: string }) {
-  const [state, formAction, isPending] = useActionState(moderateReview, initialModerateState);
+  const [state, formAction, isPending] = useActionState(
+    (prev: ReviewActionState, fd: FormData) => runActionWithToast(() => moderateReview(prev, fd)),
+    initialModerateState);
   return (
     <form action={formAction}>
       <input type="hidden" name="reviewId" value={reviewId} />
@@ -56,7 +59,9 @@ function ApproveButton({ reviewId }: { reviewId: string }) {
 }
 
 function RejectButton({ reviewId }: { reviewId: string }) {
-  const [state, formAction, isPending] = useActionState(moderateReview, initialModerateState);
+  const [state, formAction, isPending] = useActionState(
+    (prev: ReviewActionState, fd: FormData) => runActionWithToast(() => moderateReview(prev, fd)),
+    initialModerateState);
   return (
     <form action={formAction}>
       <input type="hidden" name="reviewId" value={reviewId} />
@@ -85,7 +90,9 @@ function FeatureButton({
   reviewId: string;
   isFeatured: boolean;
 }) {
-  const [state, formAction, isPending] = useActionState(toggleReviewFeatured, initialFeatureState);
+  const [state, formAction, isPending] = useActionState(
+    (prev: ReviewActionState, fd: FormData) => runActionWithToast(() => toggleReviewFeatured(prev, fd)),
+    initialFeatureState);
   return (
     <form action={formAction}>
       <input type="hidden" name="reviewId" value={reviewId} />

@@ -25,9 +25,9 @@ export function NewsCreateForm() {
     { ok: false },
     {
       validate,
-      onSuccess: (result) => {
-        if (result.id) router.push(`/admin/news/${result.id}`);
-      },
+      successToast: (result) =>
+        result.message === "Article created." ? "Article created" : (result.message ?? "Article created"),
+      onSuccess: () => router.push("/admin/news"),
     },
   );
   const created = state.ok;
@@ -35,7 +35,6 @@ export function NewsCreateForm() {
   return (
     <form {...formProps} className="space-y-6" aria-busy={isPending}>
       <FormAlert tone="error" message={!state.ok ? state.message : undefined} />
-      <FormAlert tone="success" message={created ? "Article created — opening it…" : undefined} />
 
       <NewsFormFields errors={fieldErrors} disabled={isPending || created} />
 
@@ -45,7 +44,7 @@ export function NewsCreateForm() {
         </Button>
         <Button type="submit" size="lg" disabled={isPending || created} className="gap-2 sm:min-w-44">
           {isPending || created ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-          {isPending ? "Creating article…" : created ? "Opening…" : "Create article"}
+          {isPending ? "Creating article…" : created ? "Redirecting…" : "Create article"}
         </Button>
       </div>
     </form>

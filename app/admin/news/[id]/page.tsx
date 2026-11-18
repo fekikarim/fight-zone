@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { getAdminNewsById } from "@/lib/supabase/queries";
 import { formatDate } from "@/lib/utils";
 import { NewsEditForm } from "@/components/content/news-edit-form";
@@ -26,19 +25,11 @@ export default async function AdminNewsEditPage({ params }: PageProps) {
 
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <div>
-        <Link
-          href="/admin/news"
-          className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Back to articles
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight">Edit article</h1>
-        <p className="mt-1 text-sm text-muted">
-          Last updated {formatDate(article.updated_at, { year: "numeric", month: "short", day: "numeric" })}
-        </p>
-      </div>
+      <PageHeader
+        title="Edit article"
+        description={`Last updated ${formatDate(article.updated_at, { year: "numeric", month: "short", day: "numeric" })}`}
+        back={{ href: "/admin/news", label: "Back to articles" }}
+      />
 
       <NewsEditForm article={article} />
     </div>

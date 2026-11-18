@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { updateEvent, deleteEvent } from "@/lib/actions/events";
 import type { EventActionState } from "@/lib/actions/events";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { FormAlert, useActionForm } from "@/components/ui/form-feedback";
+import { FormAlert, runActionWithToast, useActionForm } from "@/components/ui/form-feedback";
 import { EventFormFields, imageStillUploading } from "@/components/events/event-form-fields";
 import { readUpdateEventForm, updateEventSchema } from "@/lib/validations/events";
 import { issuesToFieldErrors } from "@/lib/validations/form-errors";
@@ -26,21 +26,28 @@ export function EventEditForm({ event }: { event: EventDetail }) {
   const { state, isPending, fieldErrors, formProps } = useActionForm<EventActionState>(
     updateEvent,
     { ok: false },
-    { validate, onSuccess: () => router.refresh() },
+    {
+      validate,
+      successToast: "Changes saved",
+      onSuccess: () => router.push("/admin/events"),
+    },
   );
+  const saved = state.ok;
 
   return (
     <form {...formProps} className="space-y-6" aria-busy={isPending}>
       <input type="hidden" name="eventId" value={event.id} />
       <FormAlert tone="error" message={!state.ok ? state.message : undefined} />
-      <FormAlert tone="success" message={state.ok ? state.message : undefined} />
 
-      <EventFormFields event={event} errors={fieldErrors} disabled={isPending} />
+      <EventFormFields event={event} errors={fieldErrors} disabled={isPending || saved} />
 
-      <div className="flex justify-end border-t border-ink-border pt-5">
-        <Button type="submit" size="lg" disabled={isPending} className="w-full gap-2 sm:w-auto sm:min-w-44">
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-          {isPending ? "Saving…" : "Save changes"}
+      <div className="flex flex-col-reverse gap-3 border-t border-ink-border pt-5 sm:flex-row sm:justify-end">
+        <Button type="button" variant="ghost" onClick={() => router.push("/admin/events")} disabled={isPending}>
+          Cancel
+        </Button>
+        <Button type="submit" size="lg" disabled={isPending || saved} className="gap-2 sm:min-w-44">
+          {isPending || saved ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+          {isPending ? "Saving…" : saved ? "Redirecting…" : "Save changes"}
         </Button>
       </div>
     </form>
@@ -51,9 +58,11 @@ export function DeleteEventButton({ eventId }: { eventId: string }) {
   const router = useRouter();
   const formRef = useRef<HTMLFormElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
-  const [state, formAction, isPending] = useActionState(
+  const [, formAction, isPending] = useActionState(
     async (_prev: EventActionState, formData: FormData) => {
-      const result = await deleteEvent(_prev, formData);
+      const result = await runActionWithToast(() => deleteEvent(_prev, formData), {
+        success: "Event deleted",
+      });
       if (result.ok) {
         setConfirmOpen(false);
         router.push("/admin/events");
@@ -64,7 +73,11 @@ export function DeleteEventButton({ eventId }: { eventId: string }) {
   );
 
   return (
-    <div className="space-y-2">
+    <div className="flex flex-col gap-3 rounded-xl border border-destructive/30 bg-destructive/5 p-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <p className="text-sm font-medium">Danger zone</p>
+        <p className="text-xs text-muted">Delete this event and all its registrations.</p>
+      </div>
       <form ref={formRef} action={formAction}>
         <input type="hidden" name="eventId" value={eventId} />
         <Button
@@ -89,11 +102,6 @@ export function DeleteEventButton({ eventId }: { eventId: string }) {
           onConfirm={() => formRef.current?.requestSubmit()}
         />
       </form>
-      {state.message && !state.ok ? (
-        <p className="text-xs text-destructive" role="alert">
-          {state.message}
-        </p>
-      ) : null}
     </div>
   );
 }

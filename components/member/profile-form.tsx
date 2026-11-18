@@ -3,7 +3,9 @@
 import { startTransition, useActionState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { AlertCircle, Check } from "lucide-react";
+import { AlertCircle } from "lucide-react";
+import { useRouter } from "next/navigation";
+import { runActionWithToast } from "@/components/ui/form-feedback";
 import {
   memberProfileSchema,
   type MemberProfileFormValues,
@@ -42,7 +44,17 @@ interface ProfileFormProps {
 }
 
 export function ProfileForm({ fullName, phone, member }: ProfileFormProps) {
-  const [state, formAction, isPending] = useActionState(updateMemberProfile, initialState);
+  const router = useRouter();
+  const [state, formAction, isPending] = useActionState(
+    async (prev: MemberActionState, formData: FormData) => {
+      const result = await runActionWithToast(() => updateMemberProfile(prev, formData), {
+        success: "Profile saved",
+      });
+      if (result.ok) router.refresh();
+      return result;
+    },
+    initialState,
+  );
 
   const {
     register,
@@ -224,26 +236,18 @@ export function ProfileForm({ fullName, phone, member }: ProfileFormProps) {
         </div>
       </div>
 
-      {state.message ? (
+      {state.message && !state.ok ? (
         <p
           role="alert"
-          className={`flex items-start gap-2 rounded-md border px-3 py-2 text-sm ${
-            state.ok
-              ? "border-emerald-400/30 bg-emerald-400/10 text-emerald-300"
-              : "border-primary/30 bg-primary-soft text-primary"
-          }`}
+          className="flex items-start gap-2 rounded-md border border-primary/30 bg-primary-soft px-3 py-2 text-sm text-primary"
         >
-          {state.ok ? (
-            <Check className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          ) : (
-            <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
-          )}
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
           <span>{state.message}</span>
         </p>
       ) : null}
 
-      <div className="flex justify-end">
-        <Button type="submit" size="lg" disabled={isPending}>
+      <div className="flex justify-end border-t border-ink-border pt-5">
+        <Button type="submit" size="lg" disabled={isPending} className="w-full sm:w-auto sm:min-w-44">
           {isPending ? (
             <>
               <Spinner size="sm" />

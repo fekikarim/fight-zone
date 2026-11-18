@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { getAdminAchievements } from "@/lib/supabase/queries";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   AchievementCreateForm,
   AchievementManager,
@@ -15,20 +16,19 @@ export default async function AdminAchievementsPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Achievements & Palmares</h1>
-        <p className="mt-1 text-sm text-muted">
-          {achievements.length} record{achievements.length !== 1 ? "s" : ""}
-        </p>
-      </header>
+      <PageHeader
+        title="Achievements"
+        description={`${achievements.length} record${achievements.length !== 1 ? "s" : ""} · shown on the About page palmares.`}
+        back={{ href: "/admin/content", label: "Back to content" }}
+      />
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold">Add new</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Add new</h2>
         <AchievementCreateForm />
       </section>
 
       <section>
-        <h2 className="mb-3 text-sm font-semibold">All achievements</h2>
+        <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">All achievements</h2>
         <AchievementManager items={achievements} />
       </section>
     </div>

@@ -24,9 +24,8 @@ export function EventCreateForm() {
     { ok: false },
     {
       validate,
-      onSuccess: (result) => {
-        if (result.eventId) router.push(`/admin/events/${result.eventId}`);
-      },
+      successToast: "Event created",
+      onSuccess: () => router.push("/admin/events"),
     },
   );
   const created = state.ok;
@@ -34,7 +33,6 @@ export function EventCreateForm() {
   return (
     <form {...formProps} className="space-y-6" aria-busy={isPending}>
       <FormAlert tone="error" message={!state.ok ? state.message : undefined} />
-      <FormAlert tone="success" message={created ? "Event created — opening it…" : undefined} />
 
       <EventFormFields errors={fieldErrors} disabled={isPending || created} />
 
@@ -44,7 +42,7 @@ export function EventCreateForm() {
         </Button>
         <Button type="submit" size="lg" disabled={isPending || created} className="gap-2 sm:min-w-44">
           {isPending || created ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-          {isPending ? "Creating event…" : created ? "Opening…" : "Create event"}
+          {isPending ? "Creating event…" : created ? "Redirecting…" : "Create event"}
         </Button>
       </div>
     </form>

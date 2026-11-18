@@ -2,6 +2,8 @@
 
 import { useCallback, useState, useRef } from "react";
 import { useActionState } from "react";
+import { useRouter } from "next/navigation";
+import { toast } from "sonner";
 import { Loader2, Upload, X, Image as ImageIcon } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createMediaRecord } from "@/lib/actions/content";
@@ -18,6 +20,7 @@ interface UploadState {
 }
 
 export function MediaUploadZone() {
+  const router = useRouter();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [upload, setUpload] = useState<UploadState>({
     file: null,
@@ -34,8 +37,16 @@ export function MediaUploadZone() {
       if (!upload.uploadedUrl) return { ok: false, message: "Please upload an image first." };
       formData.set("url", upload.uploadedUrl);
       formData.set("type", meta.type);
-      const result = await createMediaRecord(_prev, formData);
+      let result: ContentActionState;
+      try {
+        result = await createMediaRecord(_prev, formData);
+      } catch {
+        result = { ok: false, message: "Could not save media. Please try again." };
+      }
+      if (!result.ok) toast.error(result.message ?? "Could not save media. Please try again.");
       if (result.ok) {
+        toast.success("Added to the library");
+        router.refresh();
         setUpload({ file: null, preview: null, uploading: false, progress: 0, error: null, uploadedUrl: null });
         setMeta({ title: "", description: "", type: "IMAGE" });
         if (fileInputRef.current) fileInputRef.current.value = "";
@@ -87,6 +98,7 @@ export function MediaUploadZone() {
         uploading: false,
         error: `Upload failed: ${message}`,
       }));
+      toast.error("Upload failed. Please try another file.");
     }
   }, []);
 
@@ -124,7 +136,8 @@ export function MediaUploadZone() {
             <button
               type="button"
               onClick={clearSelection}
-              className="absolute -right-2 -top-2 rounded-full bg-ink p-1 text-muted hover:text-foreground"
+              aria-label="Remove selected file"
+              className="absolute -right-3 -top-3 z-10 flex h-9 w-9 items-center justify-center rounded-full border border-ink-border bg-ink text-muted hover:text-foreground"
             >
               <X className="h-4 w-4" />
             </button>
@@ -135,7 +148,10 @@ export function MediaUploadZone() {
               <ImageIcon className="h-8 w-8 text-muted" />
             </div>
             <div className="text-center">
-              <p className="text-sm font-medium">Click to upload or drag and drop</p>
+              <p className="text-sm font-medium">
+                <span className="hidden sm:inline">Click to upload or drag and drop</span>
+                <span className="sm:hidden">Tap to choose a photo</span>
+              </p>
               <p className="mt-1 text-xs text-muted">
                 PNG, JPG, WebP, GIF up to 50MB
               </p>
@@ -206,7 +222,7 @@ export function MediaUploadZone() {
             </label>
           </div>
 
-          <Button type="submit" disabled={isPending} className="gap-2">
+          <Button type="submit" size="lg" disabled={isPending} className="w-full gap-2 sm:w-auto">
             {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="h-4 w-4" />}
             {isPending ? "Saving..." : "Save to library"}
           </Button>

@@ -4,6 +4,7 @@ import { Plus, CalendarDays } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { PreviewEntryBar } from "@/components/preview/preview-entry-bar";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
 import { getAdminEvents } from "@/lib/supabase/queries";
@@ -27,24 +28,18 @@ export default async function AdminEventsPage() {
   return (
     <Container className="flex max-w-none flex-col gap-8 px-0">
       <PreviewEntryBar returnTo="/events" subject="events" />
-      <div className="flex items-center justify-between">
-        <div className="flex flex-col gap-2">
-          <h1 className="font-display text-3xl font-bold uppercase tracking-tight">
-            Events
-          </h1>
-          <p className="text-sm text-muted">
-            Manage events and track registrations.
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
+      <PageHeader
+        title="Events"
+        description={`${events.length} event${events.length !== 1 ? "s" : ""} · manage events and track registrations.`}
+        actions={
           <Button asChild>
             <Link href="/admin/events/new">
               <Plus className="mr-2 h-4 w-4" />
               New event
             </Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {events.length > 0 ? (
         <div className="divide-y divide-ink-border rounded-xl border border-ink-border">
@@ -58,9 +53,9 @@ export default async function AdminEventsPage() {
               <Link
                 key={event.id}
                 href={`/admin/events/${event.id}`}
-                className="flex items-center gap-4 px-4 py-3 transition-colors hover:bg-ink-soft/40"
+                className="flex items-center gap-3 px-4 py-3.5 transition-colors first:rounded-t-xl last:rounded-b-xl hover:bg-ink-soft/40 active:bg-ink-soft/60 sm:gap-4"
               >
-                <CalendarDays className="h-5 w-5 shrink-0 text-primary" />
+                <CalendarDays className="hidden h-5 w-5 shrink-0 text-primary sm:block" aria-hidden />
                 <div className="min-w-0 flex-1">
                   <p className="truncate text-sm font-medium">{event.title}</p>
                   <p className="text-xs text-muted">
@@ -71,9 +66,10 @@ export default async function AdminEventsPage() {
                       hour: "numeric",
                       minute: "2-digit",
                     })}
+                    <span className="sm:hidden"> · {event.participant_count} registered</span>
                   </p>
                 </div>
-                <span className="text-xs text-muted">
+                <span className="hidden shrink-0 text-xs text-muted sm:inline">
                   {event.participant_count} registered
                 </span>
                 <Badge variant={lifecycleVariant[lifecycle]} className="shrink-0">

@@ -857,6 +857,9 @@ export const getUnreadNotificationCount = cache(async (): Promise<number> => {
   const { count, error } = await supabase
     .from("notifications")
     .select("id", { count: "exact", head: true })
+    // Staff can READ everyone's notifications (RLS), so the owner filter is
+    // required — without it the admin badge counted members' notifications.
+    .eq("user_id", user.id)
     .eq("is_read", false);
 
   if (error) return 0;

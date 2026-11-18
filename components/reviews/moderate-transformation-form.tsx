@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
+import { runActionWithToast } from "@/components/ui/form-feedback";
 import { Eye, EyeOff, Star, Loader2 } from "lucide-react";
 import { moderateTransformation } from "@/lib/actions/reviews";
 import type { ReviewActionState } from "@/lib/actions/reviews";
@@ -33,7 +34,9 @@ function PublishButton({
   transformationId: string;
   isPublished: boolean;
 }) {
-  const [state, formAction, isPending] = useActionState(moderateTransformation, initialState);
+  const [state, formAction, isPending] = useActionState(
+    (prev: ReviewActionState, fd: FormData) => runActionWithToast(() => moderateTransformation(prev, fd)),
+    initialState);
   return (
     <form action={formAction}>
       <input type="hidden" name="transformationId" value={transformationId} />
@@ -76,7 +79,9 @@ function FeatureButton({
   transformationId: string;
   isFeatured: boolean;
 }) {
-  const [state, formAction, isPending] = useActionState(moderateTransformation, initialState);
+  const [state, formAction, isPending] = useActionState(
+    (prev: ReviewActionState, fd: FormData) => runActionWithToast(() => moderateTransformation(prev, fd)),
+    initialState);
   return (
     <form action={formAction}>
       <input type="hidden" name="transformationId" value={transformationId} />

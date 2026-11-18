@@ -10,6 +10,7 @@ import {
   type FormEvent,
 } from "react";
 import { AlertCircle, CheckCircle2 } from "lucide-react";
+import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
 import type { FieldErrors } from "@/lib/validations/form-errors";
@@ -73,11 +74,55 @@ export function fieldA11y(name: string, error?: string) {
   } as const;
 }
 
+/** Message for an unexpected failure (network drop, server crash). */
+export function friendlyErrorMessage() {
+  return typeof navigator !== "undefined" && navigator.onLine === false
+    ? "You appear to be offline. Check your connection and try again."
+    : "Something went wrong. Please try again.";
+}
+
+/** True for Next.js control-flow errors (redirect/notFound) that must propagate. */
+export function isNextNavigationError(error: unknown) {
+  const digest = (error as { digest?: unknown } | null)?.digest;
+  return typeof digest === "string" && digest.startsWith("NEXT_");
+}
+
+/**
+ * Runs a server action from a click/form handler with toasts:
+ * success → green toast, failure → red toast. Never throws (except
+ * Next.js navigation), so a failed action can't crash the page.
+ */
+export async function runActionWithToast<S extends { ok: boolean; message?: string }>(
+  run: () => Promise<S>,
+  { success, error }: { success?: string | ((s: S) => string | undefined); error?: string } = {},
+): Promise<S> {
+  try {
+    const result = await run();
+    if (result.ok) {
+      const message = typeof success === "function" ? success(result) : (success ?? result.message);
+      if (message) toast.success(message);
+    } else {
+      toast.error(result.message ?? error ?? "Could not complete the action. Please try again.");
+    }
+    return result;
+  } catch (err) {
+    if (isNextNavigationError(err)) throw err;
+    const message = friendlyErrorMessage();
+    toast.error(message);
+    return { ok: false, message } as S;
+  }
+}
+
 interface UseActionFormOptions<S extends ActionFormState> {
   /** Client-side validation; return field errors to block submission. */
   validate?: (formData: FormData) => FieldErrors | null;
   /** Runs after the action resolves with ok: true. */
   onSuccess?: (state: S) => void;
+  /**
+   * Toast shown on success (string, or built from the result). The toast
+   * lives in the root layout, so it survives a redirect to another page.
+   */
+  successToast?: string | ((state: S) => string);
 }
 
 /**
@@ -95,30 +140,33 @@ export function useActionForm<S extends ActionFormState>(
   initialState: S,
   options: UseActionFormOptions<S> = {},
 ) {
-  const { validate, onSuccess } = options;
+  const { validate, onSuccess, successToast } = options;
   const onSuccessRef = useRef(onSuccess);
+  const successToastRef = useRef(successToast);
   useEffect(() => {
     onSuccessRef.current = onSuccess;
+    successToastRef.current = successToast;
   });
 
   const [state, formAction, isPending] = useActionState<S, FormData>(async (prev: S, formData: FormData) => {
     try {
       const result = await action(prev, formData);
-      if (result.ok) onSuccessRef.current?.(result);
+      if (result.ok) {
+        const message = successToastRef.current;
+        if (message) toast.success(typeof message === "function" ? message(result) : message);
+        onSuccessRef.current?.(result);
+      } else if (result.message) {
+        // The inline banner sits at the top of the form, often off-screen
+        // on mobile: the toast makes sure the failure is always seen.
+        toast.error(result.message);
+      }
       return result;
     } catch (error) {
       // Next.js navigation (redirect/notFound) must keep propagating.
-      const digest = (error as { digest?: unknown } | null)?.digest;
-      if (typeof digest === "string" && digest.startsWith("NEXT_")) throw error;
-      return {
-        ...prev,
-        ok: false,
-        fieldErrors: undefined,
-        message:
-          typeof navigator !== "undefined" && navigator.onLine === false
-            ? "You appear to be offline. Check your connection and try again."
-            : "Something went wrong while saving. Please try again.",
-      } as S;
+      if (isNextNavigationError(error)) throw error;
+      const message = friendlyErrorMessage();
+      toast.error(message);
+      return { ...prev, ok: false, fieldErrors: undefined, message } as S;
     }
   }, initialState as Awaited<S>);
 

@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { updateNews, deleteNews } from "@/lib/actions/content";
 import type { ContentActionState } from "@/lib/actions/content";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
-import { FormAlert, useActionForm } from "@/components/ui/form-feedback";
+import { FormAlert, runActionWithToast, useActionForm } from "@/components/ui/form-feedback";
 import { NewsFormFields } from "@/components/content/news-form-fields";
 import type { AdminNewsItem } from "@/lib/types/content";
 import { readNewsForm, updateNewsSchema } from "@/lib/validations/content";
@@ -37,13 +37,20 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
   const { state: updateState, isPending, fieldErrors, formProps } = useActionForm<ContentActionState>(
     updateNews,
     { ok: false },
-    { validate, onSuccess: () => router.refresh() },
+    {
+      validate,
+      successToast: "Changes saved",
+      onSuccess: () => router.push("/admin/news"),
+    },
   );
+  const saved = updateState.ok;
 
   const [deleteState, deleteAction, isDeleting] = useActionState(
     async (_prev: ContentActionState, formData: FormData) => {
       formData.set("articleId", article.id);
-      const result = await deleteNews(_prev, formData);
+      const result = await runActionWithToast(() => deleteNews(_prev, formData), {
+        success: "Article deleted",
+      });
       if (result.ok) {
         setConfirmOpen(false);
         router.push("/admin/news");
@@ -55,9 +62,27 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
 
   return (
     <div className="space-y-8">
+      {/* Edit form */}
+      <form {...formProps} className="space-y-6" aria-busy={isPending}>
+        <input type="hidden" name="articleId" value={article.id} />
+        <FormAlert tone="error" message={!updateState.ok ? updateState.message : undefined} />
+
+        <NewsFormFields article={article} errors={fieldErrors} disabled={isPending || saved} />
+
+        <div className="flex flex-col-reverse gap-3 border-t border-ink-border pt-5 sm:flex-row sm:justify-end">
+          <Button type="button" variant="ghost" onClick={() => router.push("/admin/news")} disabled={isPending}>
+            Cancel
+          </Button>
+          <Button type="submit" size="lg" disabled={isPending || saved} className="gap-2 sm:min-w-44">
+            {isPending || saved ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+            {isPending ? "Saving…" : saved ? "Redirecting…" : "Save changes"}
+          </Button>
+        </div>
+      </form>
+
       {/* Delete section with confirmation dialog */}
       <div className="rounded-lg border border-destructive/30 bg-destructive/5 p-4">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between sm:gap-4">
           <div>
             <p className="text-sm font-medium">Danger zone</p>
             <p className="text-xs text-muted">Permanently delete this article.</p>
@@ -92,22 +117,6 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
           <p className="mt-2 text-xs text-destructive">{deleteState.message}</p>
         ) : null}
       </div>
-
-      {/* Edit form */}
-      <form {...formProps} className="space-y-6" aria-busy={isPending}>
-        <input type="hidden" name="articleId" value={article.id} />
-        <FormAlert tone="error" message={!updateState.ok ? updateState.message : undefined} />
-        <FormAlert tone="success" message={updateState.ok ? updateState.message : undefined} />
-
-        <NewsFormFields article={article} errors={fieldErrors} disabled={isPending} />
-
-        <div className="flex justify-end border-t border-ink-border pt-5">
-          <Button type="submit" size="lg" disabled={isPending} className="w-full gap-2 sm:w-auto sm:min-w-44">
-            {isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-            {isPending ? "Saving…" : "Save changes"}
-          </Button>
-        </div>
-      </form>
     </div>
   );
 }

@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { Image as ImageIcon, Trophy } from "lucide-react";
 import Link from "next/link";
 import { getAdminMedia, getAdminAchievements } from "@/lib/supabase/queries";
+import { PageHeader } from "@/components/dashboard/page-header";
 
 export const metadata: Metadata = {
   title: "Content Management",
@@ -33,13 +34,18 @@ export default async function AdminContentPage() {
 
   return (
     <div className="space-y-8">
-      <header>
-        <h1 className="text-2xl font-bold tracking-tight">Content Management</h1>
-        <p className="mt-1 text-sm text-muted">
-          Manage your public content: media and achievement records. News articles
-          live in their own <Link href="/admin/news" className="text-primary hover:underline">News section</Link>.
-        </p>
-      </header>
+      <PageHeader
+        title="Content"
+        description={
+          <>
+            Manage your public content: media and achievement records. News articles live in their own{" "}
+            <Link href="/admin/news" className="text-primary hover:underline">
+              News section
+            </Link>
+            .
+          </>
+        }
+      />
 
       <div className="grid gap-4 sm:grid-cols-2">
         {sections.map((section) => {

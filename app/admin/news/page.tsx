@@ -3,6 +3,7 @@ import Link from "next/link";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PreviewEntryBar } from "@/components/preview/preview-entry-bar";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { getAdminNews } from "@/lib/supabase/queries";
 import { formatDate } from "@/lib/utils";
 import { newsCategoryLabel } from "@/lib/types/content";
@@ -18,26 +19,28 @@ export default async function AdminNewsPage() {
   return (
     <div className="space-y-8">
       <PreviewEntryBar returnTo="/news" subject="articles" />
-      <div className="flex items-center justify-between">
-        <header>
-          <h1 className="text-2xl font-bold tracking-tight">News & Articles</h1>
-          <p className="mt-1 text-sm text-muted">
-            {articles.length} article{articles.length !== 1 ? "s" : ""}
-          </p>
-        </header>
-        <div className="flex items-center gap-2">
-          <Button asChild size="sm" className="gap-2">
+      <PageHeader
+        title="News & Articles"
+        description={`${articles.length} article${articles.length !== 1 ? "s" : ""}`}
+        actions={
+          <Button asChild className="gap-2">
             <Link href="/admin/news/new">
               <Plus className="h-4 w-4" />
               New article
             </Link>
           </Button>
-        </div>
-      </div>
+        }
+      />
 
       {articles.length === 0 ? (
-        <div className="rounded-xl border border-ink-border bg-ink-soft/20 p-8 text-center">
-          <p className="text-sm text-muted">No articles yet. Create your first one!</p>
+        <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-ink-border bg-ink-soft/40 px-6 py-14 text-center">
+          <p className="text-muted">No articles yet — write your first one to get started.</p>
+          <Button asChild className="gap-2">
+            <Link href="/admin/news/new">
+              <Plus className="h-4 w-4" />
+              New article
+            </Link>
+          </Button>
         </div>
       ) : (
         <div className="space-y-2">
@@ -45,7 +48,7 @@ export default async function AdminNewsPage() {
             <Link
               key={article.id}
               href={`/admin/news/${article.id}`}
-              className="flex items-center gap-4 rounded-lg border border-ink-border bg-ink-soft/30 p-4 transition-colors hover:border-primary/30 hover:bg-primary/5"
+              className="flex flex-col gap-2 rounded-lg border border-ink-border bg-ink-soft/30 p-4 transition-colors hover:border-primary/30 hover:bg-primary/5 active:bg-primary/10 sm:flex-row sm:items-center sm:gap-4"
             >
               <div className="min-w-0 flex-1">
                 <p className="truncate text-sm font-medium">{article.title}</p>

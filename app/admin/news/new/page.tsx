@@ -1,6 +1,5 @@
 import type { Metadata } from "next";
-import { ArrowLeft } from "lucide-react";
-import Link from "next/link";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { NewsCreateForm } from "@/components/content/news-create-form";
 
 export const metadata: Metadata = {
@@ -11,16 +10,11 @@ export const metadata: Metadata = {
 export default function AdminNewsNewPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
-      <div>
-        <Link
-          href="/admin/content/news"
-          className="mb-4 inline-flex items-center gap-1.5 text-xs text-muted hover:text-foreground"
-        >
-          <ArrowLeft className="h-3 w-3" />
-          Back to articles
-        </Link>
-        <h1 className="text-2xl font-bold tracking-tight">New Article</h1>
-      </div>
+      <PageHeader
+        title="New article"
+        description="Write a news post or blog article."
+        back={{ href: "/admin/news", label: "Back to articles" }}
+      />
 
       <NewsCreateForm />
     </div>

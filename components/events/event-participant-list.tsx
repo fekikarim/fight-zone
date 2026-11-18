@@ -3,6 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useActionState } from "react";
 import { Loader2 } from "lucide-react";
+import { runActionWithToast } from "@/components/ui/form-feedback";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
@@ -72,7 +73,9 @@ function ParticipantRow({
   const router = useRouter();
   const [state, formAction, isPending] = useActionState(
     async (_prev: EventActionState, formData: FormData) => {
-      const result = await updateParticipantPayment(_prev, formData);
+      const result = await runActionWithToast(() => updateParticipantPayment(_prev, formData), {
+        success: `Saved for ${participant.member_name ?? "member"}`,
+      });
       if (result.ok) router.refresh();
       return result;
     },
@@ -84,7 +87,9 @@ function ParticipantRow({
 
   const [statusState, statusAction, isStatusPending] = useActionState(
     async (_prev: EventActionState, formData: FormData) => {
-      const result = await updateParticipantStatus(_prev, formData);
+      const result = await runActionWithToast(() => updateParticipantStatus(_prev, formData), {
+        success: `Status updated for ${participant.member_name ?? "member"}`,
+      });
       if (result.ok) router.refresh();
       return result;
     },

@@ -31,6 +31,31 @@ export interface ContentActionState {
 }
 
 // ---------------------------------------------------------------------------
+// Coach profile
+// ---------------------------------------------------------------------------
+
+/**
+ * `media.coach_id` and `achievements.coach_id` reference `coach_profiles`,
+ * but staff accounts (e.g. the admin, who is also the club's coach) are not
+ * given a coach profile when the role is assigned — so every insert failed
+ * with a foreign-key error. Create the (empty) coach profile on first use.
+ * RLS allows staff to insert it; an existing row is left untouched.
+ */
+async function ensureCoachProfile(
+  supabase: Awaited<ReturnType<typeof createClient>>,
+  userId: string,
+): Promise<boolean> {
+  const { error } = await supabase
+    .from("coach_profiles")
+    .upsert({ id: userId }, { onConflict: "id", ignoreDuplicates: true });
+  if (error) {
+    logError("Failed to ensure coach profile", error, { userId });
+    return false;
+  }
+  return true;
+}
+
+// ---------------------------------------------------------------------------
 // Revalidation
 // ---------------------------------------------------------------------------
 
@@ -219,7 +244,8 @@ export async function createMediaRecord(
     type: formData.get("type"),
     title: formData.get("title") || undefined,
     description: formData.get("description") || undefined,
-    is_public: formData.get("is_public") !== "false",
+    // Checkbox: absent when unchecked.
+    is_public: formData.get("is_public") === "true",
   });
 
   if (!parsed.success) {
@@ -229,6 +255,9 @@ export async function createMediaRecord(
 
   const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
+  if (!(await ensureCoachProfile(supabase, user.id))) {
+    return { ok: false, message: "Could not save media. Please try again." };
+  }
 
   const { data, error } = await supabase
     .from("media")
@@ -258,8 +287,8 @@ export async function updateMedia(
 ): Promise<ContentActionState> {
   const parsed = updateMediaSchema.safeParse({
     mediaId: formData.get("mediaId"),
-    title: formData.get("title") || undefined,
-    description: formData.get("description") || undefined,
+    title: formData.has("title") ? String(formData.get("title")) : undefined,
+    description: formData.has("description") ? String(formData.get("description")) : undefined,
     is_public: formData.get("is_public") === "true" ? true : formData.get("is_public") === "false" ? false : undefined,
   });
 
@@ -276,8 +305,8 @@ export async function updateMedia(
   const { error } = await supabase
     .from("media")
     .update({
-      ...(title !== undefined && { title }),
-      ...(description !== undefined && { description }),
+      ...(title !== undefined && { title: title || null }),
+      ...(description !== undefined && { description: description || null }),
       ...(is_public !== undefined && { is_public }),
     })
     .eq("id", mediaId);
@@ -335,6 +364,9 @@ export async function createAchievement(
 
   const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
+  if (!(await ensureCoachProfile(supabase, user.id))) {
+    return { ok: false, message: "Could not create achievement. Please try again." };
+  }
 
   const { data, error } = await supabase
     .from("achievements")
@@ -365,10 +397,11 @@ export async function updateAchievement(
   const parsed = updateAchievementSchema.safeParse({
     achievementId: formData.get("achievementId"),
     title: formData.get("title") || undefined,
-    description: formData.get("description") || undefined,
+    // Present-but-empty means "clear it"; absent means "leave unchanged".
+    description: formData.has("description") ? String(formData.get("description")) : undefined,
     type: formData.get("type") || undefined,
-    date: formData.get("date") || undefined,
-    image_url: formData.get("image_url") || undefined,
+    date: formData.has("date") ? String(formData.get("date")) : undefined,
+    image_url: formData.has("image_url") ? String(formData.get("image_url")) : undefined,
   });
 
   if (!parsed.success) {
@@ -385,7 +418,7 @@ export async function updateAchievement(
     .from("achievements")
     .update({
       ...(title !== undefined && { title }),
-      ...(description !== undefined && { description }),
+      ...(description !== undefined && { description: description || null }),
       ...(type !== undefined && { type }),
       ...(date !== undefined && { date: date || null }),
       ...(image_url !== undefined && { image_url: image_url || null }),

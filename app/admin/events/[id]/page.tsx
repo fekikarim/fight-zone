@@ -6,6 +6,8 @@ import { EventDetailDisplay } from "@/components/events/event-detail";
 import { EventEditForm, DeleteEventButton } from "@/components/events/event-edit-form";
 import { ParticipantList } from "@/components/events/event-participant-list";
 import { getStaffEventById, getEventParticipants } from "@/lib/supabase/queries";
+import Link from "next/link";
+import { ArrowLeft } from "lucide-react";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -29,6 +31,13 @@ export default async function AdminEventDetailPage({ params, searchParams }: Pro
 
   return (
     <Container className="flex max-w-none flex-col gap-10 px-0">
+      <Link
+        href="/admin/events"
+        className="-ml-1 -mb-6 inline-flex w-fit items-center gap-1.5 rounded-md px-1 py-1 text-sm text-muted transition-colors hover:text-foreground"
+      >
+        <ArrowLeft className="h-4 w-4" aria-hidden />
+        Back to events
+      </Link>
       <EventDetailDisplay
         event={event}
         showParticipants={true}
@@ -38,7 +47,7 @@ export default async function AdminEventDetailPage({ params, searchParams }: Pro
         <h2 className="font-display text-xl font-semibold uppercase tracking-tight">
           Edit event
         </h2>
-        <div className="rounded-xl border border-ink-border bg-ink-soft/40 p-6">
+        <div className="rounded-xl border border-ink-border bg-ink-soft/40 p-4 sm:p-6">
           <Suspense
             fallback={<p className="text-sm text-muted">Loading editor…</p>}
           >

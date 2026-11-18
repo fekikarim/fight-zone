@@ -3,7 +3,9 @@
 import { revalidatePath } from "next/cache";
 import { createClient } from "@/lib/supabase/server";
 import { getCurrentUser } from "@/lib/auth/guards";
-import { markNotificationReadSchema } from "@/lib/validations/notifications";
+import { markNotificationReadSchema, notificationFilterSchema } from "@/lib/validations/notifications";
+import { getNotificationCenter } from "@/lib/supabase/queries";
+import type { NotificationPage } from "@/lib/types/notifications";
 import { logError } from "@/lib/errors";
 
 export interface NotificationActionState {
@@ -89,4 +91,22 @@ export async function markAllNotificationsRead(): Promise<NotificationActionStat
 
   revalidateNotifications();
   return { ok: true, affected: count ?? 0 };
+}
+
+/**
+ * Next page of the notification center (appended client-side by
+ * "Load older"). Same filters + keyset cursor as the server-rendered page.
+ */
+export async function loadMoreNotifications(input: {
+  type?: string;
+  unreadOnly?: boolean;
+  cursor: string;
+}): Promise<NotificationPage> {
+  const parsed = notificationFilterSchema.safeParse(input);
+  if (!parsed.success || !parsed.data.cursor) return { items: [], nextCursor: null, hasMore: false };
+  return getNotificationCenter({
+    type: parsed.data.type,
+    unreadOnly: parsed.data.unreadOnly,
+    cursor: parsed.data.cursor,
+  });
 }

@@ -11,6 +11,7 @@ import {
   CalendarCheck,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { toast } from "sonner";
 import { registerForEvent, cancelEventRegistration } from "@/lib/actions/events";
 import type { EventActionState } from "@/lib/actions/events";
 
@@ -149,7 +150,12 @@ function RegisterControl({ eventId, rejoin = false }: { eventId: string; rejoin?
 
 function RegisteredControl({ eventId }: { eventId: string }) {
   const [state, formAction, isPending] = useActionState(
-    (prev: EventActionState, formData: FormData) => runSafely(cancelEventRegistration, prev, formData),
+    async (prev: EventActionState, formData: FormData) => {
+      const next = await runSafely(cancelEventRegistration, prev, formData);
+      if (next.ok) toast.success("Registration cancelled — your spot was released.");
+      else if (next.message) toast.error(next.message);
+      return next;
+    },
     INITIAL,
   );
   const [confirming, setConfirming] = useState(false);
