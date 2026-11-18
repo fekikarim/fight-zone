@@ -274,7 +274,7 @@ Fight Zone enforces a multi-layered security model where the database serves as 
 ```
 
 ### Role Model:
-- **`MEMBER`**: Default role assigned upon email verification. Access restricted to own profile, registered events, own notifications, and motivation cards.
+- **`MEMBER`**: Default role assigned at sign-up (no email verification — members are signed in immediately). Access restricted to own profile, registered events, own notifications, and motivation cards.
 - **`COACH`**: Operational staff role. Permits schedule management, viewing event attendee rosters, and updating attendance markers.
 - **`ADMIN`**: Complete administrative oversight. Covers news publication, event creation, role assignment, and financial tracking.
 

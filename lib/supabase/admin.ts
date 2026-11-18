@@ -24,6 +24,9 @@ import type { Database } from "@/types/database.types";
  *   * INSERT/UPDATE on the `email_deliveries` idempotency log;
  *   * the atomic `upsert_daily_motivation` persistence behind Update V4
  *     (the member always receives a quote even if this step fails).
+ *   * member sign-up (`signUp` in lib/actions/auth.ts): creating the account
+ *     already email-confirmed so the member is signed in immediately
+ *     (email verification was removed by product decision).
  * It is NEVER exposed to the browser, NEVER used to serve user-facing
  * data, and NEVER used to mutate business data on a user's behalf.
  * The key is never logged and never leaves the server.

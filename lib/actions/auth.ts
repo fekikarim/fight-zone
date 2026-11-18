@@ -5,9 +5,8 @@ import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/supabase/config";
-import { getCurrentUser } from "@/lib/auth/guards";
+import { createAdminClient } from "@/lib/supabase/admin";
 import {
-  emailSchema,
   forgotPasswordSchema,
   resetPasswordSchema,
   signInSchema,
@@ -47,14 +46,6 @@ export async function signIn(
 
   if (error) {
     logError("Sign-in failed", error);
-    // Shown only to someone who already entered the address; does not enable
-    // email enumeration beyond what the generic failure already allows.
-    if (error.code === "email_not_confirmed") {
-      return {
-        ok: false,
-        message: "Please verify your email address first. Check your inbox for the verification link.",
-      };
-    }
     return { ok: false, message: "Invalid email or password." };
   }
 
@@ -74,101 +65,84 @@ export async function signUp(
 
   if (!parsed.success) return { ok: false, errors: fieldErrors(parsed.error) };
 
+  const { email, password, fullName } = parsed.data;
   const supabase = await createClient();
-  const { data, error } = await supabase.auth.signUp({
-    email: parsed.data.email,
-    password: parsed.data.password,
-    options: {
-      data: { full_name: parsed.data.fullName },
-      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
-    },
-  });
 
-  if (error) {
-    logError("Sign-up failed", error);
+  // No email verification: the account is created already confirmed and the
+  // member is signed straight in. Creating it server-side (service role)
+  // makes this independent of the Supabase dashboard's "Confirm email"
+  // setting, and no confirmation email is sent.
+  let created = false;
+  try {
+    const admin = createAdminClient();
+    const { error } = await admin.auth.admin.createUser({
+      email,
+      password,
+      email_confirm: true,
+      user_metadata: { full_name: fullName },
+    });
+    if (error) {
+      if (error.code === "email_exists" || error.status === 422) {
+        return {
+          ok: false,
+          message: "An account with this email already exists. Sign in instead, or reset your password.",
+        };
+      }
+      if (error.code === "weak_password") {
+        return { ok: false, message: "Please choose a stronger password." };
+      }
+      logError("Sign-up failed", error);
+      return { ok: false, message: "We could not create your account. Please try again." };
+    }
+    created = true;
+  } catch (adminError) {
+    // Service-role key missing: fall back to the public sign-up API (works
+    // when "Confirm email" is turned off in the Supabase dashboard).
+    logError("Admin sign-up unavailable; falling back to public sign-up", adminError);
+  }
+
+  if (!created) {
+    const { error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: { data: { full_name: fullName } },
+    });
+    if (error) {
+      logError("Sign-up failed", error);
+      if (error.code === "user_already_exists" || error.code === "email_exists") {
+        return {
+          ok: false,
+          message: "An account with this email already exists. Sign in instead, or reset your password.",
+        };
+      }
+      return { ok: false, message: "We could not create your account. Please try again." };
+    }
+  }
+
+  const { error: signInError } = await supabase.auth.signInWithPassword({ email, password });
+  if (signInError) {
+    logError("Automatic sign-in after sign-up failed", signInError);
     return {
       ok: false,
-      message: "We could not create your account. Please try again.",
+      message: "Your account was created, but we could not sign you in automatically. Please sign in.",
     };
   }
 
-  // Send welcome email
+  // Welcome email is best-effort and never blocks the new member.
   try {
-    await sendWelcomeEmail({
-      to: parsed.data.email,
-      name: parsed.data.fullName,
-    });
+    await sendWelcomeEmail({ to: email, name: fullName });
   } catch (emailError) {
-    // Log email error but don't fail the signup
     logError("Failed to send welcome email", emailError);
   }
 
-  // Email confirmation enabled: no session is issued until the user verifies.
-  // Transition straight to the verification gate — never a message on the form.
-  if (data.session) {
-    revalidatePath("/", "layout");
-    redirect("/member");
-  }
-
   revalidatePath("/", "layout");
-  redirect(`/verify-email?email=${encodeURIComponent(parsed.data.email)}`);
+  redirect("/member");
 }
 
 export async function signOut(): Promise<void> {
   const supabase = await createClient();
   await supabase.auth.signOut();
   revalidatePath("/", "layout");
-}
-
-/**
- * Authoritative email-verification check for the "I've verified my email"
- * action. Verification state comes from Supabase Auth (`email_confirmed_at`),
- * never from a client-side flag. Redirects to the app when verified.
- */
-export async function checkEmailVerification(): Promise<AuthActionState> {
-  const user = await getCurrentUser();
-  if (user?.emailConfirmedAt) {
-    revalidatePath("/", "layout");
-    redirect("/member");
-  }
-
-  return {
-    ok: false,
-    message:
-      "Your email hasn't been verified yet. Please click the verification link in your inbox and try again.",
-  };
-}
-
-/**
- * Resends the signup confirmation email. Returns a generic outcome — it never
- * reveals whether an address is registered, already confirmed, or rate-limited
- * (Supabase's own email frequency/rate limits are the backstop).
- */
-export async function resendVerificationEmail(email: string): Promise<AuthActionState> {
-  const parsed = emailSchema.safeParse(email);
-  if (!parsed.success) return { ok: false, message: "Please enter a valid email address." };
-
-  const supabase = await createClient();
-  const { error } = await supabase.auth.resend({
-    type: "signup",
-    email: parsed.data,
-    options: {
-      emailRedirectTo: `${getSiteUrl()}/auth/callback`,
-    },
-  });
-
-  if (error) {
-    logError("Resend verification email failed", error);
-    return {
-      ok: false,
-      message: "We could not resend the email right now. Please try again shortly.",
-    };
-  }
-
-  return {
-    ok: true,
-    message: "Verification email sent. Check your inbox and spam folder.",
-  };
 }
 
 export async function forgotPassword(

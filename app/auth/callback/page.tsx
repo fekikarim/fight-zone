@@ -83,7 +83,7 @@ export default function AuthCallbackPage() {
               <Link href="/sign-in">Sign in</Link>
             </Button>
             <Button variant="outline" asChild>
-              <Link href="/verify-email">Resend verification email</Link>
+              <Link href="/forgot-password">Reset password</Link>
             </Button>
           </div>
         </div>
