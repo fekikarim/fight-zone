@@ -54,3 +54,6 @@ yarn-error.log*
 .p18/
 .p19/
 .p20/
+
+.agents
+.claude

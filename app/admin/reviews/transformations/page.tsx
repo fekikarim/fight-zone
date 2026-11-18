@@ -14,7 +14,7 @@ interface AdminTransformationsPageProps {
 export default async function AdminTransformationsPage({
   searchParams,
 }: AdminTransformationsPageProps) {
-  await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN", "COACH"]);
   const params = await searchParams;
   const { items: transformations, nextCursor, hasMore } = await getAdminTransformations({
     cursor: params.cursor,

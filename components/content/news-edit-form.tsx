@@ -6,11 +6,12 @@ import { Loader2, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { updateNews, deleteNews } from "@/lib/actions/content";
 import type { ContentActionState } from "@/lib/actions/content";
-import { ImageUploadField } from "@/components/ui/image-upload-field";
 import { ConfirmDialog } from "@/components/ui/confirm-dialog";
+import { FormAlert, useActionForm } from "@/components/ui/form-feedback";
+import { NewsFormFields } from "@/components/content/news-form-fields";
 import type { AdminNewsItem } from "@/lib/types/content";
-import { NEWS_CATEGORIES } from "@/lib/validations/content";
-import { newsCategoryLabel } from "@/lib/types/content";
+import { readNewsForm, updateNewsSchema } from "@/lib/validations/content";
+import { issuesToFieldErrors } from "@/lib/validations/form-errors";
 
 interface NewsEditFormProps {
   article: AdminNewsItem & {
@@ -20,24 +21,23 @@ interface NewsEditFormProps {
   };
 }
 
-const inputClass =
-  "w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm";
+function validate(formData: FormData) {
+  if (formData.get("cover_image_url__uploading") === "1") {
+    return { cover_image_url: "Please wait for the image to finish uploading." };
+  }
+  const parsed = updateNewsSchema.safeParse(readNewsForm(formData));
+  return parsed.success ? null : issuesToFieldErrors(parsed.error.issues);
+}
 
 export function NewsEditForm({ article }: NewsEditFormProps) {
   const router = useRouter();
   const deleteFormRef = useRef<HTMLFormElement>(null);
   const [confirmOpen, setConfirmOpen] = useState(false);
 
-  const [updateState, updateAction, isPending] = useActionState(
-    async (_prev: ContentActionState, formData: FormData) => {
-      formData.set("articleId", article.id);
-      // Always submit an explicit publish state so unpublishing persists.
-      formData.set("is_published", formData.get("is_published") === "true" ? "true" : "false");
-      const result = await updateNews(_prev, formData);
-      if (result.ok) router.refresh();
-      return result;
-    },
-    { ok: false } as ContentActionState,
+  const { state: updateState, isPending, fieldErrors, formProps } = useActionForm<ContentActionState>(
+    updateNews,
+    { ok: false },
+    { validate, onSuccess: () => router.refresh() },
   );
 
   const [deleteState, deleteAction, isDeleting] = useActionState(
@@ -94,112 +94,19 @@ export function NewsEditForm({ article }: NewsEditFormProps) {
       </div>
 
       {/* Edit form */}
-      <form action={updateAction} className="space-y-6">
-        {updateState.message && !updateState.ok ? (
-          <div className="rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-3 text-sm text-destructive">
-            {updateState.message}
-          </div>
-        ) : null}
-        {updateState.message && updateState.ok ? (
-          <div className="rounded-lg border border-primary/50 bg-primary/10 px-4 py-3 text-sm text-primary">
-            {updateState.message}
-          </div>
-        ) : null}
+      <form {...formProps} className="space-y-6" aria-busy={isPending}>
+        <input type="hidden" name="articleId" value={article.id} />
+        <FormAlert tone="error" message={!updateState.ok ? updateState.message : undefined} />
+        <FormAlert tone="success" message={updateState.ok ? updateState.message : undefined} />
 
-        <div className="space-y-1.5">
-          <label htmlFor="title" className="text-sm font-medium">
-            Title
-          </label>
-          <input
-            id="title"
-            name="title"
-            defaultValue={article.title}
-            required
-            className={inputClass}
-          />
+        <NewsFormFields article={article} errors={fieldErrors} disabled={isPending} />
+
+        <div className="flex justify-end border-t border-ink-border pt-5">
+          <Button type="submit" size="lg" disabled={isPending} className="w-full gap-2 sm:w-auto sm:min-w-44">
+            {isPending ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
+            {isPending ? "Saving…" : "Save changes"}
+          </Button>
         </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="slug" className="text-sm font-medium">
-            Slug
-          </label>
-          <input
-            id="slug"
-            name="slug"
-            defaultValue={article.slug}
-            required
-            pattern="[a-z0-9]+(?:-[a-z0-9]+)*"
-            className={`${inputClass} font-mono`}
-          />
-        </div>
-
-        <div className="grid gap-6 sm:grid-cols-2">
-          <div className="space-y-1.5">
-            <label htmlFor="category" className="text-sm font-medium">
-              Category
-            </label>
-            <select id="category" name="category" defaultValue={article.category} className={inputClass}>
-              {NEWS_CATEGORIES.map((c) => (
-                <option key={c} value={c}>
-                  {newsCategoryLabel[c]}
-                </option>
-              ))}
-            </select>
-          </div>
-        <ImageUploadField
-          name="cover_image_url"
-          kind="news"
-          label="Cover image"
-          defaultValue={article.cover_image_url}
-        />
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="excerpt" className="text-sm font-medium">
-            Excerpt
-          </label>
-          <textarea
-            id="excerpt"
-            name="excerpt"
-            rows={2}
-            maxLength={300}
-            defaultValue={article.excerpt ?? ""}
-            className={inputClass}
-            placeholder="Short summary for cards and previews. Clear to re-derive from content on next save."
-          />
-        </div>
-
-        <div className="space-y-1.5">
-          <label htmlFor="content" className="text-sm font-medium">
-            Content
-          </label>
-          <textarea
-            id="content"
-            name="content"
-            rows={16}
-            defaultValue={article.content ?? ""}
-            className={inputClass}
-          />
-        </div>
-
-        <div className="flex items-center gap-3">
-          <input
-            id="is_published"
-            name="is_published"
-            type="checkbox"
-            defaultChecked={article.is_published}
-            className="h-4 w-4 rounded border-ink-border"
-            value="true"
-          />
-          <label htmlFor="is_published" className="text-sm font-medium">
-            Published
-          </label>
-        </div>
-
-        <Button type="submit" disabled={isPending} className="gap-2">
-          {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-          {isPending ? "Saving..." : "Save changes"}
-        </Button>
       </form>
     </div>
   );

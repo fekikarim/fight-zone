@@ -16,6 +16,33 @@ import type { EventActionState } from "@/lib/actions/events";
 
 const INITIAL: EventActionState = { ok: false };
 
+/**
+ * Runs an event action without letting unexpected failures (network drop,
+ * session expiry, server error) escape to the route error page — the
+ * member gets an inline message and can retry. Next.js redirects still
+ * propagate.
+ */
+async function runSafely(
+  action: (prev: EventActionState, formData: FormData) => Promise<EventActionState>,
+  prev: EventActionState,
+  formData: FormData,
+): Promise<EventActionState> {
+  try {
+    return await action(prev, formData);
+  } catch (error) {
+    const digest = (error as { digest?: unknown } | null)?.digest;
+    if (typeof digest === "string" && digest.startsWith("NEXT_")) throw error;
+    return {
+      ok: false,
+      code: "error",
+      message:
+        typeof navigator !== "undefined" && navigator.onLine === false
+          ? "You appear to be offline. Check your connection and try again."
+          : "Something went wrong. Please refresh the page and try again.",
+    };
+  }
+}
+
 interface EventRegisterButtonProps {
   eventId: string;
   isRegistered: boolean;
@@ -69,7 +96,7 @@ function RegisterControl({ eventId, rejoin = false }: { eventId: string; rejoin?
   const [showSuccess, setShowSuccess] = useState(false);
   const [state, formAction, isPending] = useActionState(
     async (prev: EventActionState, formData: FormData) => {
-      const next = await registerForEvent(prev, formData);
+      const next = await runSafely(registerForEvent, prev, formData);
       if (next.ok && next.code === "ok") setShowSuccess(true);
       return next;
     },
@@ -121,7 +148,10 @@ function RegisterControl({ eventId, rejoin = false }: { eventId: string; rejoin?
 }
 
 function RegisteredControl({ eventId }: { eventId: string }) {
-  const [state, formAction, isPending] = useActionState(cancelEventRegistration, INITIAL);
+  const [state, formAction, isPending] = useActionState(
+    (prev: EventActionState, formData: FormData) => runSafely(cancelEventRegistration, prev, formData),
+    INITIAL,
+  );
   const [confirming, setConfirming] = useState(false);
   const confirmRef = useRef<HTMLButtonElement>(null);
 

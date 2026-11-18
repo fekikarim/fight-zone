@@ -13,7 +13,9 @@ import {
   createAchievementSchema,
   updateAchievementSchema,
   deleteAchievementSchema,
+  readNewsForm,
 } from "@/lib/validations/content";
+import { issuesToFieldErrors, type FieldErrors } from "@/lib/validations/form-errors";
 import { logError } from "@/lib/errors";
 import { deriveExcerpt } from "@/lib/types/content";
 
@@ -25,6 +27,7 @@ export interface ContentActionState {
   ok: boolean;
   message?: string;
   id?: string;
+  fieldErrors?: FieldErrors;
 }
 
 // ---------------------------------------------------------------------------
@@ -63,22 +66,18 @@ export async function createNews(
   _prev: ContentActionState,
   formData: FormData,
 ): Promise<ContentActionState> {
-  const parsed = createNewsSchema.safeParse({
-    title: formData.get("title"),
-    slug: formData.get("slug"),
-    excerpt: formData.get("excerpt") || undefined,
-    category: formData.get("category") || undefined,
-    content: formData.get("content") || undefined,
-    cover_image_url: formData.get("cover_image_url") || undefined,
-    is_published: formData.get("is_published") === "true",
-  });
+  const input = readNewsForm(formData);
+  const parsed = createNewsSchema.safeParse({ ...input, is_published: input.is_published === true });
 
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return { ok: false, message: first?.message ?? "Invalid data." };
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields.",
+      fieldErrors: issuesToFieldErrors(parsed.error.issues),
+    };
   }
 
-  const user = await requireRole(["ADMIN"]);
+  const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const excerpt =
@@ -92,7 +91,7 @@ export async function createNews(
       slug: parsed.data.slug,
       excerpt,
       category: parsed.data.category,
-      content: parsed.data.content ?? null,
+      content: parsed.data.content?.trim() ? parsed.data.content : null,
       cover_image_url: parsed.data.cover_image_url || null,
       is_published: parsed.data.is_published,
       published_at: parsed.data.is_published ? new Date().toISOString() : null,
@@ -104,7 +103,11 @@ export async function createNews(
   if (error) {
     logError("Failed to create news", error, { title: parsed.data.title });
     if (error.code === "23505") {
-      return { ok: false, message: "An article with this slug already exists." };
+      return {
+        ok: false,
+        message: "Please fix the highlighted fields.",
+        fieldErrors: { slug: "Another article already uses this URL slug — pick a different one." },
+      };
     }
     return { ok: false, message: "Could not create article. Please try again." };
   }
@@ -117,30 +120,31 @@ export async function updateNews(
   _prev: ContentActionState,
   formData: FormData,
 ): Promise<ContentActionState> {
-  const rawExcerpt = formData.get("excerpt");
-  const rawPublished = formData.get("is_published");
-  const parsed = updateNewsSchema.safeParse({
-    articleId: formData.get("articleId"),
-    title: formData.get("title") || undefined,
-    slug: formData.get("slug") || undefined,
-    excerpt: rawExcerpt === null ? undefined : String(rawExcerpt),
-    category: formData.get("category") || undefined,
-    content: formData.get("content") || undefined,
-    cover_image_url: formData.get("cover_image_url") || undefined,
-    // The edit form always submits is_published ("true"/"false"), so
-    // unpublishing is a real, persisted transition — not a skipped field.
-    is_published: rawPublished === null ? undefined : rawPublished === "true",
-  });
+  // The edit form always submits is_published ("true"/"false"), so
+  // unpublishing is a real, persisted transition — not a skipped field.
+  const parsed = updateNewsSchema.safeParse(readNewsForm(formData));
 
   if (!parsed.success) {
-    const first = parsed.error.issues[0];
-    return { ok: false, message: first?.message ?? "Invalid data." };
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields.",
+      fieldErrors: issuesToFieldErrors(parsed.error.issues),
+    };
   }
 
-  await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const { articleId, title, slug, excerpt, category, content, cover_image_url, is_published } = parsed.data;
+
+  // Keep the original publish date when re-saving an already-published
+  // article (otherwise every edit would bump it to the top of the feed).
+  const { data: current } = await supabase
+    .from("news")
+    .select("is_published")
+    .eq("id", articleId)
+    .maybeSingle();
+  const publishing = is_published === true && !current?.is_published;
 
   const { data, error } = await supabase
     .from("news")
@@ -149,12 +153,10 @@ export async function updateNews(
       ...(slug !== undefined && { slug }),
       ...(excerpt !== undefined && { excerpt: excerpt || null }),
       ...(category !== undefined && { category }),
-      ...(content !== undefined && { content }),
+      ...(content !== undefined && { content: content.trim() ? content : null }),
       ...(cover_image_url !== undefined && { cover_image_url: cover_image_url || null }),
-      ...(is_published !== undefined && {
-        is_published,
-        published_at: is_published ? new Date().toISOString() : null,
-      }),
+      ...(is_published === false && { is_published: false, published_at: null }),
+      ...(publishing && { is_published: true, published_at: new Date().toISOString() }),
     })
     .eq("id", articleId)
     .select("slug")
@@ -163,7 +165,11 @@ export async function updateNews(
   if (error) {
     logError("Failed to update news", error, { articleId });
     if (error.code === "23505") {
-      return { ok: false, message: "An article with this slug already exists." };
+      return {
+        ok: false,
+        message: "Please fix the highlighted fields.",
+        fieldErrors: { slug: "Another article already uses this URL slug — pick a different one." },
+      };
     }
     return { ok: false, message: "Could not update article. Please try again." };
   }
@@ -179,7 +185,7 @@ export async function deleteNews(
   const parsed = deleteNewsSchema.safeParse({ articleId: formData.get("articleId") });
   if (!parsed.success) return { ok: false, message: "Invalid data." };
 
-  await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   // Fetch the slug first so the public article page can be purged too.
@@ -221,7 +227,7 @@ export async function createMediaRecord(
     return { ok: false, message: first?.message ?? "Invalid data." };
   }
 
-  const user = await requireRole(["ADMIN"]);
+  const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -262,7 +268,7 @@ export async function updateMedia(
     return { ok: false, message: first?.message ?? "Invalid data." };
   }
 
-  await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const { mediaId, title, description, is_public } = parsed.data;
@@ -292,7 +298,7 @@ export async function deleteMedia(
   const parsed = deleteMediaSchema.safeParse({ mediaId: formData.get("mediaId") });
   if (!parsed.success) return { ok: false, message: "Invalid data." };
 
-  await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const { error } = await supabase.from("media").delete().eq("id", parsed.data.mediaId);
@@ -327,7 +333,7 @@ export async function createAchievement(
     return { ok: false, message: first?.message ?? "Invalid data." };
   }
 
-  const user = await requireRole(["ADMIN"]);
+  const user = await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const { data, error } = await supabase
@@ -370,7 +376,7 @@ export async function updateAchievement(
     return { ok: false, message: first?.message ?? "Invalid data." };
   }
 
-  await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const { achievementId, title, description, type, date, image_url } = parsed.data;
@@ -404,7 +410,7 @@ export async function deleteAchievement(
   });
   if (!parsed.success) return { ok: false, message: "Invalid data." };
 
-  await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
   const { error } = await supabase

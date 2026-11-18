@@ -1,5 +1,6 @@
 import { clsx, type ClassValue } from "clsx";
 import { twMerge } from "tailwind-merge";
+import { BUSINESS_TIMEZONE } from "@/lib/timezone";
 
 export function cn(...inputs: ClassValue[]) {
   return twMerge(clsx(inputs));
@@ -14,7 +15,11 @@ export function formatPrice(amount: number, currency = "USD"): string {
   }).format(amount);
 }
 
-/** Formats an ISO date as a readable date. */
+/**
+ * Formats an ISO date as a readable date in the business timezone
+ * (Africa/Tunis). Pinning the zone keeps server (UTC) and browser output
+ * identical — no hydration mismatch, no times shown an hour off.
+ */
 export function formatDate(
   value: string | Date | null | undefined,
   options: Intl.DateTimeFormatOptions = {
@@ -26,7 +31,7 @@ export function formatDate(
   if (!value) return "";
   const date = typeof value === "string" ? new Date(value) : value;
   if (Number.isNaN(date.getTime())) return "";
-  return new Intl.DateTimeFormat("en-US", options).format(date);
+  return new Intl.DateTimeFormat("en-US", { timeZone: BUSINESS_TIMEZONE, ...options }).format(date);
 }
 
 /** Reads a raw form value and returns a trimmed string. */

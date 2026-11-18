@@ -1,9 +1,10 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useId, useMemo, useState } from "react";
 import Link from "next/link";
 import { usePathname, useRouter, useSearchParams } from "next/navigation";
-import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Users, X } from "lucide-react";
+import { CalendarDays, ChevronLeft, ChevronRight, MapPin, Plus, Users, X } from "lucide-react";
+import type { RealtimeChannel } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import {
   toDateKey,
@@ -15,6 +16,7 @@ import {
 } from "@/lib/calendar";
 import { eventTypeLabel, getEventHref, getEventLifecycleStatus } from "@/lib/types/events";
 import { formatDate } from "@/lib/utils";
+import { businessDateKey } from "@/lib/timezone";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import type { EventDetail } from "@/lib/types/events";
@@ -49,11 +51,12 @@ export function CalendarClient({
 
   const anchor = useMemo(() => parseDateKey(dateKey) ?? new Date(), [dateKey]);
 
-  // Group events by local day key.
+  // Group events by their Tunis (business) day — identical on server and
+  // client, whatever timezone either runs in.
   const eventsByDay = useMemo(() => {
     const map = new Map<string, EventDetail[]>();
     for (const event of events) {
-      const key = toDateKey(new Date(event.start_at));
+      const key = businessDateKey(event.start_at);
       const list = map.get(key) ?? [];
       list.push(event);
       map.set(key, list);
@@ -91,33 +94,47 @@ export function CalendarClient({
   );
 
   const goToday = useCallback(() => {
-    navigate({ date: toDateKey(new Date()) });
+    navigate({ date: businessDateKey(new Date()) });
   }, [navigate]);
 
   // Realtime sync: refresh server data when events or participants change.
+  // Best-effort — it must never crash the page: each mount gets its own
+  // channel (supabase-js reuses channels by topic, and re-adding listeners
+  // to an already-subscribed channel throws), and socket failures (e.g. a
+  // blocked WebSocket on iOS) are swallowed. Bursts are debounced.
+  const instanceId = useId().replace(/[^a-zA-Z0-9]/g, "");
   useEffect(() => {
     const supabase = createClient();
-    const channel = supabase
-      .channel("admin-calendar")
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "events" },
-        () => router.refresh(),
-      )
-      .on(
-        "postgres_changes",
-        { event: "*", schema: "public", table: "event_participants" },
-        () => router.refresh(),
-      )
-      .subscribe();
+    let channel: RealtimeChannel | null = null;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const refresh = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => router.refresh(), 400);
+    };
+    try {
+      channel = supabase
+        .channel(`admin-calendar-${instanceId}`)
+        .on("postgres_changes", { event: "*", schema: "public", table: "events" }, refresh)
+        .on("postgres_changes", { event: "*", schema: "public", table: "event_participants" }, refresh)
+        .subscribe();
+    } catch {
+      channel = null;
+    }
 
     return () => {
-      supabase.removeChannel(channel);
+      if (timer) clearTimeout(timer);
+      if (channel) {
+        try {
+          void supabase.removeChannel(channel);
+        } catch {
+          // Cleanup must never throw.
+        }
+      }
     };
-  }, [router]);
+  }, [router, instanceId]);
 
   return (
-    <div className="flex flex-col gap-6 px-6 py-6 sm:px-8">
+    <div className="flex flex-col gap-6">
       {/* Toolbar */}
       <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
         <div>
@@ -125,7 +142,13 @@ export function CalendarClient({
           <p className="mt-1 text-sm text-muted">Plan and track events across your schedule.</p>
         </div>
 
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
+          <Button asChild size="sm" className="gap-1.5">
+            <Link href="/admin/events/new">
+              <Plus className="h-4 w-4" aria-hidden />
+              New event
+            </Link>
+          </Button>
           <Button variant="outline" size="sm" onClick={goToday}>
             Today
           </Button>
@@ -150,7 +173,7 @@ export function CalendarClient({
 
       <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <p className="font-display text-lg font-semibold">{rangeLabel}</p>
-        <div className="flex rounded-lg border border-ink-border p-0.5" role="tablist">
+        <div className="flex self-start rounded-lg border border-ink-border p-0.5 sm:self-auto" role="tablist">
           {VIEW_OPTIONS.map((option) => (
             <button
               key={option.value}
@@ -158,7 +181,7 @@ export function CalendarClient({
               role="tab"
               aria-selected={view === option.value}
               onClick={() => navigate({ view: option.value })}
-              className={`rounded-md px-3 py-1.5 text-sm transition-colors ${
+              className={`min-h-9 rounded-md px-4 py-1.5 text-sm transition-colors ${
                 view === option.value
                   ? "bg-primary text-white"
                   : "text-muted hover:text-foreground"
@@ -181,7 +204,18 @@ export function CalendarClient({
 
       {/* Mobile progressive disclosure: month/week collapse to a list view */}
       <div className="sm:hidden">
-        <AgendaView events={events} onSelect={setSelectedEvent} compact />
+        <AgendaView
+          events={
+            view === "month"
+              ? events.filter((e) => businessDateKey(e.start_at).startsWith(dateKey.slice(0, 7)))
+              : events
+          }
+          onSelect={setSelectedEvent}
+          compact
+          emptyLabel={
+            view === "month" ? "No events this month." : view === "week" ? "No events this week." : undefined
+          }
+        />
       </div>
 
       {selectedEvent && (
@@ -198,8 +232,7 @@ interface DayMap {
 }
 
 function MonthView({ eventsByDay, anchor, onSelect }: DayMap) {
-  const today = new Date();
-  const grid = buildMonthGrid(anchor, today);
+  const grid = buildMonthGrid(anchor, parseDateKey(businessDateKey(new Date())) ?? new Date());
   return (
     <div className="overflow-hidden rounded-xl border border-ink-border">
       <div className="grid grid-cols-7 border-b border-ink-border bg-ink-soft/40">
@@ -260,7 +293,7 @@ function MonthView({ eventsByDay, anchor, onSelect }: DayMap) {
 }
 
 function WeekView({ eventsByDay, anchor, onSelect }: DayMap) {
-  const today = new Date();
+  const todayKey = businessDateKey(new Date());
   const weekStart = startOfWeek(anchor);
   const days = Array.from({ length: 7 }, (_, i) => addDays(weekStart, i));
   return (
@@ -268,7 +301,7 @@ function WeekView({ eventsByDay, anchor, onSelect }: DayMap) {
       <div className="grid grid-cols-1 gap-px bg-ink-border sm:grid-cols-7">
         {days.map((day) => {
           const key = toDateKey(day);
-          const isToday = key === toDateKey(today);
+          const isToday = key === todayKey;
           const dayEvents = eventsByDay.get(key) ?? [];
           return (
             <div key={key} className="bg-background p-2">
@@ -313,14 +346,15 @@ interface AgendaProps {
   events: EventDetail[];
   onSelect: (event: EventDetail) => void;
   compact?: boolean;
+  emptyLabel?: string;
 }
 
-function AgendaView({ events, onSelect, compact }: AgendaProps) {
+function AgendaView({ events, onSelect, compact, emptyLabel = "No events on this day." }: AgendaProps) {
   if (events.length === 0) {
     return (
       <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-border bg-ink-soft/40 px-6 py-12 text-center">
         <CalendarDays className="h-8 w-8 text-primary" />
-        <p className="text-muted">No events on this day.</p>
+        <p className="text-muted">{emptyLabel}</p>
       </div>
     );
   }

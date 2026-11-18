@@ -1,7 +1,11 @@
 import type { NextConfig } from "next";
 
 const supabaseOrigin =
-  process.env.NEXT_PUBLIC_SUPABASE_URL || "https://*.supabase.co";
+  process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/+$/, "") || "https://*.supabase.co";
+// Supabase Realtime connects over WebSockets. `https://host` does not cover
+// `wss://host` in CSP, and WebKit (every iOS browser) throws synchronously
+// when a blocked socket is opened — that crashed realtime pages on iPhone.
+const supabaseRealtimeOrigin = supabaseOrigin.replace(/^http/, "ws");
 
 const securityHeaders = [
   { key: "X-DNS-Prefetch-Control", value: "on" },
@@ -20,7 +24,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https://*.supabase.co",
       "font-src 'self' data:",
-      `connect-src 'self' ${supabaseOrigin}`,
+      `connect-src 'self' ${supabaseOrigin} ${supabaseRealtimeOrigin}`,
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'",

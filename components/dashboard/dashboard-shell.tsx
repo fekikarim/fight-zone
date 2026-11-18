@@ -19,6 +19,9 @@ import {
   Menu,
   X,
   Globe,
+  CalendarDays,
+  FileText,
+  LayoutGrid,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/auth/sign-out-button";
@@ -59,10 +62,29 @@ const MEMBER_NAV_ICONS: Record<string, ReactNode> = {
   "/member/profile": <User className="h-4 w-4 shrink-0" />,
 };
 
+const ADMIN_NAV_ICONS: Record<string, ReactNode> = {
+  "/admin": <LayoutDashboard className="h-4 w-4 shrink-0" />,
+  "/admin/events": <Trophy className="h-4 w-4 shrink-0" />,
+  "/admin/calendar": <CalendarDays className="h-4 w-4 shrink-0" />,
+  "/admin/news": <Newspaper className="h-4 w-4 shrink-0" />,
+  "/admin/reviews": <Star className="h-4 w-4 shrink-0" />,
+  "/admin/messages": <MessageSquare className="h-4 w-4 shrink-0" />,
+  "/admin/notifications": <Bell className="h-4 w-4 shrink-0" />,
+  "/admin/content": <FileText className="h-4 w-4 shrink-0" />,
+};
+
+const NAV_ICONS: Record<string, ReactNode> = { ...MEMBER_NAV_ICONS, ...ADMIN_NAV_ICONS };
+
+/** Up to four destinations in the mobile bottom bar (the rest live under "More"). */
 const MOBILE_NAV_PRIMARY = [
   "/member",
+  "/member/events",
   "/member/messages",
   "/member/notifications",
+  "/admin",
+  "/admin/events",
+  "/admin/calendar",
+  "/admin/messages",
 ];
 
 const PUBLIC_NAV = [
@@ -186,7 +208,7 @@ function SidebarContent({
                 href={item.href}
                 label={item.label}
                 badge={item.badge}
-                icon={MEMBER_NAV_ICONS[item.href]}
+                icon={NAV_ICONS[item.href] ?? <LayoutGrid className="h-4 w-4 shrink-0" />}
                 active={isActiveNav(pathname, item.href, nav)}
                 onClick={onLinkClick}
                 trailing={dotFor(item.href)}
@@ -324,7 +346,10 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
         </aside>
 
         {/* ─── Main Content ─────────────────────────────────────────── */}
-        <main className="min-w-0 flex-1 px-4 py-8 sm:px-6 lg:px-8">{children}</main>
+        {/* Bottom padding clears the fixed mobile nav (+ iPhone home indicator). */}
+        <main className="min-w-0 flex-1 px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-8 md:pb-10 lg:px-8">
+          {children}
+        </main>
       </div>
 
       {/* ─── Mobile Drawer Overlay ────────────────────────────────── */}
@@ -392,7 +417,7 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
       {/* ─── Mobile Bottom Nav (primary routes only) ─────────────── */}
       <nav
         aria-label="Primary navigation"
-        className="sticky bottom-0 z-30 flex border-t border-ink-border bg-ink-base/95 backdrop-blur-md md:hidden"
+        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-ink-border bg-ink-base/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
       >
         {primaryMobileNav.map((item) => {
           const active = isActive(item.href);
@@ -402,18 +427,18 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "flex flex-1 flex-col items-center justify-center gap-1 px-1 py-3 transition-colors",
-                active ? "text-primary" : "text-zinc-600 hover:text-zinc-300",
+                "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 transition-colors",
+                active ? "text-primary" : "text-zinc-500 hover:text-zinc-300",
               )}
             >
-              <span className={cn("transition-colors", active ? "text-primary" : "text-zinc-600")}>
-                {MEMBER_NAV_ICONS[item.href]}
+              <span className={cn("transition-colors", active ? "text-primary" : "text-zinc-500")}>
+                {NAV_ICONS[item.href]}
               </span>
               <span className="max-w-16 truncate text-[10px] font-medium">
                 {item.label === "My Bookings" ? "Bookings" : item.label}
               </span>
               {item.badge ? (
-                <span className="absolute right-0 top-1 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary text-[9px] font-bold text-ink-base">
+                <span className="absolute left-1/2 top-1.5 ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white">
                   {item.badge > 9 ? "9+" : item.badge}
                 </span>
               ) : null}
@@ -424,7 +449,7 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="flex flex-1 flex-col items-center justify-center gap-1 px-1 py-3 text-zinc-600 transition-colors hover:text-zinc-300"
+          className="flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 text-zinc-500 transition-colors hover:text-zinc-300"
           aria-label="More navigation options"
         >
           <Menu className="h-4 w-4" />

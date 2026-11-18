@@ -33,7 +33,7 @@ function PublishButton({
   transformationId: string;
   isPublished: boolean;
 }) {
-  const [, formAction, isPending] = useActionState(moderateTransformation, initialState);
+  const [state, formAction, isPending] = useActionState(moderateTransformation, initialState);
   return (
     <form action={formAction}>
       <input type="hidden" name="transformationId" value={transformationId} />
@@ -60,6 +60,11 @@ function PublishButton({
           <EyeOff className="h-4 w-4" />
         )}
       </button>
+      {!state.ok && state.message ? (
+        <p role="alert" className="mt-1 max-w-40 text-[11px] leading-tight text-red-400">
+          {state.message}
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -71,7 +76,7 @@ function FeatureButton({
   transformationId: string;
   isFeatured: boolean;
 }) {
-  const [, formAction, isPending] = useActionState(moderateTransformation, initialState);
+  const [state, formAction, isPending] = useActionState(moderateTransformation, initialState);
   return (
     <form action={formAction}>
       <input type="hidden" name="transformationId" value={transformationId} />
@@ -96,6 +101,11 @@ function FeatureButton({
           <Star className={`h-4 w-4 ${isFeatured ? "fill-primary" : ""}`} />
         )}
       </button>
+      {!state.ok && state.message ? (
+        <p role="alert" className="mt-1 max-w-40 text-[11px] leading-tight text-red-400">
+          {state.message}
+        </p>
+      ) : null}
     </form>
   );
 }

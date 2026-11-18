@@ -15,7 +15,6 @@
     "db:types": "supabase gen types typescript --project-id jdbythhwikqvqenxyuqw > types/database.types.ts"
   },
   "dependencies": {
-    "@google/generative-ai": "^0.24.1",
     "@hookform/resolvers": "^5.9.0",
     "@radix-ui/react-slot": "^1.3.3",
     "@supabase/ssr": "^0.12.4",

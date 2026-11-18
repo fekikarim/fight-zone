@@ -86,3 +86,48 @@ export function businessDayStart(date: Date | string = new Date()): Date {
 export function businessDayEnd(date: Date | string = new Date()): Date {
   return new Date(businessDayStart(date).getTime() + 24 * 60 * 60 * 1000);
 }
+
+/**
+ * ISO instant → "YYYY-MM-DDTHH:mm" wall-clock value for a
+ * `<input type="datetime-local">`, in the business timezone. Deterministic on
+ * server and client (no hydration mismatch, no hour drift).
+ */
+export function toBusinessDateTimeInput(value: string | Date | null | undefined): string {
+  if (!value) return "";
+  const d = typeof value === "string" ? new Date(value) : value;
+  if (Number.isNaN(d.getTime())) return "";
+  const parts = new Intl.DateTimeFormat("en-GB", {
+    timeZone: BUSINESS_TIMEZONE,
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hourCycle: "h23",
+  }).formatToParts(d);
+  const get = (t: string) => parts.find((p) => p.type === t)?.value ?? "00";
+  return `${get("year")}-${get("month")}-${get("day")}T${get("hour")}:${get("minute")}`;
+}
+
+/**
+ * Parses a `datetime-local` value ("YYYY-MM-DDTHH:mm") as Fight Zone
+ * business-timezone wall-clock time and returns the UTC ISO instant.
+ * Already-zoned ISO strings pass through. Returns null when invalid.
+ */
+export function fromBusinessDateTimeInput(value: string | null | undefined): string | null {
+  if (!value) return null;
+  const trimmed = value.trim();
+  if (/[zZ]$|[+-]\d{2}:?\d{2}$/.test(trimmed)) {
+    const d = new Date(trimmed);
+    return Number.isNaN(d.getTime()) ? null : d.toISOString();
+  }
+  const m = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2}))?$/.exec(trimmed);
+  if (!m) return null;
+  const [, y, mo, da, h, mi, se] = m.map((x) => (x === undefined ? 0 : Number(x)));
+  const asUtc = Date.UTC(y, mo - 1, da, h, mi, se);
+  // Offset at that instant (two passes handle DST transitions correctly).
+  let instant = asUtc - businessUtcOffsetMs(new Date(asUtc));
+  instant = asUtc - businessUtcOffsetMs(new Date(instant));
+  const result = new Date(instant);
+  return Number.isNaN(result.getTime()) ? null : result.toISOString();
+}

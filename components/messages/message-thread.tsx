@@ -70,11 +70,16 @@ export function MessageThread({
   async function handleLoadOlder() {
     if (loadingOlder || messages.length === 0) return;
     setLoadingOlder(true);
-    const oldest = messages[0];
-    const { messages: older } = await loadOlderMessages(conversationId, oldest.id);
-    setMessages((prev) => [...older.reverse(), ...prev]);
-    setMoreAvailable(older.length >= 50);
-    setLoadingOlder(false);
+    try {
+      const oldest = messages[0];
+      const { messages: older } = await loadOlderMessages(conversationId, oldest.id);
+      setMessages((prev) => [...older.reverse(), ...prev]);
+      setMoreAvailable(older.length >= 50);
+    } catch {
+      // Keep the button so the user can retry.
+    } finally {
+      setLoadingOlder(false);
+    }
   }
 
   return (
@@ -159,7 +164,15 @@ export function MessageThread({
             onChange={(event) => setBody(event.target.value)}
             rows={2}
             maxLength={4000}
-            placeholder="Write a message…"
+            onKeyDown={(event) => {
+              // Ctrl/⌘ + Enter sends; plain Enter keeps adding lines.
+              if (event.key === "Enter" && (event.metaKey || event.ctrlKey) && body.trim()) {
+                event.preventDefault();
+                event.currentTarget.form?.requestSubmit();
+              }
+            }}
+            aria-label="Message"
+            placeholder="Write a message… (Ctrl/⌘ + Enter to send)"
             className="min-h-[52px] max-h-40 flex-1"
           />
           {state.message && !state.ok ? (

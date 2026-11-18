@@ -3,6 +3,7 @@ import { notFound } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
 import { getAdminNewsById } from "@/lib/supabase/queries";
+import { formatDate } from "@/lib/utils";
 import { NewsEditForm } from "@/components/content/news-edit-form";
 
 interface PageProps {
@@ -35,7 +36,7 @@ export default async function AdminNewsEditPage({ params }: PageProps) {
         </Link>
         <h1 className="text-2xl font-bold tracking-tight">Edit article</h1>
         <p className="mt-1 text-sm text-muted">
-          Last updated {new Date(article.updated_at).toLocaleDateString()}
+          Last updated {formatDate(article.updated_at, { year: "numeric", month: "short", day: "numeric" })}
         </p>
       </div>
 

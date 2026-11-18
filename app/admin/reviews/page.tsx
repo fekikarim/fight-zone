@@ -22,7 +22,7 @@ interface AdminReviewsPageProps {
 }
 
 export default async function AdminReviewsPage({ searchParams }: AdminReviewsPageProps) {
-  await requireRole(["ADMIN"]);
+  await requireRole(["ADMIN", "COACH"]);
   const params = await searchParams;
   const status = params.status as ReviewStatus | "ALL" | undefined;
   const { items: reviews, nextCursor, hasMore } = await getAdminReviews({

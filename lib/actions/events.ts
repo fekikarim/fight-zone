@@ -11,7 +11,10 @@ import {
   updateParticipantStatusSchema,
   updateParticipantPaymentSchema,
   deleteEventSchema,
+  readCreateEventForm,
+  readUpdateEventForm,
 } from "@/lib/validations/events";
+import { issuesToFieldErrors, type FieldErrors } from "@/lib/validations/form-errors";
 import { logError } from "@/lib/errors";
 import { notifyEventCancellation } from "@/lib/email/cancellation";
 
@@ -29,6 +32,8 @@ export interface EventActionState {
   eventId?: string;
   /** Machine-readable outcome so the UI can render the right state. */
   code?: EventActionResultCode;
+  /** Per-field validation messages for the form. */
+  fieldErrors?: FieldErrors;
 }
 
 function revalidateEvents(eventId?: string) {
@@ -210,24 +215,14 @@ export async function createEvent(
   _prev: EventActionState,
   formData: FormData,
 ): Promise<EventActionState> {
-  const parsed = createEventSchema.safeParse({
-    title: formData.get("title"),
-    description: formData.get("description") || undefined,
-    event_type: formData.get("event_type"),
-    event_format: formData.get("event_format") || undefined,
-    start_at: formData.get("start_at"),
-    end_at: formData.get("end_at") || undefined,
-    location: formData.get("location") || undefined,
-    is_public: formData.get("is_public") === "true",
-    max_participants: formData.get("max_participants") || undefined,
-    is_free: formData.get("is_free") !== "false",
-    price_tnd: formData.get("price_tnd") || undefined,
-    image_url: formData.get("image_url") || undefined,
-  });
+  const parsed = createEventSchema.safeParse(readCreateEventForm(formData));
 
   if (!parsed.success) {
-    const msg = parsed.error.issues[0]?.message ?? "Please check the submitted information.";
-    return { ok: false, message: msg };
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields.",
+      fieldErrors: issuesToFieldErrors(parsed.error.issues),
+    };
   }
 
   const user = await requireRole(["ADMIN", "COACH"]);
@@ -241,12 +236,12 @@ export async function createEvent(
     .from("events")
     .insert({
       title: parsed.data.title,
-      description: parsed.data.description,
+      description: parsed.data.description ?? null,
       event_type: parsed.data.event_type,
       event_format: parsed.data.event_format,
       start_at: parsed.data.start_at,
-      end_at: parsed.data.end_at,
-      location: parsed.data.location,
+      end_at: parsed.data.end_at ?? null,
+      location: parsed.data.location ?? null,
       is_public: isIndividual ? false : parsed.data.is_public,
       max_participants: isIndividual ? 1 : parsed.data.max_participants,
       is_free: parsed.data.is_free,
@@ -259,6 +254,12 @@ export async function createEvent(
 
   if (error) {
     logError("Failed to create event", error);
+    if (error.code === "42501") {
+      return { ok: false, message: "You do not have permission to create events." };
+    }
+    if (error.code === "23514") {
+      return { ok: false, message: "Some values are not allowed. Please review the form and try again." };
+    }
     return { ok: false, message: "We could not create the event. Please try again." };
   }
 
@@ -273,25 +274,14 @@ export async function updateEvent(
   _prev: EventActionState,
   formData: FormData,
 ): Promise<EventActionState> {
-  const parsed = updateEventSchema.safeParse({
-    eventId: formData.get("eventId"),
-    title: formData.get("title") || undefined,
-    description: formData.get("description") || undefined,
-    event_type: formData.get("event_type") || undefined,
-    event_format: formData.get("event_format") || undefined,
-    start_at: formData.get("start_at") || undefined,
-    end_at: formData.get("end_at") || undefined,
-    location: formData.get("location") || undefined,
-    is_public: formData.get("is_public") !== null ? formData.get("is_public") === "true" : undefined,
-    max_participants: formData.get("max_participants") || undefined,
-    is_free: formData.get("is_free") !== null ? formData.get("is_free") !== "false" : undefined,
-    price_tnd: formData.get("price_tnd") !== null ? formData.get("price_tnd") || undefined : undefined,
-    image_url: formData.get("image_url") !== null ? formData.get("image_url") || undefined : undefined,
-  });
+  const parsed = updateEventSchema.safeParse(readUpdateEventForm(formData));
 
   if (!parsed.success) {
-    const msg = parsed.error.issues[0]?.message ?? "Please check the submitted information.";
-    return { ok: false, message: msg };
+    return {
+      ok: false,
+      message: "Please fix the highlighted fields.",
+      fieldErrors: issuesToFieldErrors(parsed.error.issues),
+    };
   }
 
   const { is_free, price_tnd, eventId, event_format, ...rest } = parsed.data;
@@ -302,8 +292,11 @@ export async function updateEvent(
     // Switching to individual coaching re-applies the private/capacity-1
     // invariant regardless of what the form submitted.
     ...(forcingIndividual && { is_public: false, max_participants: 1 }),
-    is_free,
-    price_tnd: is_free ? null : price_tnd ?? null,
+    // Blank optional text fields clear the stored value.
+    ...(formData.get("description") === "" && { description: null }),
+    ...(formData.get("location") === "" && { location: null }),
+    ...(formData.has("end_at") && !formData.get("end_at") && { end_at: null }),
+    ...(is_free !== undefined && { is_free, price_tnd: is_free ? null : price_tnd ?? null }),
   };
 
   await requireRole(["ADMIN", "COACH"]);
@@ -325,7 +318,7 @@ export async function updateEvent(
   }
 
   revalidateEvents(eventId);
-  return { ok: true, eventId };
+  return { ok: true, eventId, message: "Event saved." };
 }
 
 /**

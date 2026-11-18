@@ -69,6 +69,8 @@ export const viewport: Viewport = {
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
+  // Lets fixed bars respect the iPhone home indicator via safe-area insets.
+  viewportFit: "cover",
 };
 
 export default function RootLayout({

@@ -123,6 +123,8 @@ export function ImageUploadField({ name, kind, defaultValue, label }: ImageUploa
         <span className="text-sm font-medium">{label}</span>
       ) : null}
       <input type="hidden" name={name} value={url} />
+      {/* Lets the parent form block submission until the upload finishes. */}
+      {uploading ? <input type="hidden" name={`${name}__uploading`} value="1" /> : null}
       <div
         role="button"
         tabIndex={0}

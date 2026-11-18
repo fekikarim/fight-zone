@@ -9,7 +9,7 @@ import {
   CalendarCheck,
   ExternalLink,
 } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { cn, formatDate } from "@/lib/utils";
 import { markNotificationRead } from "@/lib/actions/notifications";
 import { getResourceHref, getResourceLabel } from "@/lib/types/notifications";
 import type { NotificationRow } from "@/lib/types/notifications";
@@ -43,7 +43,7 @@ function formatRelativeTime(iso: string): string {
   if (hours < 24) return `${hours}h ago`;
   const days = Math.floor(hours / 24);
   if (days < 7) return `${days}d ago`;
-  return new Intl.DateTimeFormat("en-US", { month: "short", day: "numeric" }).format(new Date(iso));
+  return formatDate(iso, { month: "short", day: "numeric" });
 }
 
 interface NotificationItemProps {

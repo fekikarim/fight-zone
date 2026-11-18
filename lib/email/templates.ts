@@ -382,7 +382,7 @@ export interface BookingConfirmationData {
 
 export function buildBookingConfirmationEmail(data: BookingConfirmationData): EmailPayload {
   const title = "Booking Confirmed";
-  const when = new Date(data.scheduledAt).toLocaleString();
+  const when = `${formatBusinessDate(data.scheduledAt)} · ${formatBusinessTime(data.scheduledAt)}`;
   const body = [
     `<p style="margin:0 0 18px 0;">Hi ${escapeHtml(data.name)},</p>`,
     `<p style="margin:0 0 18px 0;">Your booking has been confirmed! Here are the details:</p>`,

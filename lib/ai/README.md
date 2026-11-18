@@ -1,40 +1,29 @@
-# AI Motivation Provider (Gemini)
+# AI Motivation Provider (Gemini + Groq, multi-key rotation)
 
-This directory contains the logic for the AI-generated motivational quotes in Fight Zone.
-By default, the application uses a curated static fallback library (`fallback-provider.ts`)
-because it is hosted on serverless architecture (Netlify).
-
-The AI provider is **Google Gemini** (`gemini-provider.ts`) — the free tier
-(`gemini-3.5-flash`) works serverless on Netlify. When enabled, `getDailyMotivation`
-asks Gemini for today's quote and, on **any** failure (timeout, network error, malformed
-response, or Zod validation failure), safely falls back to the static library — the app
-never breaks.
-
-## Env vars (to enable Gemini)
-
-In your environment (Netlify env vars or `.env.local` for local dev), add:
-
-```env
-# Enable the AI provider instead of the fallback library
-AI_MOTIVATION_ENABLED="true"
-
-# Your Google AI Studio API key (AIza...)
-GEMINI_API_KEY="your-api-key"
-
-# Optional: model name (default "gemini-3.5-flash")
-GEMINI_MODEL="gemini-3.5-flash"
-
-# Optional: request timeout in ms (default 8000)
-AI_MOTIVATION_TIMEOUT_MS="8000"
-```
+AI-generated daily quotes for members. Every provider output is validated with
+`motivationContentSchema` (`lib/validations/motivation.ts`) before it is shown or persisted.
 
 ## How it works
 
-- `motivation-provider.ts` — picker: Gemini (when enabled) → fallback library.
-- `gemini-provider.ts` — calls Gemini with `responseMimeType: "application/json"` and
-  validates the output against the shared Zod schema.
-- `fallback-provider.ts` — curated original quotes, deterministic per member per day.
-- `backup-quotes.json` — additional curated quotes available for the library.
+- `ai-provider.ts` — turns every configured key into a slot (`gemini#1, groq#1, gemini#2, groq#2, …`).
+  Each request starts at the next slot (round-robin), so usage is spread across all keys.
+  - Per key, a model chain is tried (a retired/overloaded model falls through to the next one).
+  - A key that returns 401/403/429 (bad key / quota) is skipped for 10 minutes.
+  - The whole run is bounded to ~7 s, and each HTTP call to `AI_MOTIVATION_TIMEOUT_MS` (capped at 4 s so a hung provider still leaves time to fail over).
+- `motivation-provider.ts` — AI first; if **every** key fails, the curated library is used.
+- `fallback-provider.ts` + `backup-quotes.json` — curated quotes, deterministic per member per day.
+  A quote is always served.
 
-Every provider output is validated server-side with `motivationContentSchema`
-(`lib/validations/motivation.ts`) before it is shown or persisted.
+## Env vars (server-only — set them in Netlify too)
+
+```env
+AI_MOTIVATION_ENABLED=true
+GEMINI_API_KEYS=key-1,key-2        # Google AI Studio keys, comma-separated
+GROQ_API_KEYS=key-1,key-2          # Groq keys, comma-separated
+AI_MOTIVATION_TIMEOUT_MS=8000      # optional, per request
+# Optional — override the model chains when a provider retires a model:
+# GEMINI_MODELS=gemini-3.5-flash-lite,gemini-3.1-flash-lite,gemini-flash-lite-latest
+# GROQ_MODELS=openai/gpt-oss-20b,openai/gpt-oss-120b
+```
+
+Add more keys at any time by appending them to the lists; no code change needed.

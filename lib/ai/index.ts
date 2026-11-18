@@ -1,6 +1,6 @@
 export { getDailyMotivation } from "@/lib/ai/motivation-provider";
 export { fallbackMotivation } from "@/lib/ai/fallback-provider";
-export { isGeminiEnabled } from "@/lib/ai/gemini-provider";
+export { isAiMotivationEnabled } from "@/lib/ai/ai-provider";
 export {
   motivationContentSchema,
   MOTIVATION_CATEGORIES,

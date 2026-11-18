@@ -4,6 +4,7 @@ import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PreviewEntryBar } from "@/components/preview/preview-entry-bar";
 import { getAdminNews } from "@/lib/supabase/queries";
+import { formatDate } from "@/lib/utils";
 import { newsCategoryLabel } from "@/lib/types/content";
 
 export const metadata: Metadata = {
@@ -62,7 +63,7 @@ export default async function AdminNewsPage() {
                 >
                   {article.is_published ? "Published" : "Draft"}
                 </span>
-                <span>{new Date(article.created_at).toLocaleDateString()}</span>
+                <span>{formatDate(article.created_at, { year: "numeric", month: "short", day: "numeric" })}</span>
               </div>
             </Link>
           ))}

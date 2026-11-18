@@ -4,12 +4,10 @@ import {
   toDateKey,
   startOfWeek,
   startOfMonth,
-  endOfMonth,
   addDays,
-  startOfDay,
-  endOfDay,
   parseDateKey,
 } from "@/lib/calendar";
+import { businessDateKey, businessDayEnd, businessDayStart } from "@/lib/timezone";
 import { CalendarClient } from "@/components/admin/calendar/calendar-client";
 import type { EventDetail } from "@/lib/types/events";
 
@@ -39,30 +37,33 @@ interface AdminCalendarPageProps {
 export default async function AdminCalendarPage({ searchParams }: AdminCalendarPageProps) {
   const searchParamsResolved = await searchParams;
   const view = toView(searchParamsResolved.view);
-  const today = new Date();
+  // "Today" is the Fight Zone (Tunis) calendar day, not the server's UTC day.
+  const today = parseDateKey(businessDateKey(new Date()))!;
   const anchor = parseDateKey(toSingle(searchParamsResolved.date)) ?? today;
 
-  // Compute the visible range for the selected view.
-  let from: Date;
-  let to: Date;
+  // Visible calendar days [firstDay, lastDay] for the selected view. These
+  // are plain calendar dates; they are converted to Tunis-day UTC bounds
+  // below so the query matches exactly what the grid shows.
+  let firstDay: Date;
+  let lastDay: Date;
   let rangeLabel: string;
   if (view === "month") {
     const ms = startOfMonth(anchor);
-    const me = endOfMonth(anchor);
-    from = ms;
-    to = me;
+    // The month grid shows 6 full weeks, including leading/trailing days.
+    firstDay = startOfWeek(ms);
+    lastDay = addDays(firstDay, 41);
     rangeLabel = ms.toLocaleDateString("en-US", {
       month: "long",
       year: "numeric",
     });
   } else if (view === "week") {
     const ws = startOfWeek(anchor);
-    from = ws;
-    to = addDays(ws, 6);
-    rangeLabel = `${ws.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${to.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
+    firstDay = ws;
+    lastDay = addDays(ws, 6);
+    rangeLabel = `${ws.toLocaleDateString("en-US", { month: "short", day: "numeric" })} – ${lastDay.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}`;
   } else {
-    from = startOfDay(anchor);
-    to = endOfDay(anchor);
+    firstDay = anchor;
+    lastDay = anchor;
     rangeLabel = anchor.toLocaleDateString("en-US", {
       weekday: "long",
       month: "long",
@@ -70,6 +71,11 @@ export default async function AdminCalendarPage({ searchParams }: AdminCalendarP
       year: "numeric",
     });
   }
+
+  // Noon UTC always falls on the same calendar date in Tunis (UTC+1).
+  const atNoon = (d: Date) => new Date(`${toDateKey(d)}T12:00:00Z`);
+  const from = businessDayStart(atNoon(firstDay));
+  const to = new Date(businessDayEnd(atNoon(lastDay)).getTime() - 1);
 
   const events = await getCalendarEvents(from.toISOString(), to.toISOString());
 

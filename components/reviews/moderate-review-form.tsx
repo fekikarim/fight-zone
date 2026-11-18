@@ -33,7 +33,7 @@ export function ModerateReviewForm({
 }
 
 function ApproveButton({ reviewId }: { reviewId: string }) {
-  const [, formAction, isPending] = useActionState(moderateReview, initialModerateState);
+  const [state, formAction, isPending] = useActionState(moderateReview, initialModerateState);
   return (
     <form action={formAction}>
       <input type="hidden" name="reviewId" value={reviewId} />
@@ -46,12 +46,17 @@ function ApproveButton({ reviewId }: { reviewId: string }) {
       >
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
       </button>
+      {!state.ok && state.message ? (
+        <p role="alert" className="mt-1 max-w-40 text-[11px] leading-tight text-red-400">
+          {state.message}
+        </p>
+      ) : null}
     </form>
   );
 }
 
 function RejectButton({ reviewId }: { reviewId: string }) {
-  const [, formAction, isPending] = useActionState(moderateReview, initialModerateState);
+  const [state, formAction, isPending] = useActionState(moderateReview, initialModerateState);
   return (
     <form action={formAction}>
       <input type="hidden" name="reviewId" value={reviewId} />
@@ -64,6 +69,11 @@ function RejectButton({ reviewId }: { reviewId: string }) {
       >
         {isPending ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
       </button>
+      {!state.ok && state.message ? (
+        <p role="alert" className="mt-1 max-w-40 text-[11px] leading-tight text-red-400">
+          {state.message}
+        </p>
+      ) : null}
     </form>
   );
 }
@@ -75,7 +85,7 @@ function FeatureButton({
   reviewId: string;
   isFeatured: boolean;
 }) {
-  const [, formAction, isPending] = useActionState(toggleReviewFeatured, initialFeatureState);
+  const [state, formAction, isPending] = useActionState(toggleReviewFeatured, initialFeatureState);
   return (
     <form action={formAction}>
       <input type="hidden" name="reviewId" value={reviewId} />
@@ -98,6 +108,11 @@ function FeatureButton({
           className={`h-4 w-4 ${isFeatured ? "fill-primary" : ""}`}
         />
       </button>
+      {!state.ok && state.message ? (
+        <p role="alert" className="mt-1 max-w-40 text-[11px] leading-tight text-red-400">
+          {state.message}
+        </p>
+      ) : null}
     </form>
   );
 }

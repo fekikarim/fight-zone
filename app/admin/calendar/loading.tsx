@@ -2,7 +2,7 @@ import { Container } from "@/components/ui/container";
 
 export default function CalendarLoading() {
   return (
-    <Container className="flex max-w-none flex-col gap-6 px-6 sm:px-8">
+    <Container className="flex max-w-none flex-col gap-6 px-0">
       <div className="flex flex-col gap-3">
         <div className="h-9 w-44 animate-pulse rounded-md bg-ink-soft" />
         <div className="h-4 w-full max-w-md animate-pulse rounded-md bg-ink-soft" />
