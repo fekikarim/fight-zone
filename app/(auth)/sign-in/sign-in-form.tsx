@@ -14,7 +14,7 @@ import { PasswordInput } from "@/components/auth/password-input";
 
 const initialState: AuthActionState = { ok: false };
 
-export function SignInForm() {
+export function SignInForm({ next }: { next?: string }) {
   const [state, formAction, isPending] = useActionState(signIn, initialState);
 
   const {
@@ -30,6 +30,7 @@ export function SignInForm() {
     const formData = new FormData();
     formData.set("email", values.email);
     formData.set("password", values.password);
+    if (next) formData.set("next", next);
     startTransition(() => {
       formAction(formData);
     });

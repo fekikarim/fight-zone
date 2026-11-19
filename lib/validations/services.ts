@@ -35,7 +35,7 @@ export type CreateSessionValues = z.infer<typeof createSessionSchema>;
 // ---------------------------------------------------------------------------
 
 export const updateSessionSchema = z.object({
-  sessionId: z.string().uuid(),
+  sessionId: z.guid(),
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().max(5000).optional(),
   type: z.enum(["PERSONAL", "TECHNICAL", "PHYSICAL", "STRATEGY", "COMBO"]).optional(),
@@ -53,7 +53,7 @@ export type UpdateSessionValues = z.infer<typeof updateSessionSchema>;
 // ---------------------------------------------------------------------------
 
 export const toggleSessionActiveSchema = z.object({
-  sessionId: z.string().uuid(),
+  sessionId: z.guid(),
   is_active: z.coerce.boolean(),
 });
 

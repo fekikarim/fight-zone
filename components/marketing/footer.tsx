@@ -1,9 +1,10 @@
 import Link from "next/link";
-import { Mail, MapPin, Phone } from "lucide-react";
+import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Container } from "@/components/ui/container";
 import { Separator } from "@/components/ui/separator";
 import { siteConfig } from "@/lib/site";
+import { getSiteSettings } from "@/lib/settings/queries";
 
 interface SocialIconProps {
   className?: string;
@@ -36,13 +37,19 @@ function YoutubeIcon({ className }: SocialIconProps) {
   );
 }
 
-const socialLinks = [
-  { href: siteConfig.social.instagram, label: "Instagram", icon: InstagramIcon },
-  { href: siteConfig.social.facebook, label: "Facebook", icon: FacebookIcon },
-  { href: siteConfig.social.youtube, label: "YouTube", icon: YoutubeIcon },
-];
+const SOCIAL_ICONS: Record<string, { label: string; icon: (p: SocialIconProps) => React.ReactElement }> = {
+  instagram: { label: "Instagram", icon: InstagramIcon },
+  facebook: { label: "Facebook", icon: FacebookIcon },
+  youtube: { label: "YouTube", icon: YoutubeIcon },
+};
 
-export function Footer() {
+/** Contact details and socials come only from Seif's Settings (never invented). */
+export async function Footer() {
+  const settings = await getSiteSettings();
+  const socialLinks = Object.entries(settings.social_links)
+    .filter(([k]) => k in SOCIAL_ICONS)
+    .map(([k, href]) => ({ href, ...SOCIAL_ICONS[k] }));
+  const hasContact = settings.contact_email || settings.contact_phone || settings.whatsapp || settings.address || settings.working_hours;
   return (
     <footer className="border-t border-ink-border bg-ink-soft/40">
       <Container className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
@@ -102,24 +109,30 @@ export function Footer() {
           <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
             Contact
           </h2>
-          <a
-            href={`mailto:${siteConfig.contactEmail}`}
-            className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-primary"
-          >
-            <Mail className="h-4 w-4" />
-            {siteConfig.contactEmail}
-          </a>
-          <a
-            href="tel:+21600000000"
-            className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-primary"
-          >
-            <Phone className="h-4 w-4" />
-            +216 00 000 000
-          </a>
-          <span className="inline-flex items-center gap-2 text-sm text-muted">
-            <MapPin className="h-4 w-4" />
-            Tunis, Tunisia
-          </span>
+          {settings.contact_email ? (
+            <a href={`mailto:${settings.contact_email}`} className="inline-flex items-center gap-2 break-all text-sm text-muted transition-colors hover:text-primary">
+              <Mail className="h-4 w-4 shrink-0" aria-hidden />{settings.contact_email}
+            </a>
+          ) : null}
+          {settings.contact_phone ? (
+            <a href={`tel:${settings.contact_phone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-primary">
+              <Phone className="h-4 w-4 shrink-0" aria-hidden />{settings.contact_phone}
+            </a>
+          ) : null}
+          {settings.whatsapp ? (
+            <a href={`https://wa.me/${settings.whatsapp.replace(/[^\d]/g, "")}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-primary">
+              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />WhatsApp
+            </a>
+          ) : null}
+          {settings.address ? (
+            <span className="inline-flex items-start gap-2 text-sm text-muted"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{settings.address}</span>
+          ) : null}
+          {settings.working_hours ? (
+            <span className="inline-flex items-start gap-2 whitespace-pre-line text-sm text-muted"><Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{settings.working_hours}</span>
+          ) : null}
+          {!hasContact ? (
+            <Link href="/contact" className="text-sm text-muted transition-colors hover:text-primary">Send us a message</Link>
+          ) : null}
         </div>
       </Container>
 
@@ -129,6 +142,11 @@ export function Footer() {
         <p className="text-xs text-muted-foreground">
           © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
         </p>
+        <nav aria-label="Legal" className="flex gap-4 text-xs text-muted-foreground">
+          <Link href="/faq" className="hover:text-primary">FAQ</Link>
+          <Link href="/privacy" className="hover:text-primary">Privacy</Link>
+          <Link href="/terms" className="hover:text-primary">Terms</Link>
+        </nav>
         <p className="font-display text-xs uppercase tracking-[0.3em] text-muted-foreground">
           Train · Fight · Win
         </p>

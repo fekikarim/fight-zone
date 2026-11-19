@@ -23,6 +23,7 @@ interface ImageUploadFieldProps {
 const KIND_COPY: Record<ContentImageKind, { subject: string }> = {
   news: { subject: "article" },
   events: { subject: "event" },
+  pages: { subject: "page" },
 };
 
 const MAX_MB = CONTENT_IMAGE_MAX_BYTES / (1024 * 1024);

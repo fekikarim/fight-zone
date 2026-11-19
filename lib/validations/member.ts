@@ -76,7 +76,7 @@ export const memberProfileSchema = z.object({
 });
 
 export const bookingSchema = z.object({
-  sessionId: z.string().uuid("Please choose a valid session."),
+  sessionId: z.guid("Please choose a valid session."),
   scheduledAt: z
     .string()
     .trim()
@@ -96,7 +96,7 @@ export const bookingSchema = z.object({
 });
 
 export const cancelBookingSchema = z.object({
-  bookingId: z.string().uuid("Please choose a valid booking."),
+  bookingId: z.guid("Please choose a valid booking."),
 });
 
 export type MemberProfileInput = z.infer<typeof memberProfileSchema>;

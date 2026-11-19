@@ -24,7 +24,7 @@ export function EventCreateForm() {
     { ok: false },
     {
       validate,
-      successToast: "Event created",
+      successToast: (r) => r.message ?? "Event created",
       onSuccess: () => router.push("/admin/events"),
     },
   );

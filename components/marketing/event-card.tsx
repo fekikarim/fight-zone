@@ -59,7 +59,7 @@ export function EventCard({ event, href }: { event: EventItem; href?: string }) 
               variant={event.is_free ? "neutral" : "solid"}
               className="backdrop-blur-sm"
             >
-              {event.is_free ? "Free" : `${event.price_tnd ?? 0} TND`}
+              {event.is_free || !event.price_tnd ? "Free" : `${Number(event.price_tnd)} TND`}
             </Badge>
           </div>
         </div>

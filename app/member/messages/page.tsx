@@ -1,61 +1,39 @@
 import type { Metadata } from "next";
 import { requireUser } from "@/lib/auth/guards";
-import { getAuthorizedMessagingRecipients, getMyConversations } from "@/lib/supabase/queries";
-import { Container } from "@/components/ui/container";
-import Image from "next/image";
-import { InboxList } from "@/components/messages/inbox-list";
-import { StartConversationForm } from "@/components/messages/start-conversation-form";
+import { getConversationMessages, getMyConversationId } from "@/lib/supabase/queries";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { MessageThread } from "@/components/messages/message-thread";
 
 export const metadata: Metadata = {
   title: "Messages",
-  description: "Message your coach and keep every training conversation in one place.",
+  description: "Your private conversation with Coach Seif.",
 };
 
 export default async function MemberMessagesPage() {
   const user = await requireUser();
-  const [conversations, recipients] = await Promise.all([
-    getMyConversations(),
-    getAuthorizedMessagingRecipients(),
-  ]);
+  const conversationId = await getMyConversationId();
+  const messages = conversationId ? await getConversationMessages(conversationId) : [];
 
   return (
-    <Container className="flex max-w-none flex-col gap-8 px-0">
-      <div className="flex flex-col gap-2">
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight sm:text-4xl">
-          Messages
-        </h1>
-        <p className="max-w-2xl text-sm text-muted">
-          You can message any coach you have booked a session with. Unread
-          replies show a badge in the sidebar.
-        </p>
-      </div>
-
-      <StartConversationForm recipients={recipients} />
-
-      {conversations.length > 0 ? (
-        <InboxList
-          conversations={conversations}
+    <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
+      <PageHeader
+        title="Coach Seif"
+        description="Your private conversation. Only you and Coach Seif can read it. Automatic Fight Zone notices about your registrations and payments appear here too."
+      />
+      {conversationId ? (
+        <MessageThread
+          conversationId={conversationId}
+          memberId={user.id}
           currentUserId={user.id}
-          hrefPrefix="/member/messages"
-          otherFallback="Coach"
+          initialMessages={messages}
+          hasMore={messages.length >= 30}
+          otherLabel="Coach Seif"
         />
       ) : (
-        <div className="relative overflow-hidden rounded-2xl border border-ink-border bg-ink-soft/40 p-8 sm:p-14 mt-4">
-          <div className="absolute right-0 top-0 h-full w-full opacity-10 sm:w-1/2">
-            <Image src="/components/hand-holding-medal-720x720.jpg" alt="Medal" fill className="object-cover object-right" />
-            <div className="absolute inset-0 bg-gradient-to-r from-ink-soft via-ink-soft/90 to-transparent sm:hidden" />
-            <div className="absolute inset-0 hidden bg-gradient-to-r from-ink-soft/40 via-ink-soft/80 to-transparent sm:block" />
-          </div>
-          <div className="relative z-10 flex max-w-xl flex-col gap-4">
-            <h2 className="font-display text-3xl font-bold uppercase tracking-wide text-white">
-              Stay connected to your corner
-            </h2>
-            <p className="text-base text-zinc-300">
-              No messages yet. When you book a session, you&apos;ll be able to communicate directly with Coach Seif right here.
-            </p>
-          </div>
-        </div>
+        <p className="rounded-xl border border-dashed border-ink-border bg-ink-soft/40 px-5 py-12 text-center text-sm text-muted">
+          Messaging isn&apos;t available right now. Please try again later.
+        </p>
       )}
-    </Container>
+    </div>
   );
 }

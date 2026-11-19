@@ -3,15 +3,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { SignUpForm } from "./sign-up-form";
+import { safeNextPath } from "@/lib/auth/redirect";
 
 export const metadata: Metadata = {
   title: "Join the gym",
   description: "Create your Fight Zone account and start training.",
 };
 
-export default async function SignUpPage() {
+export default async function SignUpPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next: rawNext } = await searchParams;
+  const next = safeNextPath(rawNext, "");
   const user = await getCurrentUser();
-  if (user) redirect("/member");
+  if (user) redirect(next || "/member");
 
   return (
     <div className="flex flex-col gap-8">
@@ -25,13 +28,13 @@ export default async function SignUpPage() {
       </div>
 
       <div className="rounded-xl border border-ink-border bg-ink-soft/60 p-6 sm:p-8">
-        <SignUpForm />
+        <SignUpForm next={next || undefined} />
       </div>
 
       <p className="text-center text-sm text-muted">
         Already a member?{" "}
         <Link
-          href="/sign-in"
+          href={next ? `/sign-in?next=${encodeURIComponent(next)}` : "/sign-in"}
           className="font-semibold text-primary transition-colors hover:text-primary-hover"
         >
           Sign in

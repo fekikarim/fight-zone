@@ -1,10 +1,10 @@
 "use client";
 
-import { useActionState, useEffect } from "react";
+import { startTransition, useActionState, useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { CheckCircle2 } from "lucide-react";
-import { contactSchema, type ContactInput } from "@/lib/validations/contact";
+import { CONTACT_CATEGORIES, contactSchema, type ContactInput } from "@/lib/validations/contact";
 import {
   submitContactMessage,
   type ContactActionState,
@@ -30,19 +30,22 @@ export function ContactForm() {
     formState: { errors },
   } = useForm<ContactInput>({
     resolver: zodResolver(contactSchema),
-    defaultValues: { name: "", email: "", subject: "", message: "" },
+    defaultValues: { category: "GENERAL", name: "", email: "", subject: "", message: "" },
   });
 
   useEffect(() => {
     if (state.ok) reset();
   }, [state.ok, reset]);
 
-  const onSubmit = (values: ContactInput) => {
+  const onSubmit = (values: ContactInput, event?: React.BaseSyntheticEvent) => {
+    const form = event?.target as HTMLFormElement | undefined;
+    const trap = form?.elements.namedItem("website");
     const formData = new FormData();
     for (const [key, value] of Object.entries(values)) {
-      formData.set(key, value);
+      formData.set(key, String(value ?? ""));
     }
-    formAction(formData);
+    formData.set("website", trap instanceof HTMLInputElement ? trap.value : "");
+    startTransition(() => formAction(formData));
   };
 
   if (state.ok) {
@@ -60,7 +63,7 @@ export function ContactForm() {
   return (
     <form
       onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-col gap-5 rounded-xl border border-ink-border bg-ink-soft/50 p-6 sm:p-8"
+      className="relative flex flex-col gap-5 rounded-xl border border-ink-border bg-ink-soft/50 p-6 sm:p-8"
       noValidate
     >
       <div className="grid gap-5 sm:grid-cols-2">
@@ -91,6 +94,21 @@ export function ContactForm() {
             <p className="text-xs font-medium text-primary">{errors.email.message}</p>
           ) : null}
         </div>
+      </div>
+
+      <div aria-hidden className="absolute left-[-9999px] top-auto h-px w-px overflow-hidden">
+        <label htmlFor="website">Leave this field empty</label>
+        <input id="website" name="website" type="text" tabIndex={-1} autoComplete="off" />
+      </div>
+
+      <div className="flex flex-col gap-2">
+        <Label htmlFor="category">Topic</Label>
+        <select id="category" {...register("category")}
+          className="flex h-11 w-full rounded-md border border-ink-border bg-ink-soft px-3.5 text-base text-foreground focus-visible:border-primary focus-visible:outline-none sm:text-sm">
+          {CONTACT_CATEGORIES.map((c) => (
+            <option key={c} value={c}>{{ GENERAL: "General question", EVENTS: "Events & registration", PAYMENT: "Payment", COACHING: "Coaching", OTHER: "Other" }[c]}</option>
+          ))}
+        </select>
       </div>
 
       <div className="flex flex-col gap-2">

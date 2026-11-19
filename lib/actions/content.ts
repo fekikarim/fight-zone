@@ -18,6 +18,7 @@ import {
 import { issuesToFieldErrors, type FieldErrors } from "@/lib/validations/form-errors";
 import { logError } from "@/lib/errors";
 import { deriveExcerpt } from "@/lib/types/content";
+import { generateArticleSlug } from "@/lib/news/slug";
 
 // ---------------------------------------------------------------------------
 // Action state
@@ -109,31 +110,34 @@ export async function createNews(
     parsed.data.excerpt ||
     (parsed.data.content ? deriveExcerpt(parsed.data.content) : null);
 
-  const { data, error } = await supabase
-    .from("news")
-    .insert({
-      title: parsed.data.title,
-      slug: parsed.data.slug,
-      excerpt,
-      category: parsed.data.category,
-      content: parsed.data.content?.trim() ? parsed.data.content : null,
-      cover_image_url: parsed.data.cover_image_url || null,
-      is_published: parsed.data.is_published,
-      published_at: parsed.data.is_published ? new Date().toISOString() : null,
-      created_by: user.id,
-    })
-    .select("id, slug")
-    .single();
+  // Slug is generated server-side (title + random suffix); retry on the
+  // astronomically unlikely collision.
+  let result: Awaited<ReturnType<typeof insertArticle>> | null = null;
+  async function insertArticle(slug: string) {
+    return supabase
+      .from("news")
+      .insert({
+        title: parsed.data!.title,
+        slug,
+        excerpt,
+        category: parsed.data!.category,
+        content: parsed.data!.content?.trim() ? parsed.data!.content : null,
+        cover_image_url: parsed.data!.cover_image_url || null,
+        is_published: parsed.data!.is_published,
+        published_at: parsed.data!.is_published ? new Date().toISOString() : null,
+        created_by: user.id,
+      })
+      .select("id, slug")
+      .single();
+  }
+  for (let attempt = 0; attempt < 3; attempt++) {
+    result = await insertArticle(generateArticleSlug(parsed.data.title));
+    if (result.error?.code !== "23505") break;
+  }
+  const { data, error } = result!;
 
   if (error) {
     logError("Failed to create news", error, { title: parsed.data.title });
-    if (error.code === "23505") {
-      return {
-        ok: false,
-        message: "Please fix the highlighted fields.",
-        fieldErrors: { slug: "Another article already uses this URL slug — pick a different one." },
-      };
-    }
     return { ok: false, message: "Could not create article. Please try again." };
   }
 
@@ -160,7 +164,7 @@ export async function updateNews(
   await requireRole(["ADMIN", "COACH"]);
   const supabase = await createClient();
 
-  const { articleId, title, slug, excerpt, category, content, cover_image_url, is_published } = parsed.data;
+  const { articleId, title, excerpt, category, content, cover_image_url, is_published } = parsed.data;
 
   // Keep the original publish date when re-saving an already-published
   // article (otherwise every edit would bump it to the top of the feed).
@@ -175,7 +179,6 @@ export async function updateNews(
     .from("news")
     .update({
       ...(title !== undefined && { title }),
-      ...(slug !== undefined && { slug }),
       ...(excerpt !== undefined && { excerpt: excerpt || null }),
       ...(category !== undefined && { category }),
       ...(content !== undefined && { content: content.trim() ? content : null }),
@@ -189,13 +192,6 @@ export async function updateNews(
 
   if (error) {
     logError("Failed to update news", error, { articleId });
-    if (error.code === "23505") {
-      return {
-        ok: false,
-        message: "Please fix the highlighted fields.",
-        fieldErrors: { slug: "Another article already uses this URL slug — pick a different one." },
-      };
-    }
     return { ok: false, message: "Could not update article. Please try again." };
   }
 

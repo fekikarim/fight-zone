@@ -1,10 +1,13 @@
 import type { Metadata } from "next";
+import Link from "next/link";
 import { MailCheck } from "lucide-react";
 import { getMemberProfileData } from "@/lib/supabase/queries";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
 import { Container } from "@/components/ui/container";
 import { ProfileForm } from "@/components/member/profile-form";
+import { AvatarUploader } from "@/components/member/avatar-uploader";
+import { avatarUrl } from "@/lib/avatar";
 
 export const metadata: Metadata = {
   title: "My Profile",
@@ -27,6 +30,7 @@ export default async function MemberProfilePage() {
 
       <Card>
         <CardContent className="flex flex-col gap-6 p-5 sm:p-8">
+          <AvatarUploader userId={profile.id} name={profile.full_name} url={avatarUrl(profile.avatar_url)} />
           <div className="flex flex-wrap items-center justify-between gap-3 border-b border-ink-border pb-5">
             <div className="flex flex-col gap-1">
               <p className="text-sm text-muted">Email</p>
@@ -45,6 +49,8 @@ export default async function MemberProfilePage() {
           />
         </CardContent>
       </Card>
+
+      <Link href="/member/achievements" className="text-sm font-medium text-primary hover:underline">View your achievements →</Link>
     </Container>
   );
 }

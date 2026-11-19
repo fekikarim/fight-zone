@@ -8,7 +8,10 @@ export type NotificationType =
   | "SESSION"
   | "EVENT"
   | "MESSAGE"
-  | "SYSTEM";
+  | "SYSTEM"
+  | "PAYMENT"
+  | "BADGE"
+  | "REWARD";
 
 export interface NotificationRow {
   id: string;
@@ -38,6 +41,13 @@ export function getResourceHref(
   switch (resourceType) {
     case "event":
       return `${base}/events/${resourceId}`;
+    case "payment":
+      return role === "staff" ? `/admin/payments?submission=${resourceId}` : null;
+    case "badge":
+    case "reward":
+      return role === "member" ? "/member/achievements" : "/admin/badges";
+    case "contact":
+      return role === "staff" ? "/admin/inbox" : null;
     case "conversation":
       return `${base}/messages/${resourceId}`;
     // Bookings/sessions have no detail pages any more.
@@ -51,6 +61,13 @@ export function getResourceLabel(resourceType: string | null): string {
   switch (resourceType) {
     case "event":
       return "View event";
+    case "payment":
+      return "Review proof";
+    case "badge":
+    case "reward":
+      return "View achievements";
+    case "contact":
+      return "Open inbox";
     case "conversation":
       return "Open conversation";
     default:

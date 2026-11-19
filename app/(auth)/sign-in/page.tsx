@@ -3,15 +3,18 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getCurrentUser } from "@/lib/auth/guards";
 import { SignInForm } from "./sign-in-form";
+import { safeNextPath } from "@/lib/auth/redirect";
 
 export const metadata: Metadata = {
   title: "Sign in",
   description: "Sign in to your Fight Zone account.",
 };
 
-export default async function SignInPage() {
+export default async function SignInPage({ searchParams }: { searchParams: Promise<{ next?: string }> }) {
+  const { next: rawNext } = await searchParams;
+  const next = safeNextPath(rawNext, "");
   const user = await getCurrentUser();
-  if (user) redirect("/member");
+  if (user) redirect(next || (user.roles.some((r) => r === "ADMIN" || r === "COACH") ? "/admin" : "/member"));
 
   return (
     <div className="flex flex-col gap-8">
@@ -23,13 +26,13 @@ export default async function SignInPage() {
       </div>
 
       <div className="rounded-xl border border-ink-border bg-ink-soft/60 p-6 sm:p-8">
-        <SignInForm />
+        <SignInForm next={next || undefined} />
       </div>
 
       <p className="text-center text-sm text-muted">
         Don&apos;t have an account?{" "}
         <Link
-          href="/sign-up"
+          href={next ? `/sign-up?next=${encodeURIComponent(next)}` : "/sign-up"}
           className="font-semibold text-primary transition-colors hover:text-primary-hover"
         >
           Join the gym

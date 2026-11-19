@@ -66,7 +66,7 @@ export default async function PublicEventDetailPage({ params }: Props) {
                   </Button>
                 ) : (
                   <Button asChild size="lg" className="gap-2">
-                    <Link href={user ? getEventHref("member", event.id) : "/sign-in"}>
+                    <Link href={user ? getEventHref("member", event.id) : `/sign-in?next=${encodeURIComponent(getEventHref("member", event.id))}`}>
                       {user ? "Register for this event" : "Log in to register"}
                     </Link>
                   </Button>

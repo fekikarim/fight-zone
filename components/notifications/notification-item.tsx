@@ -4,7 +4,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useState, useTransition } from "react";
 import { toast } from "sonner";
-import { CalendarClock, MessageSquare, Bell, CalendarCheck, ChevronRight } from "lucide-react";
+import { CalendarClock, MessageSquare, Bell, CalendarCheck, ChevronRight, Banknote, Medal, Gift } from "lucide-react";
 import { cn, formatDate } from "@/lib/utils";
 import { markNotificationRead } from "@/lib/actions/notifications";
 import { getResourceHref, getResourceLabel } from "@/lib/types/notifications";
@@ -16,6 +16,9 @@ const TYPE_ICONS = {
   EVENT: CalendarClock,
   MESSAGE: MessageSquare,
   SYSTEM: Bell,
+  PAYMENT: Banknote,
+  BADGE: Medal,
+  REWARD: Gift,
 } as const;
 
 const TYPE_UNREAD_ACCENT: Record<string, string> = {
@@ -24,6 +27,9 @@ const TYPE_UNREAD_ACCENT: Record<string, string> = {
   EVENT: "border-l-purple-500",
   MESSAGE: "border-l-amber-500",
   SYSTEM: "border-l-zinc-400",
+  PAYMENT: "border-l-emerald-500",
+  BADGE: "border-l-amber-400",
+  REWARD: "border-l-rose-400",
 };
 
 function formatRelativeTime(iso: string): string {

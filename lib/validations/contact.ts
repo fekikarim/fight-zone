@@ -1,6 +1,9 @@
 import { z } from "zod";
 
+export const CONTACT_CATEGORIES = ["GENERAL", "EVENTS", "PAYMENT", "COACHING", "OTHER"] as const;
+
 export const contactSchema = z.object({
+  category: z.enum(CONTACT_CATEGORIES),
   name: z
     .string()
     .trim()

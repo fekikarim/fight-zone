@@ -19,7 +19,7 @@ export const CONTENT_IMAGE_MIME_TYPES = [
 export type ContentImageMime = (typeof CONTENT_IMAGE_MIME_TYPES)[number];
 
 /** Storage folder per surface (public bucket `fightzone-public`). */
-export const CONTENT_IMAGE_KINDS = ["news", "events"] as const;
+export const CONTENT_IMAGE_KINDS = ["news", "events", "pages"] as const;
 export type ContentImageKind = (typeof CONTENT_IMAGE_KINDS)[number];
 
 export const uploadContentImageSchema = z.object({

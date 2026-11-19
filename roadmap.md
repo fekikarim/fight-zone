@@ -1,6 +1,23 @@
 # Fight Zone — Roadmap
 
-> Master status doc. Last updated: 2026-08-29 (Update V4).
+> Master status doc. Last updated: 2026-11-18 (**Fight Zone V1**).
+
+## Fight Zone V1 (2026-11-18) — implemented, NOT yet deployed
+
+Spec: `FIGHT_ZONE_V1_IMPLEMENTATION_BRIEF.md`. Status: `docs/v1/V1_STATUS.md`. Report:
+`docs/v1/V1_REPORT.md`. Release: `docs/v1/RELEASE_CHECKLIST.md`.
+
+- 7 additive migrations (`supabase/migrations/20261118*`) — tested locally (95/95 SQL security suite,
+  20/20 concurrency race), **pending owner approval for `supabase db push`**.
+- Events lifecycle + separate registration/payment/attendance state machines, manual payments with
+  private proof review, invitation-only private events, single-coach messaging with Fight Zone system
+  messages, admin dashboard/reports/members/settings, attendance-based badges & capped rewards,
+  About block CMS, FAQ, versioned Privacy/Terms, contact inbox, sitemap/robots.
+- **Do not deploy V1 code before the migrations are applied.**
+
+---
+
+## History (pre-V1)
 
 ## Business model (current)
 

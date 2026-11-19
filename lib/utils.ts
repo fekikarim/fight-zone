@@ -38,3 +38,11 @@ export function formatDate(
 export function formString(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value.trim() : "";
 }
+
+/**
+ * Request-time clock for SERVER components (rendered once per request).
+ * Client components must receive `now` as a prop instead, to stay pure.
+ */
+export function requestTime(): number {
+  return Date.now();
+}

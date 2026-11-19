@@ -14,11 +14,9 @@ import {
 import type { Database } from "@/types/database.types";
 import type {
   ConversationMessage,
-  ConversationSummary,
-  MessagingRecipient,
+  InboxItem,
 } from "@/lib/types/messaging";
 import type { NotificationPage, NotificationRow } from "@/lib/types/notifications";
-import type { EventDetail, EventParticipant, EventSummary, ScheduleItem } from "@/lib/types/events";
 import type { SessionDetail, CoachSummary, CoachDetail } from "@/lib/types/services";
 import type { AdminNewsItem, AdminMediaItem, AdminAchievementItem } from "@/lib/types/content";
 import { deriveExcerpt } from "@/lib/types/content";
@@ -42,7 +40,7 @@ import type { ReviewItem, ReviewWithAuthor, TransformationItem, ReviewStats } fr
  * case (production build only). At request time cookies() resolves and any
  * error is a genuine failure that must be logged.
  */
-function isPrerenderBailout(error: unknown): boolean {
+export function isPrerenderBailout(error: unknown): boolean {
   return (
     process.env.NEXT_PHASE === "phase-production-build" &&
     error instanceof Error &&
@@ -114,44 +112,6 @@ export const getActiveSessions = cache(async () => {
     .order("price", { ascending: true });
   return unwrap("sessions", result);
 });
-
-export const getPublicEvents = cache(
-  async (
-    filters: { type?: string; limit?: number } = {},
-  ): Promise<Array<EventDetail>> => {
-    const supabase = await createClient();
-    let query = supabase
-      .from("events")
-      .select(
-        `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, event_format, created_at, created_by`,
-      )
-      .eq("is_public", true)
-      .gte("start_at", new Date().toISOString())
-      .order("start_at", { ascending: true });
-    if (filters.type) query = query.eq("event_type", filters.type as Database["public"]["Enums"]["event_type"]);
-    if (filters.limit) query = query.limit(filters.limit);
-
-    const { data, error } = await query;
-    if (error) {
-      logError("Query failed: public events", error);
-      return [];
-    }
-
-    // Attach active participant counts (non-cancelled) in one call to avoid N+1.
-    const { data: counts, error: countsError } = await supabase.rpc(
-      "get_public_event_participant_counts",
-    );
-    const countMap = new Map<string, number>();
-    if (!countsError && Array.isArray(counts)) {
-      for (const row of counts) countMap.set(row.event_id, row.active_count);
-    }
-
-    return (data ?? []).map((event) =>
-      buildEventDetail(event, countMap.get(event.id) ?? 0),
-    );
-  },
-);
 
 export const getPublishedNews = cache(async (limit?: number) => {
   const supabase = await createClient();
@@ -240,6 +200,7 @@ export const getLatestPublicEvent = cache(async (): Promise<ContentMarker | null
       .from("events")
       .select("id, created_at")
       .eq("is_public", true)
+      .eq("status", "PUBLISHED")
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -714,24 +675,17 @@ export const getMemberNotifications = getCurrentUserNotifications;
 // Messaging (member + coach/admin inboxes)
 // ---------------------------------------------------------------------------
 
-/**
- * The current user's conversations (participant-only), newest activity first,
- * with the other participant and per-conversation unread counts. The RPC is
- * SECURITY DEFINER but re-checks participant membership; it raises 42501 for
- * anonymous callers, so an empty result is the authenticated user's real list.
- */
-export const getMyConversations = cache(async (): Promise<ConversationSummary[]> => {
+/** Seif's inbox (or the member's single thread), unread first. */
+export const getInbox = cache(async (search?: string): Promise<InboxItem[]> => {
   const user = await getCurrentUser();
   if (!user) throw new AuthenticationError();
   const supabase = await createClient();
-  const result = await supabase.rpc("get_my_conversations");
+  const result = await supabase.rpc("get_inbox", { p_search: search ?? undefined, p_limit: 100 });
   if (result.error) {
-    // Any failure (missing function, transient outage, permission drift)
-    // degrades to an empty inbox; the page renders its EmptyState.
-    logError("Query failed: my conversations", result.error);
+    logError("Query failed: inbox", result.error);
     return [];
   }
-  return result.data ?? [];
+  return (result.data ?? []).map((r) => ({ ...r, unread_count: Number(r.unread_count) }));
 });
 
 /**
@@ -747,100 +701,53 @@ export const getUnreadMessageCount = cache(async (): Promise<number> => {
   return result.data ?? 0;
 });
 
-/**
- * A page of a conversation's history, newest first. The first page is loaded
- * server-side here; older pages are fetched by the client through the
- * `loadOlderMessages` server action (same RPC). A foreign or nonexistent
- * conversation surfaces as a 404; an invalid cursor yields an empty page.
- */
+/** First page (newest first) of a conversation; 404 for non-participants. */
 export const getConversationMessages = cache(
-  async (conversationId: string, beforeId?: string, limit = 50): Promise<ConversationMessage[]> => {
+  async (conversationId: string, limit = 30): Promise<ConversationMessage[]> => {
     const user = await getCurrentUser();
     if (!user) throw new AuthenticationError();
     const supabase = await createClient();
-    const result = await supabase.rpc("get_conversation_messages", {
+    const result = await supabase.rpc("get_conversation_messages_v1", {
       p_conversation_id: conversationId,
-      p_before_id: beforeId ?? undefined,
       p_limit: limit,
     });
     if (result.error) {
+      if (result.error.code === "42501" || result.error.code === "22P02") throw new NotFoundError();
       logError("Query failed: conversation messages", result.error, { conversationId });
-      // Permission denial means the caller is not a participant: surface 404.
-      if (result.error.code === "42501") throw new NotFoundError();
-      // Any other failure degrades to an empty thread (recoverable via nav).
       return [];
     }
-    return result.data ?? [];
+    return (result.data ?? []) as ConversationMessage[];
   },
 );
 
-/**
- * People the current user is authorized to start a conversation with — the
- * coaches a member has booked with, or the members who have booked a coach.
- * Mirrors the bookings relationship the RLS INSERT policy requires, so the
- * recipient picker can never offer an invalid target.
- */
-export const getAuthorizedMessagingRecipients = cache(async (): Promise<MessagingRecipient[]> => {
+/** The member's private conversation with Seif (created on first visit). */
+export const getMyConversationId = cache(async (): Promise<string | null> => {
   const user = await getCurrentUser();
-  if (!user) return [];
+  if (!user) throw new AuthenticationError();
   const supabase = await createClient();
-
-  const isMember = user.roles.includes("MEMBER");
-
-  // Members: resolve booked coach ids first, then display names via the
-  // authenticated definer view (private profiles RLS blocks direct embeds).
-  if (isMember) {
-    const { data: bookingRows, error: bookingsError } = await supabase
-      .from("bookings")
-      .select("coach_id")
-      .eq("member_id", user.id);
-    if (bookingsError) {
-      logError("Query failed: messaging recipients (bookings)", bookingsError);
-      return [];
-    }
-    const coachIds = [...new Set((bookingRows ?? []).map((b) => b.coach_id).filter(Boolean))] as string[];
-    if (coachIds.length === 0) return [];
-
-    const { data: coachRows, error: coachesError } = await supabase.rpc("get_coaches_directory", {
-      p_coach_ids: coachIds,
-    });
-    if (coachesError) {
-      logError("Query failed: messaging recipients (coaches)", coachesError);
-      return [];
-    }
-    return (coachRows ?? [])
-      .filter((c): c is typeof c & { id: string } => c.id !== null)
-      .map((c) => ({
-        id: c.id,
-        full_name: c.full_name,
-        avatar_url: c.avatar_url,
-        role: "coach" as const,
-      }));
+  const { data, error } = await supabase.rpc("get_or_create_conversation", {});
+  if (error) {
+    logError("Query failed: my conversation", error);
+    return null;
   }
-
-  const result = await supabase
-    .from("bookings")
-    .select("member_profiles(id, profiles(id, full_name, avatar_url))")
-    .eq("coach_id", user.id);
-
-  if (result.error) {
-    logError("Query failed: messaging recipients", result.error);
-    return [];
-  }
-
-  const recipients = new Map<string, MessagingRecipient>();
-  for (const row of result.data ?? []) {
-    const profile = row.member_profiles?.profiles;
-    if (!profile?.id) continue;
-    recipients.set(profile.id, {
-      id: profile.id,
-      full_name: profile.full_name ?? null,
-      avatar_url: profile.avatar_url ?? null,
-      role: "member",
-    });
-  }
-  return [...recipients.values()];
+  return data ?? null;
 });
+
+/** Conversation header for Seif (member identity). RLS: participants only. */
+export const getConversationMember = cache(
+  async (conversationId: string): Promise<{ member_id: string; full_name: string | null; email: string; phone: string | null } | null> => {
+    const supabase = await createClient();
+    const { data, error } = await supabase
+      .from("conversations")
+      .select("member_id, member_profiles ( profiles ( full_name, email, phone ) )")
+      .eq("id", conversationId)
+      .maybeSingle();
+    if (error || !data) return null;
+    const p = (data as unknown as { member_profiles: { profiles: { full_name: string | null; email: string; phone: string | null } | null } | null })
+      .member_profiles?.profiles;
+    return { member_id: data.member_id, full_name: p?.full_name ?? null, email: p?.email ?? "", phone: p?.phone ?? null };
+  },
+);
 
 // ---------------------------------------------------------------------------
 // Notification Center
@@ -942,430 +849,22 @@ export const getNotificationCenter = cache(
   },
 );
 
-// ---------------------------------------------------------------------------
-// Events & Schedule (public + member + admin)
-// ---------------------------------------------------------------------------
-
-/** Build an EventDetail from a raw events row + active participant count. */
-function buildEventDetail(
-  event: Omit<Database["public"]["Tables"]["events"]["Row"], "updated_at">,
-  participantCount: number,
-): EventDetail {
-  const max = event.max_participants;
-  const spots_left = max != null ? Math.max(0, max - participantCount) : null;
-  return {
-    id: event.id,
-    title: event.title,
-    description: event.description,
-    start_at: event.start_at,
-    end_at: event.end_at,
-    location: event.location,
-    event_type: event.event_type,
-    event_format: (event.event_format ?? "COLLECTIVE") as EventDetail["event_format"],
-    is_public: event.is_public,
-    max_participants: event.max_participants,
-    is_free: event.is_free,
-    price_tnd: event.price_tnd,
-    image_url: event.image_url,
-    created_at: event.created_at,
-    created_by: event.created_by,
-    participant_count: participantCount,
-    spots_left,
-    is_private_coaching: !event.is_public && event.max_participants === 1,
-  };
-}
-
-/**
- * Public event detail with participant count.  The count is derived via a
- * lateral join — no separate query needed.  Returns null for non-public
- * or nonexistent events (used by the public detail page).
- */
-export const getPublicEventById = cache(
-  async (eventId: string): Promise<EventDetail | null> => {
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("events")
-      .select(
-        `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, event_format,
-         created_at, created_by`,
-      )
-      .eq("id", eventId)
-      .eq("is_public", true)
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") return null;
-      logError("Query failed: public event detail", error, { eventId });
-      throw new DatabaseError(undefined, { cause: error });
-    }
-
-    // Participant rows are private (Prompt-13 privilege hardening), so the
-    // count comes from a security-definer aggregate instead of an embed.
-    const { data: count, error: rpcError } = await supabase.rpc(
-      "get_public_event_participant_count",
-      { p_event_id: eventId },
-    );
-    if (rpcError) {
-      logError("Query failed: public event participant count", rpcError, { eventId });
-      throw new DatabaseError(undefined, { cause: rpcError });
-    }
-    return buildEventDetail(data, (count as number) ?? 0);
-  },
-);
-
-/**
- * Event detail for staff (includes non-public events).  Returns null if
- * the event does not exist.
- */
-export const getStaffEventById = cache(
-  async (eventId: string): Promise<EventDetail | null> => {
-    const user = await getCurrentUser();
-    if (!user) throw new AuthenticationError();
-
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("events")
-      .select(
-        `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, event_format,
-         created_at, created_by`,
-      )
-      .eq("id", eventId)
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") return null;
-      logError("Query failed: staff event detail", error, { eventId });
-      throw new DatabaseError(undefined, { cause: error });
-    }
-
-    // Staff aggregate covers ALL events (the public count RPC only counts
-    // public ones, so private-coaching counts would wrongly read 0).
-    const { data: counts, error: rpcError } = await supabase.rpc(
-      "get_staff_event_participant_counts",
-    );
-    if (rpcError) {
-      logError("Query failed: staff event participant count", rpcError, { eventId });
-      throw new DatabaseError(undefined, { cause: rpcError });
-    }
-    const row = (Array.isArray(counts) ? counts : []).find(
-      (r) => (r as { event_id: string }).event_id === eventId,
-    ) as { active_count: number } | undefined;
-    return buildEventDetail(data, row?.active_count ?? 0);
-  },
-);
-
-/**
- * Event detail for a signed-in member, relying on RLS
- * (`events_select_authenticated` exposes public events and private
- * capacity-1 coaching events).  Used by the member events detail page so
- * registered members can view their private coaching events.
- */
-export const getMemberEventViewById = cache(
-  async (eventId: string): Promise<EventDetail | null> => {
-    const user = await getCurrentUser();
-    if (!user) throw new AuthenticationError();
-
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("events")
-      .select(
-        `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, event_format,
-         created_at, created_by`,
-      )
-      .eq("id", eventId)
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") return null;
-      logError("Query failed: member event detail", error, { eventId });
-      throw new DatabaseError(undefined, { cause: error });
-    }
-
-    // Public events use the shared aggregate. Private coaching rows are
-    // invisible to it (and other members' rows are RLS-private), so for
-    // non-public events the count is derived from the member's own
-    // registration: their active seat, if any.
-    if (data.is_public) {
-      const { data: count, error: rpcError } = await supabase.rpc(
-        "get_public_event_participant_count",
-        { p_event_id: eventId },
-      );
-      if (rpcError) {
-        logError("Query failed: member event participant count", rpcError, { eventId });
-        throw new DatabaseError(undefined, { cause: rpcError });
-      }
-      return buildEventDetail(data, (count as number) ?? 0);
-    }
-
-    const { data: own } = await supabase
-      .from("event_participants")
-      .select("status")
-      .eq("event_id", eventId)
-      .eq("member_id", user.id)
-      .maybeSingle();
-    const ownActive = own && own.status !== "CANCELLED" ? 1 : 0;
-    return buildEventDetail(data, ownActive);
-  },
-);
-
-/**
- * Member's registration for a specific event.  Returns null if not registered.
- */
-export const getMemberEventRegistration = cache(
-  async (
-    eventId: string,
-  ): Promise<{ id: string; status: string; joined_at: string } | null> => {
-    const user = await getCurrentUser();
-    if (!user) return null;
-
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("event_participants")
-      .select("id, status, joined_at")
-      .eq("event_id", eventId)
-      .eq("member_id", user.id)
-      .single();
-
-    if (error) {
-      if (error.code === "PGRST116") return null;
-      logError("Query failed: member event registration", error, { eventId });
-      return null;
-    }
-    return data;
-  },
-);
-
-/**
- * All events a member is registered for (upcoming first).  Used by the
- * member events page and the combined schedule.
- */
-export const getMemberRegisteredEvents = cache(
-  async (): Promise<
-    Array<{
-      event_id: string;
-      status: string;
-      joined_at: string;
-      events: EventSummary;
-    }>
-  > => {
-    const user = await getCurrentUser();
-    if (!user) throw new AuthenticationError();
-
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("event_participants")
-      .select(
-        `event_id, status, joined_at,
-         events ( id, title, description, start_at, end_at, location, event_type, is_public, max_participants, is_free, price_tnd, image_url, event_format, created_at, created_by )`,
-      )
-      .eq("member_id", user.id)
-      .order("joined_at", { ascending: false });
-
-    if (error) {
-      logError("Query failed: member registered events", error);
-      return [];
-    }
-    return (data ?? []) as Array<{
-      event_id: string;
-      status: string;
-      joined_at: string;
-      events: EventSummary;
-    }>;
-  },
-);
-
-/**
- * Members registered for a specific event (admin/coach view).
- * Paginated with keyset on joined_at DESC, id DESC.
- */
-export const getEventParticipants = cache(
-  async (
-    eventId: string,
-    cursor?: string,
-    limit = 20,
-  ): Promise<{ items: EventParticipant[]; nextCursor: string | null; hasMore: boolean }> => {
-    const user = await getCurrentUser();
-    if (!user) throw new AuthenticationError();
-
-    const supabase = await createClient();
-    let query = supabase
-      .from("event_participants")
-      .select(
-        `id, event_id, member_id, status, payment_status, attended, joined_at,
-         member_profiles ( profiles ( full_name, avatar_url ) )`,
-      )
-      .eq("event_id", eventId)
-      .order("joined_at", { ascending: false })
-      .order("id", { ascending: false })
-      .limit(limit + 1);
-
-    if (cursor) {
-      const [cursorJoinedAt, cursorId] = decodeCursor(cursor);
-      query = query.or(
-        `joined_at.lt.${cursorJoinedAt},and(joined_at.eq.${cursorJoinedAt},id.lt.${cursorId})`,
-      );
-    }
-
-    const { data, error } = await query;
-    if (error) {
-      logError("Query failed: event participants", error, { eventId });
-      return { items: [], nextCursor: null, hasMore: false };
-    }
-
-    const rows = ((data ?? []) as Array<{
-      id: string;
-      event_id: string;
-      member_id: string;
-      status: string;
-      payment_status: string;
-      attended: boolean;
-      joined_at: string;
-      member_profiles: { profiles: { full_name: string | null; avatar_url: string | null } | null } | null;
-    }>).map((r) => ({
-      id: r.id,
-      event_id: r.event_id,
-      member_id: r.member_id,
-      status: r.status as EventParticipant["status"],
-      payment_status: r.payment_status as EventParticipant["payment_status"],
-      attended: r.attended,
-      joined_at: r.joined_at,
-      member_name: r.member_profiles?.profiles?.full_name ?? null,
-      member_avatar: r.member_profiles?.profiles?.avatar_url ?? null,
-    }));
-
-    const hasMore = rows.length > limit;
-    const items = hasMore ? rows.slice(0, limit) : rows;
-    const lastItem = items[items.length - 1];
-    const nextCursor = hasMore && lastItem ? encodeCursor(lastItem.joined_at, lastItem.id) : null;
-
-    return { items, nextCursor, hasMore };
-  },
-);
-
-/**
- * Admin event list with participant counts.  Includes both public and
- * private events.  Ordered by start_at DESC (upcoming first).
- */
-export const getAdminEvents = cache(
-  async (): Promise<Array<EventDetail>> => {
-    const user = await getCurrentUser();
-    if (!user) throw new AuthenticationError();
-
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("events")
-      .select(
-        `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, event_format, created_at, created_by`,
-      )
-      .order("start_at", { ascending: false });
-
-    if (error) {
-      logError("Query failed: admin events", error);
-      return [];
-    }
-
-    // Staff aggregate covers ALL events (the public batch RPC only counts
-    // public ones, so private-coaching rows would wrongly read 0).
-    const { data: counts, error: countsError } = await supabase.rpc(
-      "get_staff_event_participant_counts",
-    );
-    const countMap = new Map<string, number>();
-    if (!countsError && Array.isArray(counts)) {
-      for (const row of counts) countMap.set(row.event_id, row.active_count);
-    }
-
-    return (data ?? []).map((event) => buildEventDetail(event, countMap.get(event.id) ?? 0));
-  },
-);
-
-/**
- * Events overlapping a date range for the admin calendar (staff only).
- * Includes ALL events (public + private / coaching) with accurate active
- * participant counts derived from the staff-only aggregate RPC — unlike
- * `get_public_event_participant_counts`, which only covers public events.
- * Ordered chronologically (start_at ASC) for calendar rendering.
- */
-export const getCalendarEvents = cache(
-  async (from: string, to: string): Promise<Array<EventDetail>> => {
-    const user = await getCurrentUser();
-    if (!user) throw new AuthenticationError();
-
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from("events")
-      .select(
-        `id, title, description, start_at, end_at, location, event_type,
-         is_public, max_participants, is_free, price_tnd, image_url, event_format, created_at, created_by`,
-      )
-      .gte("start_at", from)
-      .lte("start_at", to)
-      .order("start_at", { ascending: true });
-
-    if (error) {
-      logError("Query failed: admin calendar events", error, { from, to });
-      return [];
-    }
-
-    const { data: counts, error: countsError } = await supabase.rpc(
-      "get_staff_event_participant_counts",
-    );
-    const countMap = new Map<string, number>();
-    if (!countsError && Array.isArray(counts)) {
-      for (const row of counts) countMap.set(row.event_id, row.active_count);
-    }
-
-    return (data ?? []).map((event) => buildEventDetail(event, countMap.get(event.id) ?? 0));
-  },
-);
-
-/**
- * Combined member schedule: registered events, ordered chronologically.
- * Bounded to 50 items total. (Bookings were consolidated into events in
- * Update V1 — the schedule is now events-only.)
- */
-export const getMemberSchedule = cache(
-  async (): Promise<ScheduleItem[]> => {
-    const user = await getCurrentUser();
-    if (!user) throw new AuthenticationError();
-
-    const supabase = await createClient();
-
-    const { data, error } = await supabase
-      .from("event_participants")
-      .select(
-        `event_id, status,
-         events ( id, title, start_at, end_at, location, is_public, max_participants, is_free, price_tnd, image_url )`,
-      )
-      .eq("member_id", user.id)
-      .in("status", ["JOINED"])
-      .order("created_at", { ascending: false })
-      .limit(50);
-
-    if (error) {
-      logError("Query failed: member schedule", error);
-      return [];
-    }
-
-    const eventItems: ScheduleItem[] = (data ?? [])
-      .filter((e) => e.events)
-      .map((e) => ({
-        kind: "event" as const,
-        id: e.event_id,
-        title: e.events!.title,
-        start_at: e.events!.start_at,
-        end_at: e.events!.end_at,
-        location: e.events!.location,
-        status: e.status,
-      }))
-      .sort((a, b) => new Date(a.start_at).getTime() - new Date(b.start_at).getTime());
-
-    return eventItems.slice(0, 50);
-  },
-);
+// Events & schedule live in lib/events/queries.ts (V1); re-exported for
+// existing import paths.
+export {
+  getPublicEvents,
+  getPublicEventCategories,
+  getPublicEventById,
+  getMemberEventViewById,
+  getStaffEventById,
+  getMemberEventRegistration,
+  getMemberRegisteredEvents,
+  getMemberSchedule,
+  getEventParticipants,
+  getAdminEvents,
+  getCalendarEvents,
+  getEventInvitations,
+} from "@/lib/events/queries";
 
 // ---------------------------------------------------------------------------
 // Services / Coaching (public + member + admin)

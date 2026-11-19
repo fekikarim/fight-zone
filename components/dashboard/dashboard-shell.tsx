@@ -22,10 +22,16 @@ import {
   CalendarDays,
   FileText,
   LayoutGrid,
+  Wallet,
+  Users,
+  BarChart3,
+  Settings,
+  Medal,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { SignOutButton } from "@/components/auth/sign-out-button";
 import { FreshnessDot } from "@/components/content/freshness-dot";
+import { LiveUpdates } from "@/components/dashboard/live-updates";
 import type { ContentMarker } from "@/lib/supabase/queries";
 import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/lib/auth/guards";
@@ -56,6 +62,7 @@ const MEMBER_NAV_ICONS: Record<string, ReactNode> = {
   "/member": <LayoutDashboard className="h-4 w-4 shrink-0" />,
   "/member/schedule": <CalendarClock className="h-4 w-4 shrink-0" />,
   "/member/events": <Trophy className="h-4 w-4 shrink-0" />,
+  "/member/achievements": <Medal className="h-4 w-4 shrink-0" />,
   "/member/reviews": <Star className="h-4 w-4 shrink-0" />,
   "/member/messages": <MessageSquare className="h-4 w-4 shrink-0" />,
   "/member/notifications": <Bell className="h-4 w-4 shrink-0" />,
@@ -66,6 +73,11 @@ const ADMIN_NAV_ICONS: Record<string, ReactNode> = {
   "/admin": <LayoutDashboard className="h-4 w-4 shrink-0" />,
   "/admin/events": <Trophy className="h-4 w-4 shrink-0" />,
   "/admin/calendar": <CalendarDays className="h-4 w-4 shrink-0" />,
+  "/admin/payments": <Wallet className="h-4 w-4 shrink-0" />,
+  "/admin/members": <Users className="h-4 w-4 shrink-0" />,
+  "/admin/reports": <BarChart3 className="h-4 w-4 shrink-0" />,
+  "/admin/badges": <Medal className="h-4 w-4 shrink-0" />,
+  "/admin/settings": <Settings className="h-4 w-4 shrink-0" />,
   "/admin/news": <Newspaper className="h-4 w-4 shrink-0" />,
   "/admin/reviews": <Star className="h-4 w-4 shrink-0" />,
   "/admin/messages": <MessageSquare className="h-4 w-4 shrink-0" />,
@@ -283,8 +295,11 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
 
   const primaryMobileNav = nav.filter((item) => MOBILE_NAV_PRIMARY.includes(item.href));
 
+  const isStaff = user.roles.some((r) => r === "ADMIN" || r === "COACH");
+
   return (
     <div className="flex min-h-dvh flex-col">
+      <LiveUpdates userId={user.id} role={isStaff ? "staff" : "member"} />
       {/* ─── Top Header ──────────────────────────────────────────── */}
       <header className="sticky top-0 z-40 border-b border-ink-border bg-background/90 backdrop-blur-md">
         <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">

@@ -10,6 +10,7 @@ const memberNav = [
   { href: "/member", label: "Overview" },
   { href: "/member/schedule", label: "Schedule" },
   { href: "/member/events", label: "Events" },
+  { href: "/member/achievements", label: "Achievements" },
   { href: "/member/reviews", label: "My Reviews" },
   { href: "/member/messages", label: "Messages" },
   { href: "/member/notifications", label: "Notifications" },

@@ -16,7 +16,11 @@ export async function submitContactMessage(
   _prevState: ContactActionState,
   formData: FormData,
 ): Promise<ContactActionState> {
+  // Honeypot: real visitors never see or fill this field.
+  if (String(formData.get("website") ?? "").trim()) return { ok: true };
+
   const parsed = contactSchema.safeParse({
+    category: formData.get("category") || "GENERAL",
     name: formData.get("name"),
     email: formData.get("email"),
     subject: formData.get("subject"),
@@ -42,9 +46,13 @@ export async function submitContactMessage(
     email: parsed.data.email,
     subject: parsed.data.subject,
     message: parsed.data.message,
+    category: parsed.data.category,
     member_id: user?.id ?? null,
   });
 
+  if (error?.code === "54000") {
+    return { ok: false, message: "You've sent several messages recently — please wait a little before trying again." };
+  }
   if (error) {
     logError("Failed to insert contact message", error);
     return {

@@ -1,14 +1,14 @@
 import { notFound } from "next/navigation";
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { EventDetailDisplay } from "@/components/events/event-detail";
-import { EventRegisterButton } from "@/components/events/event-register-button";
+import { MemberRegistrationPanel } from "@/components/events/member-registration-panel";
 import { EventParticipantsRealtime } from "@/components/events/event-participants-realtime";
-import {
-  getMemberEventViewById,
-  getMemberEventRegistration,
-} from "@/lib/supabase/queries";
-import { participationStatusLabel } from "@/lib/types/events";
+import { requireUser } from "@/lib/auth/guards";
+import { getMemberEventViewById, getMemberEventRegistration } from "@/lib/supabase/queries";
+import { getPaymentSettings } from "@/lib/settings/queries";
+import { requestTime } from "@/lib/utils";
 
 interface Props {
   params: Promise<{ id: string }>;
@@ -17,45 +17,34 @@ interface Props {
 export async function generateMetadata({ params }: Props): Promise<Metadata> {
   const { id } = await params;
   const event = await getMemberEventViewById(id);
-  if (!event) return { title: "Event not found" };
-  return { title: event.title };
+  return { title: event ? event.title : "Event not found" };
 }
 
 export default async function MemberEventDetailPage({ params }: Props) {
   const { id } = await params;
+  const user = await requireUser();
   const event = await getMemberEventViewById(id);
   if (!event) notFound();
 
-  const registration = await getMemberEventRegistration(id);
-  // Only an active registration counts as "registered" — a CANCELLED row
-  // means the member left and may join again (re-join path).
-  const isRegistered = registration !== null && registration.status !== "CANCELLED";
-  const isRejoin = registration?.status === "CANCELLED";
-  const isFull = event.spots_left !== null && event.spots_left === 0;
-  const isPast = new Date(event.end_at ?? event.start_at) < new Date();
+  const [registration, paymentSettings] = await Promise.all([getMemberEventRegistration(id), getPaymentSettings()]);
 
   return (
-    <Container className="flex max-w-none flex-col gap-8 px-0">
+    <Container className="flex max-w-3xl flex-col gap-6 px-0">
+      <PageHeader title="Event" back={{ href: "/member/events", label: "Back to events" }} />
       <EventDetailDisplay
         event={event}
         action={
-          <EventRegisterButton
-            eventId={id}
-            isRegistered={isRegistered}
-            isRejoin={isRejoin}
-            isFull={isFull}
-            isPast={isPast}
+          <MemberRegistrationPanel
+            event={event}
+            registration={registration}
+            userId={user.id}
+            bankInstructions={paymentSettings.bank_instructions}
+            inPersonInstructions={paymentSettings.in_person_instructions}
+            now={requestTime()}
           />
         }
       />
       <EventParticipantsRealtime eventId={id} />
-      {registration ? (
-        <div className="flex flex-col gap-1 rounded-xl border border-ink-border bg-ink-soft/40 px-5 py-4">
-          <p className="text-xs text-muted">
-            Your status: {participationStatusLabel[registration.status] ?? registration.status}
-          </p>
-        </div>
-      ) : null}
     </Container>
   );
 }

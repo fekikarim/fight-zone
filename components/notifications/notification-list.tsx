@@ -27,6 +27,8 @@ const EMPTY_COPY: Record<string, { title: string; description: string }> = {
   EVENT: { title: "No event notifications", description: "Registrations, cancellations and event updates will appear here." },
   MESSAGE: { title: "No message notifications", description: "New messages will appear here." },
   SYSTEM: { title: "No system notifications", description: "Account and platform updates will appear here." },
+  PAYMENT: { title: "No payment notifications", description: "Payment proofs and confirmations will appear here." },
+  BADGE: { title: "No badges yet", description: "Badges you earn from attending events will appear here." },
 };
 
 /** "Today" / "Yesterday" / "Earlier" in the club's timezone. */

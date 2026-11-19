@@ -7,12 +7,12 @@ import { z } from "zod";
  */
 
 export const markNotificationReadSchema = z.object({
-  notificationId: z.string().uuid("Invalid notification."),
+  notificationId: z.guid("Invalid notification."),
 });
 
 export const notificationFilterSchema = z.object({
   type: z
-    .enum(["BOOKING", "SESSION", "EVENT", "MESSAGE", "SYSTEM"])
+    .enum(["BOOKING", "SESSION", "EVENT", "MESSAGE", "SYSTEM", "PAYMENT", "BADGE", "REWARD"])
     .optional(),
   unreadOnly: z
     .preprocess(
@@ -28,7 +28,9 @@ export const NOTIFICATION_FILTERS = [
   { value: "", label: "All" },
   { value: "unread", label: "Unread" },
   { value: "EVENT", label: "Events" },
+  { value: "PAYMENT", label: "Payments" },
   { value: "MESSAGE", label: "Messages" },
+  { value: "BADGE", label: "Badges" },
   { value: "SYSTEM", label: "System" },
 ] as const;
 

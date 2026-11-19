@@ -9,8 +9,8 @@ export const submitReviewSchema = z.object({
   title: z.string().trim().min(3, "Title must be at least 3 characters.").max(200),
   content: z.string().trim().min(10, "Review must be at least 10 characters.").max(2000),
   targetType: z.enum(["COACH", "SESSION", "CLUB"]),
-  coachId: z.string().uuid().nullable().optional(),
-  sessionId: z.string().uuid().nullable().optional(),
+  coachId: z.guid().nullable().optional(),
+  sessionId: z.guid().nullable().optional(),
 });
 
 export type SubmitReviewInput = z.infer<typeof submitReviewSchema>;
@@ -20,7 +20,7 @@ export type SubmitReviewInput = z.infer<typeof submitReviewSchema>;
 // ---------------------------------------------------------------------------
 
 export const moderateReviewSchema = z.object({
-  reviewId: z.string().uuid("Invalid review ID."),
+  reviewId: z.guid("Invalid review ID."),
   status: z.enum(["APPROVED", "REJECTED", "PENDING"]),
   isFeatured: z.boolean().optional(),
 });
@@ -32,7 +32,7 @@ export type ModerateReviewInput = z.infer<typeof moderateReviewSchema>;
 // ---------------------------------------------------------------------------
 
 export const deleteReviewSchema = z.object({
-  reviewId: z.string().uuid("Invalid review ID."),
+  reviewId: z.guid("Invalid review ID."),
 });
 
 export type DeleteReviewInput = z.infer<typeof deleteReviewSchema>;
@@ -59,7 +59,7 @@ export type SubmitTransformationInput = z.infer<typeof submitTransformationSchem
 // ---------------------------------------------------------------------------
 
 export const moderateTransformationSchema = z.object({
-  transformationId: z.string().uuid("Invalid transformation ID."),
+  transformationId: z.guid("Invalid transformation ID."),
   isPublished: z.boolean().optional(),
   isFeatured: z.boolean().optional(),
 });

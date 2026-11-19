@@ -2,6 +2,7 @@
 
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { safeNextPath } from "@/lib/auth/redirect";
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
 import { getSiteUrl } from "@/lib/supabase/config";
@@ -49,8 +50,19 @@ export async function signIn(
     return { ok: false, message: "Invalid email or password." };
   }
 
+  // Seif lands on his dashboard; members on theirs (or where they were going).
+  const { data: auth } = await supabase.auth.getUser();
+  let home = "/member";
+  if (auth.user) {
+    const { data: roles } = await supabase
+      .from("user_role_assignments")
+      .select("roles(name)")
+      .eq("user_id", auth.user.id);
+    const names = (roles ?? []).map((r) => (r.roles as unknown as { name: string } | null)?.name);
+    if (names.includes("ADMIN") || names.includes("COACH")) home = "/admin";
+  }
   revalidatePath("/", "layout");
-  redirect("/member");
+  redirect(safeNextPath(formData.get("next"), home));
 }
 
 export async function signUp(
@@ -136,7 +148,7 @@ export async function signUp(
   }
 
   revalidatePath("/", "layout");
-  redirect("/member");
+  redirect(safeNextPath(formData.get("next"), "/member"));
 }
 
 export async function signOut(): Promise<void> {

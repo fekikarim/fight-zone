@@ -6,20 +6,6 @@ import { ImageUploadField } from "@/components/ui/image-upload-field";
 import { NEWS_CATEGORIES, NEWS_LIMITS } from "@/lib/validations/content";
 import { newsCategoryLabel } from "@/lib/types/content";
 
-/** Slugifies a title for the URL identifier (mirrors the server regex). */
-export function slugify(value: string): string {
-  return value
-    .toLowerCase()
-    .normalize("NFKD")
-    .replace(/[̀-ͯ]/g, "")
-    .replace(/[^a-z0-9\s-]/g, "")
-    .trim()
-    .replace(/[\s_]+/g, "-")
-    .replace(/-+/g, "-")
-    .replace(/^-|-$/g, "")
-    .slice(0, NEWS_LIMITS.slugMax);
-}
-
 interface NewsFormFieldsProps {
   article?: {
     title: string;
@@ -40,10 +26,6 @@ const hintClass = "text-xs text-muted";
 /** Fields shared by the news create and edit forms. */
 export function NewsFormFields({ article, errors, disabled }: NewsFormFieldsProps) {
   const [title, setTitle] = useState(article?.title ?? "");
-  const [slug, setSlug] = useState(article?.slug ?? "");
-  // New articles follow the title until the slug is edited by hand; existing
-  // ones keep their URL (changing it breaks shared links).
-  const [slugTouched, setSlugTouched] = useState(Boolean(article));
   const [excerptLength, setExcerptLength] = useState(article?.excerpt?.length ?? 0);
   const [published, setPublished] = useState(article?.is_published ?? false);
 
@@ -65,10 +47,7 @@ export function NewsFormFields({ article, errors, disabled }: NewsFormFieldsProp
           maxLength={NEWS_LIMITS.titleMax}
           value={title}
           autoComplete="off"
-          onChange={(e) => {
-            setTitle(e.target.value);
-            if (!slugTouched) setSlug(slugify(e.target.value));
-          }}
+          onChange={(e) => setTitle(e.target.value)}
           className={fieldClass(Boolean(errors.title))}
           placeholder="e.g. 5 Footwork Drills Every Beginner Should Master"
           {...fieldA11y("title", errors.title)}
@@ -76,42 +55,13 @@ export function NewsFormFields({ article, errors, disabled }: NewsFormFieldsProp
         <FieldError id="title-error" message={errors.title} />
       </div>
 
-      <div className="space-y-1.5">
-        <label htmlFor="slug" className={labelClass}>
-          URL slug <span className="text-primary" aria-hidden>*</span>
-        </label>
-        <div className="flex items-stretch overflow-hidden rounded-lg">
-          <span className="hidden items-center border border-r-0 border-ink-border bg-ink-soft px-3 text-xs text-muted sm:flex">
-            /news/
-          </span>
-          <input
-            id="slug"
-            name="slug"
-            required
-            maxLength={NEWS_LIMITS.slugMax}
-            value={slug}
-            autoComplete="off"
-            autoCapitalize="none"
-            spellCheck={false}
-            onChange={(e) => {
-              setSlug(e.target.value.toLowerCase().replace(/\s+/g, "-"));
-              setSlugTouched(true);
-            }}
-            className={fieldClass(Boolean(errors.slug), "font-mono sm:rounded-l-none")}
-            placeholder="footwork-drills-for-beginners"
-            {...fieldA11y("slug", errors.slug)}
-          />
-        </div>
-        {errors.slug ? (
-          <FieldError id="slug-error" message={errors.slug} />
-        ) : (
-          <p className={hintClass}>
-            {article
-              ? "Changing the slug breaks links that were already shared."
-              : "Generated from the title — lowercase letters, numbers and hyphens."}
-          </p>
-        )}
-      </div>
+      {article ? (
+        <p className="text-xs text-muted">
+          Public link: <span className="font-mono text-foreground/80">/news/{article.slug}</span> — it stays the same when you edit, so shared links keep working.
+        </p>
+      ) : (
+        <p className="text-xs text-muted">The public link is created automatically from the title when you save.</p>
+      )}
 
       <div className="grid gap-6 sm:grid-cols-2">
         <div className="space-y-1.5">

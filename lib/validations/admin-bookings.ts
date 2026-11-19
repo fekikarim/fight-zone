@@ -10,7 +10,7 @@ import { z } from "zod";
 export const bookingActionSchema = z.enum(["confirm", "cancel", "complete", "no_show"]);
 
 export const updateBookingStatusSchema = z.object({
-  bookingId: z.string().uuid("Please choose a valid booking."),
+  bookingId: z.guid("Please choose a valid booking."),
   action: bookingActionSchema,
 });
 

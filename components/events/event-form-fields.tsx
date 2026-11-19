@@ -201,8 +201,8 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
           <div className="grid gap-2 sm:grid-cols-2">
             {(
               [
-                { value: "COLLECTIVE", label: "Collective event", hint: "Group session, open to many members" },
-                { value: "INDIVIDUAL", label: "Individual coaching", hint: "1-on-1, always private" },
+                { value: "COLLECTIVE", label: "Group", hint: "Several members, you set the capacity" },
+                { value: "INDIVIDUAL", label: "Individual", hint: "One person only (capacity 1)" },
               ] as const
             ).map((option) => (
               <label
@@ -230,13 +230,12 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
           <div className="space-y-2">
             <span className={labelClass}>Visibility</span>
             <div className="flex flex-wrap items-center gap-x-6 gap-y-2 pt-1">
-              <label className="flex min-h-11 items-center gap-2 text-sm aria-disabled:opacity-50" aria-disabled={individual}>
+              <label className="flex min-h-11 items-center gap-2 text-sm">
                 <input
                   type="radio"
                   name="is_public"
                   value="true"
-                  checked={!individual && visibility === "public"}
-                  disabled={individual}
+                  checked={visibility === "public"}
                   onChange={() => setVisibility("public")}
                   className="h-4 w-4 accent-primary"
                 />
@@ -247,7 +246,7 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
                   type="radio"
                   name="is_public"
                   value="false"
-                  checked={individual || visibility === "private"}
+                  checked={visibility === "private"}
                   onChange={() => setVisibility("private")}
                   className="h-4 w-4 accent-primary"
                 />
@@ -255,11 +254,9 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
               </label>
             </div>
             <p className={hintClass}>
-              {individual
-                ? "Individual coaching is always private."
-                : visibility === "public"
-                  ? "Listed on the public events page."
-                  : "Hidden from the public page (draft)."}
+              {visibility === "public"
+                ? "Listed on the public events page once published."
+                : "Invitation-only: only members you invite can see and register."}
             </p>
           </div>
 
@@ -277,7 +274,7 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
                   readOnly
                   className={fieldClass(false, "cursor-not-allowed opacity-60")}
                 />
-                <p className={hintClass}>Individual coaching is capped at 1 participant.</p>
+                <p className={hintClass}>Individual events take exactly one participant.</p>
               </>
             ) : (
               <>
@@ -336,19 +333,21 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
               name="price_tnd"
               type="number"
               inputMode="decimal"
-              min={0.01}
+              min={0.001}
               max={EVENT_LIMITS.maxPriceTnd}
-              step={0.01}
+              step={0.001}
               required
               defaultValue={event?.price_tnd ?? ""}
               className={fieldClass(Boolean(errors.price_tnd))}
-              placeholder="e.g. 25.00"
+              placeholder="e.g. 25"
               {...fieldA11y("price_tnd", errors.price_tnd)}
             />
             {errors.price_tnd ? (
               <FieldError id="price_tnd-error" message={errors.price_tnd} />
             ) : (
-              <p className={hintClass}>Paid in cash with the coach before the event starts. No online payments.</p>
+              <p className={hintClass}>
+                Members pay in person or by bank transfer; you confirm each payment. Changing the price later doesn&apos;t change what already-registered members owe.
+              </p>
             )}
           </div>
         ) : (
@@ -356,11 +355,103 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
         )}
       </div>
 
+      <RegistrationRules event={event} errors={errors} individual={individual} />
+
       <div className="space-y-1.5">
         <ImageUploadField name="image_url" kind="events" label="Event image" defaultValue={event?.image_url} />
         <FieldError id="image_url-error" message={errors.image_url} />
       </div>
     </fieldset>
+  );
+}
+
+function RegistrationRules({
+  event,
+  errors,
+  individual,
+}: {
+  event?: EventFormFieldsProps["event"];
+  errors: EventFormFieldsProps["errors"];
+  individual: boolean;
+}) {
+  const [approval, setApproval] = useState(event?.requires_approval ?? false);
+  const [waitlist, setWaitlist] = useState(event?.waitlist_enabled ?? false);
+  const [publish, setPublish] = useState(false);
+  const toInput = (v: string | null | undefined) => (v ? toBusinessDateTimeInput(v) : "");
+
+  return (
+    <details className="group rounded-xl border border-ink-border bg-ink-soft/40 p-4 sm:p-5" open={!event}>
+      <summary className="cursor-pointer list-none text-sm font-semibold">
+        Registration rules &amp; details
+        <span className="ml-2 text-xs font-normal text-muted">category, window, approval, waitlist, cancellation</span>
+      </summary>
+      <div className="mt-4 grid gap-4 sm:grid-cols-2">
+        <div className="space-y-1.5">
+          <label htmlFor="category" className={labelClass}>Category</label>
+          <input id="category" name="category" maxLength={40} defaultValue={event?.category ?? ""} list="event-categories"
+            placeholder="e.g. Kickboxing" className={fieldClass(Boolean(errors.category))} {...fieldA11y("category", errors.category)} />
+          <datalist id="event-categories">
+            {["Boxing", "Kickboxing", "Fitness", "Sparring", "Kids", "Competition"].map((c) => <option key={c} value={c} />)}
+          </datalist>
+          <FieldError id="category-error" message={errors.category} />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="tags" className={labelClass}>Tags</label>
+          <input id="tags" name="tags" defaultValue={event?.tags?.join(", ") ?? ""} placeholder="beginners, cardio"
+            className={fieldClass(Boolean(errors.tags))} {...fieldA11y("tags", errors.tags)} />
+          <p className={hintClass}>Comma-separated, up to 10.</p>
+        </div>
+        <div className="space-y-1.5 sm:col-span-2">
+          <label htmlFor="requirements" className={labelClass}>Requirements / what to bring</label>
+          <textarea id="requirements" name="requirements" rows={2} maxLength={2000} defaultValue={event?.requirements ?? ""}
+            placeholder="e.g. Gloves, mouthguard, water. Minimum level: beginner." className={fieldClass(Boolean(errors.requirements), "resize-y")} />
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="registration_opens_at" className={labelClass}>Registration opens</label>
+          <input id="registration_opens_at" name="registration_opens_at" type="datetime-local" defaultValue={toInput(event?.registration_opens_at)}
+            className={fieldClass(Boolean(errors.registration_opens_at))} {...fieldA11y("registration_opens_at", errors.registration_opens_at)} />
+          {errors.registration_opens_at ? <FieldError id="registration_opens_at-error" message={errors.registration_opens_at} /> : <p className={hintClass}>Empty = as soon as it&apos;s published.</p>}
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="registration_closes_at" className={labelClass}>Registration closes</label>
+          <input id="registration_closes_at" name="registration_closes_at" type="datetime-local" defaultValue={toInput(event?.registration_closes_at)}
+            className={fieldClass(Boolean(errors.registration_closes_at))} {...fieldA11y("registration_closes_at", errors.registration_closes_at)} />
+          {errors.registration_closes_at ? <FieldError id="registration_closes_at-error" message={errors.registration_closes_at} /> : <p className={hintClass}>Empty = until the event starts.</p>}
+        </div>
+        <div className="space-y-1.5">
+          <label htmlFor="cancellation_deadline_hours" className={labelClass}>Member cancellation deadline (hours before start)</label>
+          <input id="cancellation_deadline_hours" name="cancellation_deadline_hours" type="number" inputMode="numeric" min={0} max={720} step={1}
+            defaultValue={event?.cancellation_deadline_hours ?? 0} className={fieldClass(Boolean(errors.cancellation_deadline_hours))}
+            {...fieldA11y("cancellation_deadline_hours", errors.cancellation_deadline_hours)} />
+          {errors.cancellation_deadline_hours ? <FieldError id="cancellation_deadline_hours-error" message={errors.cancellation_deadline_hours} /> : <p className={hintClass}>0 = members can cancel until it starts.</p>}
+        </div>
+        <div className="space-y-3 sm:col-span-2">
+          <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+            <input type="checkbox" checked={approval} onChange={(e) => setApproval(e.target.checked)} className="mt-0.5 h-5 w-5 accent-primary" />
+            <span><span className="font-medium">Approve each registration</span><span className="block text-xs text-muted">Requests hold a place until you confirm or decline them.</span></span>
+          </label>
+          <input type="hidden" name="requires_approval" value={approval ? "true" : "false"} />
+          {!individual ? (
+            <>
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+                <input type="checkbox" checked={waitlist} onChange={(e) => setWaitlist(e.target.checked)} className="mt-0.5 h-5 w-5 accent-primary" />
+                <span><span className="font-medium">Waitlist when full</span><span className="block text-xs text-muted">Members queue up and move in automatically, oldest first, when a place opens.</span></span>
+              </label>
+              <input type="hidden" name="waitlist_enabled" value={waitlist ? "true" : "false"} />
+            </>
+          ) : <input type="hidden" name="waitlist_enabled" value="false" />}
+          {!event ? (
+            <>
+              <label className="flex min-h-11 cursor-pointer items-start gap-3 text-sm">
+                <input type="checkbox" checked={publish} onChange={(e) => setPublish(e.target.checked)} className="mt-0.5 h-5 w-5 accent-primary" />
+                <span><span className="font-medium">Publish now</span><span className="block text-xs text-muted">Otherwise it&apos;s saved as a draft you can review and publish later.</span></span>
+              </label>
+              <input type="hidden" name="publish" value={publish ? "true" : "false"} />
+            </>
+          ) : null}
+        </div>
+      </div>
+    </details>
   );
 }
 

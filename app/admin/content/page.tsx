@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Image as ImageIcon, Trophy } from "lucide-react";
+import { FileText, HelpCircle, Image as ImageIcon, Inbox, Scale, Trophy } from "lucide-react";
 import Link from "next/link";
 import { getAdminMedia, getAdminAchievements } from "@/lib/supabase/queries";
 import { PageHeader } from "@/components/dashboard/page-header";
@@ -16,6 +16,34 @@ export default async function AdminContentPage() {
   ]);
 
   const sections = [
+    {
+      label: "About page",
+      description: "Build and publish your About page from blocks, with version history.",
+      href: "/admin/content/about",
+      icon: FileText,
+      count: null,
+    },
+    {
+      label: "FAQ",
+      description: "Questions and answers shown on the public FAQ page.",
+      href: "/admin/content/faq",
+      icon: HelpCircle,
+      count: null,
+    },
+    {
+      label: "Privacy & Terms",
+      description: "Versioned legal documents (drafts must be reviewed before publishing).",
+      href: "/admin/content/legal",
+      icon: Scale,
+      count: null,
+    },
+    {
+      label: "Contact inbox",
+      description: "Messages from the public contact form.",
+      href: "/admin/inbox",
+      icon: Inbox,
+      count: null,
+    },
     {
       label: "Media Library",
       description: "Upload and manage photos, videos, and documents.",
@@ -62,7 +90,7 @@ export default async function AdminContentPage() {
                 </div>
                 <div>
                   <p className="text-sm font-semibold">{section.label}</p>
-                  <p className="text-xs text-muted">{section.count} items</p>
+                  {section.count != null ? <p className="text-xs text-muted">{section.count} items</p> : null}
                 </div>
               </div>
               <p className="mt-3 text-xs text-muted">{section.description}</p>

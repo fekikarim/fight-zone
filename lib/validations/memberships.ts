@@ -27,7 +27,7 @@ export const createPlanSchema = z.object({
 export type CreatePlanInput = z.infer<typeof createPlanSchema>;
 
 export const updatePlanSchema = z.object({
-  planId: z.string().uuid(),
+  planId: z.guid(),
   name: z.string().trim().min(1).max(200).optional(),
   slug: z
     .string()
@@ -55,7 +55,7 @@ export type UpdatePlanInput = z.infer<typeof updatePlanSchema>;
 // ---------------------------------------------------------------------------
 
 export const cancelSubscriptionSchema = z.object({
-  subscriptionId: z.string().uuid(),
+  subscriptionId: z.guid(),
 });
 
 // ---------------------------------------------------------------------------
@@ -63,15 +63,15 @@ export const cancelSubscriptionSchema = z.object({
 // ---------------------------------------------------------------------------
 
 export const grantSubscriptionSchema = z.object({
-  memberId: z.string().uuid(),
-  planId: z.string().uuid(),
+  memberId: z.guid(),
+  planId: z.guid(),
   startsAt: z.string().optional(),
   notes: z.string().trim().max(500).optional(),
 });
 
 export const recordPaymentSchema = z.object({
-  memberId: z.string().uuid(),
-  subscriptionId: z.string().uuid().nullable().optional(),
+  memberId: z.guid(),
+  subscriptionId: z.guid().nullable().optional(),
   amount: z.coerce.number().min(0.01, "Amount must be greater than zero."),
   currency: z.string().trim().min(1).max(10).default("TND"),
   status: z.enum(["PENDING", "COMPLETED", "FAILED", "REFUNDED"]).default("COMPLETED"),

@@ -7,9 +7,33 @@ import { Reveal } from "@/components/ui/reveal";
 import { Badge } from "@/components/ui/badge";
 import { AchievementCard, type AchievementItem } from "@/components/marketing/achievement-card";
 import { PageHero } from "@/components/marketing/page-hero";
-import { getAchievements, getPublicCoach } from "@/lib/supabase/queries";
+import { getAchievements, getPublicCoach, isPrerenderBailout } from "@/lib/supabase/queries";
 import { formatDate } from "@/lib/utils";
 import { TestimonialsSection } from "@/components/marketing/sections/testimonials-section";
+import { BlockRenderer } from "@/components/cms/block-renderer";
+import { parsePageContentSafe } from "@/lib/cms/blocks";
+import { createClient } from "@/lib/supabase/server";
+import { logError } from "@/lib/errors";
+
+/** Seif's published About page (CMS). Null → default About content below. */
+async function getPublishedAbout() {
+  try {
+    const supabase = await createClient();
+    const { data, error } = await supabase.rpc("get_published_page", { p_slug: "about" });
+    if (error) {
+      logError("Query failed: published about page", error);
+      return null;
+    }
+    const row = data?.[0];
+    if (!row) return null;
+    const { blocks } = parsePageContentSafe(row.content);
+    return blocks.length ? blocks : null;
+  } catch (error) {
+    if (isPrerenderBailout(error)) throw error;
+    logError("Query failed: published about page", error);
+    return null;
+  }
+}
 
 export const metadata: Metadata = {
   title: "About Coach Seif Dridi",
@@ -20,10 +44,22 @@ export const metadata: Metadata = {
 const disciplineIcons = [ShieldCheck, Dumbbell, Trophy, Medal, Award];
 
 export default async function AboutPage() {
-  const [coach, achievements] = await Promise.all([
+  const [coach, achievements, cmsBlocks] = await Promise.all([
     getPublicCoach(),
     getAchievements(),
+    getPublishedAbout(),
   ]);
+
+  if (cmsBlocks) {
+    return (
+      <div className="pt-20">
+        <BlockRenderer
+          blocks={cmsBlocks}
+          achievements={achievements.map((a) => ({ id: a.id, title: a.title, description: a.description, date: a.date, image_url: a.image_url }))}
+        />
+      </div>
+    );
+  }
 
   const disciplines =
     coach?.specialization

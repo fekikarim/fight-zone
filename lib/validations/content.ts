@@ -31,13 +31,6 @@ const newsTitle = z
   .min(NEWS_LIMITS.titleMin, `Title must be at least ${NEWS_LIMITS.titleMin} characters.`)
   .max(NEWS_LIMITS.titleMax, `Title must be at most ${NEWS_LIMITS.titleMax} characters.`);
 
-const newsSlug = z
-  .string({ error: "URL slug is required." })
-  .trim()
-  .min(1, "URL slug is required.")
-  .max(NEWS_LIMITS.slugMax, `URL slug must be at most ${NEWS_LIMITS.slugMax} characters.`)
-  .regex(/^[a-z0-9]+(?:-[a-z0-9]+)*$/, "Use lowercase letters, numbers and single hyphens only (e.g. summer-camp-2026).");
-
 const newsContent = z
   .string()
   .max(NEWS_LIMITS.contentMax, `Content must be at most ${NEWS_LIMITS.contentMax} characters.`)
@@ -62,7 +55,6 @@ const publishNeedsContent = (data: { is_published?: boolean; content?: string },
 export const createNewsSchema = z
   .object({
     title: newsTitle,
-    slug: newsSlug,
     excerpt: excerptField,
     category: z.enum(NEWS_CATEGORIES).default("GENERAL"),
     content: newsContent,
@@ -75,9 +67,8 @@ export type CreateNewsInput = z.infer<typeof createNewsSchema>;
 
 export const updateNewsSchema = z
   .object({
-    articleId: z.string().uuid(),
+    articleId: z.guid(),
     title: newsTitle.optional(),
-    slug: newsSlug.optional(),
     excerpt: excerptField,
     category: z.enum(NEWS_CATEGORIES).optional(),
     content: newsContent,
@@ -96,7 +87,6 @@ export function readNewsForm(formData: FormData) {
   return {
     articleId: get("articleId"),
     title: get("title"),
-    slug: get("slug"),
     excerpt: get("excerpt"),
     category: get("category") || undefined,
     content: get("content"),
@@ -122,7 +112,7 @@ export const createMediaSchema = z.object({
 export type CreateMediaInput = z.infer<typeof createMediaSchema>;
 
 export const updateMediaSchema = z.object({
-  mediaId: z.string().uuid(),
+  mediaId: z.guid(),
   title: z.string().trim().max(200).optional(),
   description: z.string().trim().max(2000).optional(),
   is_public: z.boolean().optional(),
@@ -149,7 +139,7 @@ export const createAchievementSchema = z.object({
 export type CreateAchievementInput = z.infer<typeof createAchievementSchema>;
 
 export const updateAchievementSchema = z.object({
-  achievementId: z.string().uuid(),
+  achievementId: z.guid(),
   title: z.string().trim().min(1).max(200).optional(),
   description: z.string().trim().max(2000).optional(),
   type: z.enum(["TITLE", "TROPHY", "MEDAL", "CERTIFICATE", "RANKING"]).optional(),
@@ -164,13 +154,13 @@ export type UpdateAchievementInput = z.infer<typeof updateAchievementSchema>;
 // ---------------------------------------------------------------------------
 
 export const deleteNewsSchema = z.object({
-  articleId: z.string().uuid(),
+  articleId: z.guid(),
 });
 
 export const deleteMediaSchema = z.object({
-  mediaId: z.string().uuid(),
+  mediaId: z.guid(),
 });
 
 export const deleteAchievementSchema = z.object({
-  achievementId: z.string().uuid(),
+  achievementId: z.guid(),
 });

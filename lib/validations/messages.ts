@@ -1,37 +1,40 @@
 import { z } from "zod";
+import { ATTACHMENT_MAX_BYTES, ATTACHMENT_MIME_TYPES } from "@/lib/types/messaging";
 
 /**
- * Messaging validation schemas. Server actions are the only trust boundary:
- * every field is trimmed, sized, and typed before it reaches the database.
- * The database re-checks length/bounds and relationship rules authoritatively
- * (see supabase/migrations/20260819000000_messaging.sql).
+ * Messaging validation. Server actions are the trust boundary; the database
+ * re-checks sender, participant, kind and attachment folder (RLS).
  */
 
-export const sendMessageSchema = z.object({
-  conversationId: z.string().uuid("Please choose a valid conversation."),
-  body: z
-    .string()
-    .trim()
-    .min(1, "Your message is empty.")
-    .max(4000, "Messages can be up to 4000 characters."),
-});
+const UUID = z.guid("Please choose a valid conversation.");
 
-/** Recipient is role-dependent: a coach id for members, a member id for coaches. */
-export const startConversationSchema = z.object({
-  recipientId: z.string().uuid("Please choose a valid recipient."),
-});
+export const sendMessageSchema = z
+  .object({
+    conversationId: UUID,
+    body: z.string().trim().max(4000, "Messages can be up to 4000 characters.").default(""),
+    attachmentPath: z.string().max(300).optional(),
+    attachmentName: z.string().trim().max(200).optional(),
+    attachmentMime: z.enum(ATTACHMENT_MIME_TYPES).optional(),
+    attachmentSize: z.coerce.number().int().min(1).max(ATTACHMENT_MAX_BYTES).optional(),
+  })
+  .superRefine((d, ctx) => {
+    if (!d.body && !d.attachmentPath) ctx.addIssue({ code: "custom", message: "Your message is empty.", path: ["body"] });
+    if (d.attachmentPath && (!d.attachmentMime || !d.attachmentSize)) {
+      ctx.addIssue({ code: "custom", message: "Attachment details are missing.", path: ["attachmentPath"] });
+    }
+  });
+
+export const openConversationSchema = z.object({ memberId: z.guid("Choose a member.") });
 
 export const loadOlderMessagesSchema = z.object({
-  conversationId: z.string().uuid("Please choose a valid conversation."),
-  beforeId: z.string().uuid("Please choose a valid cursor."),
-  limit: z.number().int().min(1).max(100).default(50),
+  conversationId: UUID,
+  beforeId: z.guid(),
+  limit: z.number().int().min(1).max(100).default(30),
 });
 
-export const markConversationReadSchema = z.object({
-  conversationId: z.string().uuid("Please choose a valid conversation."),
+export const loadNewerMessagesSchema = z.object({
+  conversationId: UUID,
+  since: z.string().datetime({ offset: true }),
 });
 
-export type SendMessageInput = z.infer<typeof sendMessageSchema>;
-export type StartConversationInput = z.infer<typeof startConversationSchema>;
-export type LoadOlderMessagesInput = z.infer<typeof loadOlderMessagesSchema>;
-export type MarkConversationReadInput = z.infer<typeof markConversationReadSchema>;
+export const markConversationReadSchema = z.object({ conversationId: UUID });

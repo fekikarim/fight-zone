@@ -10,6 +10,8 @@ interface ConfirmDialogProps {
   description: string;
   confirmLabel?: string;
   cancelLabel?: string;
+  /** Button text while the action runs. */
+  pendingLabel?: string;
   pending?: boolean;
   onConfirm: () => void;
   onClose: () => void;
@@ -26,6 +28,7 @@ export function ConfirmDialog({
   description,
   confirmLabel = "Delete",
   cancelLabel = "Cancel",
+  pendingLabel = "Please wait…",
   pending = false,
   onConfirm,
   onClose,
@@ -105,7 +108,7 @@ export function ConfirmDialog({
             className="w-full gap-2 sm:w-auto"
           >
             {pending ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-            {pending ? "Deleting…" : confirmLabel}
+            {pending ? pendingLabel : confirmLabel}
           </Button>
         </div>
       </div>
