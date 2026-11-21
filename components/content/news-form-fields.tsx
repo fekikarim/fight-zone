@@ -5,6 +5,7 @@ import { FieldError, fieldA11y, fieldClass, type FieldErrors } from "@/component
 import { ImageUploadField } from "@/components/ui/image-upload-field";
 import { NEWS_CATEGORIES, NEWS_LIMITS } from "@/lib/validations/content";
 import { newsCategoryLabel } from "@/lib/types/content";
+import { Select } from "@/components/ui/select";
 
 interface NewsFormFieldsProps {
   article?: {
@@ -68,7 +69,7 @@ export function NewsFormFields({ article, errors, disabled }: NewsFormFieldsProp
           <label htmlFor="category" className={labelClass}>
             Category
           </label>
-          <select
+          <Select
             id="category"
             name="category"
             defaultValue={article?.category ?? "GENERAL"}
@@ -79,7 +80,7 @@ export function NewsFormFields({ article, errors, disabled }: NewsFormFieldsProp
                 {newsCategoryLabel[c]}
               </option>
             ))}
-          </select>
+          </Select>
           <p className={hintClass}>Used for filtering on the news page.</p>
         </div>
         <div className="space-y-1.5">

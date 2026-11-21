@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { updateMembershipPlan, toggleMembershipPlanActive } from "@/lib/actions/memberships";
 import type { MembershipActionState } from "@/lib/actions/memberships";
 import type { MembershipPlan } from "@/lib/types/memberships";
+import { Select } from "@/components/ui/select";
 
 interface PlanEditFormProps {
   plan: MembershipPlan;
@@ -98,23 +99,23 @@ export function PlanEditForm({ plan }: PlanEditFormProps) {
         <div className="grid gap-6 sm:grid-cols-3">
           <div className="space-y-1.5">
             <label htmlFor="tier" className="text-sm font-medium">Tier</label>
-            <select id="tier" name="tier" defaultValue={plan.tier} className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm">
+            <Select id="tier" name="tier" defaultValue={plan.tier} className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm">
               <option value="ADULT">Adult</option>
               <option value="STUDENT">Student</option>
               <option value="KIDS">Kids</option>
               <option value="FAMILY">Family</option>
               <option value="PRO_FIGHTER">Pro Fighter</option>
               <option value="UNLIMITED">Unlimited</option>
-            </select>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <label htmlFor="billing_interval" className="text-sm font-medium">Billing interval</label>
-            <select id="billing_interval" name="billing_interval" defaultValue={plan.billing_interval} className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm">
+            <Select id="billing_interval" name="billing_interval" defaultValue={plan.billing_interval} className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm">
               <option value="MONTHLY">Monthly</option>
               <option value="QUARTERLY">Quarterly</option>
               <option value="ANNUAL">Annual</option>
               <option value="CUSTOM">Custom</option>
-            </select>
+            </Select>
           </div>
           <div className="space-y-1.5">
             <label htmlFor="price" className="text-sm font-medium">Price (TND)</label>

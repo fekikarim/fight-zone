@@ -14,6 +14,7 @@ import { BLOCK_LABELS, CMS_SCHEMA_VERSION, blockSchema, newBlock, parsePageConte
 import { publishCmsPage, restoreCmsRevision, saveCmsDraft } from "@/lib/actions/cms";
 import { uploadContentImage } from "@/lib/actions/uploads";
 import { cn, formatDate } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
 
 type Block = Record<string, unknown> & { id: string; type: CmsBlockType; background?: string };
 
@@ -154,10 +155,10 @@ export function PageEditor({ slug, initialDraft, revisions, achievements, publis
                 <span className="text-xs font-semibold uppercase tracking-wider text-muted">{i + 1}. {BLOCK_LABELS[b.type]}</span>
                 {errors[b.id] || serverIssues[b.id] ? <span className="text-xs text-amber-300">— {serverIssues[b.id] ?? errors[b.id]}</span> : null}
                 <div className="ml-auto flex items-center gap-1">
-                  <select value={String(b.background ?? "default")} onChange={(e) => update(b.id, { background: e.target.value })}
+                  <Select value={String(b.background ?? "default")} onChange={(e) => update(b.id, { background: e.target.value })}
                     aria-label="Section background" className="h-8 rounded-md border border-ink-border bg-ink-soft px-2 text-xs">
                     <option value="default">Plain</option><option value="muted">Shaded</option><option value="accent">Accent</option>
-                  </select>
+                  </Select>
                   <IconBtn label="Move up" onClick={() => move(i, -1)} disabled={i === 0}><ArrowUp className="h-4 w-4" /></IconBtn>
                   <IconBtn label="Move down" onClick={() => move(i, 1)} disabled={i === blocks.length - 1}><ArrowDown className="h-4 w-4" /></IconBtn>
                   <IconBtn label="Duplicate" onClick={() => setBlocks((bs) => [...bs.slice(0, i + 1), { ...structuredClone(b), id: Math.random().toString(36).slice(2, 10) }, ...bs.slice(i + 1)])}><Copy className="h-4 w-4" /></IconBtn>
@@ -328,9 +329,9 @@ function BlockFields({ block: b, onChange }: { block: Block; onChange: (patch: R
           <div className="grid gap-3 sm:grid-cols-2">
             <TextInput label="Caption" value={b.caption} max={200} onChange={(v) => onChange({ caption: v })} />
             <label className="block space-y-1"><span className="text-xs text-muted">Width / alignment</span>
-              <select value={String(b.align ?? "center")} onChange={(e) => onChange({ align: e.target.value })} className={fieldClass(false)}>
+              <Select value={String(b.align ?? "center")} onChange={(e) => onChange({ align: e.target.value })} className={fieldClass(false)}>
                 <option value="center">Centered</option><option value="full">Full width</option><option value="left">Left</option><option value="right">Right</option>
-              </select>
+              </Select>
             </label>
           </div>
         </div>
@@ -420,9 +421,9 @@ function BlockFields({ block: b, onChange }: { block: Block; onChange: (patch: R
       return (
         <div className="flex flex-wrap items-center gap-4 text-sm">
           <label className="flex items-center gap-2">Space
-            <select value={String(b.size ?? "md")} onChange={(e) => onChange({ size: e.target.value })} className="h-9 rounded-md border border-ink-border bg-ink-soft px-2">
+            <Select value={String(b.size ?? "md")} onChange={(e) => onChange({ size: e.target.value })} className="h-9 rounded-md border border-ink-border bg-ink-soft px-2">
               <option value="sm">Small</option><option value="md">Medium</option><option value="lg">Large</option>
-            </select>
+            </Select>
           </label>
           <label className="flex items-center gap-2"><input type="checkbox" checked={b.line !== false} onChange={(e) => onChange({ line: e.target.checked })} className="h-4 w-4 accent-primary" /> Show a line</label>
         </div>

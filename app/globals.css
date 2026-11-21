@@ -57,6 +57,18 @@
   --header-h: 4rem;
 }
 
+/* Radius scale in a non-inline theme so rounded-* utilities read the
+   variables (the app shell overrides them). Deliberately tight on the
+   public site — athletic, not bubbly. */
+@theme {
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 12px;
+  --radius-3xl: 16px;
+}
+
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
@@ -96,14 +108,6 @@
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   --font-display: var(--font-display-sans), ui-sans-serif, system-ui, sans-serif;
 
-  /* Radius: deliberately tight — athletic, not bubbly. Overrides the
-     Tailwind scale so every existing rounded-* class follows the system. */
-  --radius-sm: 2px;
-  --radius-md: 4px;
-  --radius-lg: 6px;
-  --radius-xl: 8px;
-  --radius-2xl: 12px;
-  --radius-3xl: 16px;
 
   --shadow-lift: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
   --shadow-hit: 0 10px 30px -12px rgba(225, 29, 72, 0.55);
@@ -140,6 +144,13 @@
 @keyframes fz-ct-out {
   from { opacity: 1; }
   to   { opacity: 0; transform: scale(0.99); }
+}
+@keyframes fz-ring {
+  from { stroke-dashoffset: var(--ring-from); }
+}
+@keyframes fz-sheet-up {
+  from { transform: translateY(100%); }
+  to   { transform: translateY(0); }
 }
 @keyframes fz-drawer-in {
   from { transform: translateX(-100%); }
@@ -180,6 +191,22 @@ body {
   outline: 2px solid var(--primary-ring);
   outline-offset: 2px;
   border-radius: 2px;
+}
+/* The chat composer shows focus on its pill, not the bare textarea. */
+textarea[data-composer]:focus-visible { outline: none; }
+/* Pickers draw their own focus (active row / ring on the day). */
+[data-picker]:focus-visible, [data-picker] :focus-visible { outline: none; }
+
+/* App shell (member + coach portals): softer, app-like corners for every
+   card, list, input and button inside — the public site keeps its tight,
+   poster-like radius. Tailwind's rounded-* read these variables. */
+.app-shell {
+  --radius-sm: 6px;
+  --radius-md: 12px;
+  --radius-lg: 16px;
+  --radius-xl: 20px;
+  --radius-2xl: 24px;
+  --radius-3xl: 28px;
 }
 
 /* Numbers in dashboards and prices line up. */

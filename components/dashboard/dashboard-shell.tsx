@@ -1,448 +1,365 @@
 "use client";
 
 import type { ReactNode } from "react";
-import { useState, useEffect } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import {
-  LayoutDashboard,
-  CalendarClock,
-  Trophy,
-  Star,
-  MessageSquare,
-  Bell,
-  User,
-  Newspaper,
   ArrowUpRight,
-  Menu,
-  X,
+  BarChart3,
+  Bell,
+  CalendarClock,
   CalendarDays,
   FileText,
+  Home,
   LayoutGrid,
-  Wallet,
-  Users,
-  BarChart3,
-  Settings,
+  LogOut,
   Medal,
+  MessageCircle,
+  Newspaper,
+  Settings,
+  Star,
+  Trophy,
+  User,
+  Users,
+  Wallet,
+  X,
 } from "lucide-react";
 import { Logo } from "@/components/logo";
-import { SignOutButton } from "@/components/auth/sign-out-button";
-import { FreshnessDot } from "@/components/content/freshness-dot";
+import { signOut } from "@/lib/actions/auth";
 import { LiveUpdates } from "@/components/dashboard/live-updates";
+import { FreshnessDot } from "@/components/content/freshness-dot";
 import type { ContentMarker } from "@/lib/supabase/queries";
-import { cn } from "@/lib/utils";
 import type { CurrentUser } from "@/lib/auth/guards";
+import { cn } from "@/lib/utils";
 
 export interface DashboardNavLink {
   href: string;
   label: string;
   /** Optional count rendered as a pill (e.g. unread messages). */
   badge?: number;
-  /** Sidebar group heading this item belongs to. */
+  /** Group heading inside the "More" sheet. */
   group?: string;
+  /** Pinned to the floating dock (max 4 + More). */
+  dock?: boolean;
 }
 
 interface DashboardShellProps {
   user: CurrentUser;
   nav: DashboardNavLink[];
   children: ReactNode;
-  /** "New content" snapshot for nav indicators (member dashboards). */
-  freshness?: {
-    news: ContentMarker | null;
-    events: ContentMarker | null;
-  } | null;
+  freshness?: { news: ContentMarker | null; events: ContentMarker | null } | null;
 }
 
-/** Pages that clear each feed's indicator (shared seen-key per feed). */
 const EVENTS_HREFS = ["/events", "/member/events"];
 
-const ICON = "h-[18px] w-[18px] shrink-0";
-const NAV_ICONS: Record<string, ReactNode> = {
-  "/member": <LayoutDashboard className={ICON} />,
-  "/member/schedule": <CalendarClock className={ICON} />,
-  "/member/events": <Trophy className={ICON} />,
-  "/member/achievements": <Medal className={ICON} />,
-  "/member/reviews": <Star className={ICON} />,
-  "/member/messages": <MessageSquare className={ICON} />,
-  "/member/notifications": <Bell className={ICON} />,
-  "/member/profile": <User className={ICON} />,
-  "/admin": <LayoutDashboard className={ICON} />,
-  "/admin/events": <Trophy className={ICON} />,
-  "/admin/calendar": <CalendarDays className={ICON} />,
-  "/admin/payments": <Wallet className={ICON} />,
-  "/admin/members": <Users className={ICON} />,
-  "/admin/reports": <BarChart3 className={ICON} />,
-  "/admin/badges": <Medal className={ICON} />,
-  "/admin/settings": <Settings className={ICON} />,
-  "/admin/news": <Newspaper className={ICON} />,
-  "/admin/reviews": <Star className={ICON} />,
-  "/admin/messages": <MessageSquare className={ICON} />,
-  "/admin/notifications": <Bell className={ICON} />,
-  "/admin/content": <FileText className={ICON} />,
+const ICONS: Record<string, typeof Home> = {
+  "/member": Home,
+  "/member/events": Trophy,
+  "/member/schedule": CalendarClock,
+  "/member/achievements": Medal,
+  "/member/reviews": Star,
+  "/member/messages": MessageCircle,
+  "/member/notifications": Bell,
+  "/member/profile": User,
+  "/admin": Home,
+  "/admin/events": Trophy,
+  "/admin/calendar": CalendarDays,
+  "/admin/payments": Wallet,
+  "/admin/members": Users,
+  "/admin/reports": BarChart3,
+  "/admin/badges": Medal,
+  "/admin/settings": Settings,
+  "/admin/news": Newspaper,
+  "/admin/reviews": Star,
+  "/admin/messages": MessageCircle,
+  "/admin/notifications": Bell,
+  "/admin/content": FileText,
 };
-
-/** Up to four destinations in the mobile bottom bar (the rest live under "More"). */
-const MOBILE_NAV_PRIMARY = [
-  "/member",
-  "/member/events",
-  "/member/messages",
-  "/member/notifications",
-  "/admin",
-  "/admin/events",
-  "/admin/payments",
-  "/admin/messages",
-];
 
 function isActiveNav(pathname: string, href: string, nav: DashboardNavLink[]): boolean {
   if (pathname === href) return true;
-  const rest = pathname.slice(href.length);
-  if (!rest.startsWith("/")) return false;
+  if (!pathname.startsWith(`${href}/`)) return false;
   return !nav.some(
-    (other) =>
-      other.href !== href &&
-      other.href.length > href.length &&
-      (pathname === other.href || pathname.startsWith(`${other.href}/`)),
+    (o) => o.href !== href && o.href.length > href.length && (pathname === o.href || pathname.startsWith(`${o.href}/`)),
   );
 }
 
-function CountPill({ value, className }: { value: number; className?: string }) {
+/** Dock tab: icon over label on phones/tablets, icon beside label on desktop. */
+const DOCK_ITEM =
+  "relative flex min-h-[56px] min-w-0 flex-1 flex-col items-center justify-center gap-1 rounded-[22px] px-0.5 transition-[background-color,color,transform] duration-200 active:scale-[0.96] " +
+  "lg:min-h-[52px] lg:flex-none lg:flex-row lg:gap-2.5 lg:px-5";
+const DOCK_LABEL = "max-w-full truncate text-[11px] font-semibold leading-none max-[359px]:text-[10px] max-[359px]:tracking-tight lg:text-sm";
+
+function Count({ n, className }: { n: number; className?: string }) {
   return (
     <span
       className={cn(
-        "flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold leading-none text-white tabular",
+        "flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold leading-none text-white ring-2 ring-ink tabular",
         className,
       )}
     >
-      {value > 99 ? "99+" : value}
+      {n > 99 ? "99+" : n}
       <span className="sr-only"> new</span>
     </span>
   );
 }
 
-function SidebarNavItem({
-  item,
-  icon,
-  active,
-  onClick,
-  trailing,
-}: {
-  item: DashboardNavLink;
-  icon?: ReactNode;
-  active?: boolean;
-  onClick?: () => void;
-  trailing?: ReactNode;
-}) {
-  return (
-    <Link
-      href={item.href}
-      onClick={onClick}
-      aria-current={active ? "page" : undefined}
-      className={cn(
-        "group relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-150",
-        active ? "bg-white/[0.06] text-foreground" : "text-muted hover:bg-white/[0.03] hover:text-foreground",
-      )}
-    >
-      <span
-        aria-hidden
-        className={cn(
-          "absolute -left-3 top-1/2 h-5 w-1 -translate-y-1/2 -skew-x-12 bg-primary transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
-          active ? "scale-y-100" : "scale-y-0",
-        )}
-      />
-      <span className={cn("transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>
-        {icon}
-      </span>
-      <span className="flex-1 truncate">{item.label}</span>
-      {trailing}
-      {item.badge ? <CountPill value={item.badge} /> : null}
-    </Link>
-  );
-}
+/**
+ * App-style shell for the member area and the coach console:
+ * a floating glass top bar, a floating dock (iOS tab-bar style, on phones
+ * AND desktop) for the four main destinations, and a "More" sheet with the
+ * rest as big tiles. No sidebar, no admin chrome.
+ */
+export function DashboardShell({ user, nav, children, freshness }: DashboardShellProps) {
+  const pathname = usePathname();
+  const [moreOpen, setMoreOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+  const isStaff = user.roles.some((r) => r === "ADMIN" || r === "COACH");
+  const homeHref = isStaff ? "/admin" : "/member";
+  const notificationsHref = isStaff ? "/admin/notifications" : "/member/notifications";
+  const unread = nav.find((n) => n.href === notificationsHref)?.badge ?? 0;
+  const firstName = user.fullName?.split(" ")[0] ?? (isStaff ? "Coach" : "Athlete");
+  const initials = (user.fullName ?? user.email).split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
-function SidebarContent({
-  nav,
-  pathname,
-  onLinkClick,
-  userId,
-  freshness,
-  isStaff,
-}: {
-  nav: DashboardNavLink[];
-  pathname: string;
-  onLinkClick?: () => void;
-  userId: string | null;
-  freshness?: DashboardShellProps["freshness"];
-  isStaff: boolean;
-}) {
-  const dotFor = (href: string) =>
-    href === "/member/events" ? (
-      <FreshnessDot kind="events" hrefs={EVENTS_HREFS} userId={userId} initial={freshness?.events ?? null} />
-    ) : null;
+  // A conversation is immersive on phones/tablets: no top bar or dock.
+  const chatRoute = pathname === "/member/messages" || pathname.startsWith("/admin/messages/");
+  const dock = nav.filter((n) => n.dock).slice(0, 4);
+  const rest = nav.filter((n) => !n.dock);
+  const current = nav.find((n) => n.href !== homeHref && isActiveNav(pathname, n.href, nav));
+  const section = pathname.slice(homeHref.length + 1).split("/")[0]?.replace(/-/g, " ");
+  const screenTitle =
+    current?.label ?? (pathname === homeHref || !section ? `Hi, ${firstName}` : section.charAt(0).toUpperCase() + section.slice(1));
+  const moreActive = rest.some((n) => isActiveNav(pathname, n.href, nav));
+  const moreBadge = rest.reduce((sum, n) => sum + (n.badge ?? 0), 0);
 
-  // Preserve the order in which groups first appear.
+  // Close overlays on navigation.
+  const [prevPath, setPrevPath] = useState(pathname);
+  if (prevPath !== pathname) {
+    setPrevPath(pathname);
+    setMoreOpen(false);
+    setMenuOpen(false);
+  }
+
+  useEffect(() => {
+    if (!moreOpen) return;
+    const prev = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMoreOpen(false);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.body.style.overflow = prev;
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [moreOpen]);
+
+  useEffect(() => {
+    if (!menuOpen) return;
+    const onDown = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) setMenuOpen(false);
+    };
+    const onKey = (e: KeyboardEvent) => e.key === "Escape" && setMenuOpen(false);
+    document.addEventListener("mousedown", onDown);
+    window.addEventListener("keydown", onKey);
+    return () => {
+      document.removeEventListener("mousedown", onDown);
+      window.removeEventListener("keydown", onKey);
+    };
+  }, [menuOpen]);
+
   const groups: { name: string; items: DashboardNavLink[] }[] = [];
-  for (const item of nav) {
-    const name = item.group ?? "";
-    const existing = groups.find((g) => g.name === name);
-    if (existing) existing.items.push(item);
+  for (const item of rest) {
+    const name = item.group ?? "More";
+    const g = groups.find((x) => x.name === name);
+    if (g) g.items.push(item);
     else groups.push({ name, items: [item] });
   }
 
   return (
-    <div className="flex h-full flex-col">
-      <div className="flex-1 overflow-y-auto px-4 py-5">
-        <p className="type-overline mb-5 flex items-center gap-2 px-3 text-[10px] text-muted-foreground">
-          <span className="slant-bar h-1 w-3" aria-hidden />
-          {isStaff ? "Coach console" : "Member area"}
-        </p>
-        <nav aria-label={isStaff ? "Admin" : "Member"} className="flex flex-col gap-5">
-          {groups.map((group) => (
-            <div key={group.name || "main"} className="flex flex-col gap-0.5">
-              {group.name ? (
-                <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
-                  {group.name}
-                </p>
-              ) : null}
-              {group.items.map((item) => (
-                <SidebarNavItem
-                  key={item.href}
-                  item={item}
-                  icon={NAV_ICONS[item.href] ?? <LayoutGrid className={ICON} />}
-                  active={isActiveNav(pathname, item.href, nav)}
-                  onClick={onLinkClick}
-                  trailing={dotFor(item.href)}
-                />
-              ))}
-            </div>
-          ))}
-        </nav>
-      </div>
-
-      <div className="border-t border-ink-border p-4">
-        <Link
-          href="/"
-          onClick={onLinkClick}
-          className="group flex min-h-10 items-center gap-3 rounded-md px-3 text-sm text-muted transition-colors hover:bg-white/[0.03] hover:text-foreground"
-        >
-          <ArrowUpRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
-          View public site
-        </Link>
-      </div>
-    </div>
-  );
-}
-
-function Avatar({ initials, avatarUrl, className }: { initials: string; avatarUrl?: string | null; className?: string }) {
-  return (
-    <span
-      className={cn(
-        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-xs font-bold text-primary ring-1 ring-primary/30",
-        className,
-      )}
-      aria-hidden
-    >
-      {avatarUrl ? (
-        // eslint-disable-next-line @next/next/no-img-element -- small avatar, already sized by storage
-        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
-      ) : (
-        initials
-      )}
-    </span>
-  );
-}
-
-export function DashboardShell({ user, nav, children, freshness }: DashboardShellProps) {
-  const pathname = usePathname();
-  const [drawerOpen, setDrawerOpen] = useState(false);
-
-  // Close the drawer on navigation (adjust state during render).
-  const [prevPathname, setPrevPathname] = useState(pathname);
-  if (prevPathname !== pathname) {
-    setPrevPathname(pathname);
-    setDrawerOpen(false);
-  }
-
-  // Lock body scroll while the drawer is open; Escape closes it.
-  useEffect(() => {
-    if (!drawerOpen) return;
-    document.body.style.overflow = "hidden";
-    const onKey = (e: KeyboardEvent) => {
-      if (e.key === "Escape") setDrawerOpen(false);
-    };
-    document.addEventListener("keydown", onKey);
-    return () => {
-      document.body.style.overflow = "";
-      document.removeEventListener("keydown", onKey);
-    };
-  }, [drawerOpen]);
-
-  const initials = (user.fullName ?? user.email)
-    .split(" ")
-    .map((part) => part[0])
-    .filter(Boolean)
-    .slice(0, 2)
-    .join("")
-    .toUpperCase();
-
-  const isActive = (href: string) => isActiveNav(pathname, href, nav);
-  const primaryMobileNav = nav.filter((item) => MOBILE_NAV_PRIMARY.includes(item.href));
-  const isStaff = user.roles.some((r) => r === "ADMIN" || r === "COACH");
-  const notificationsHref = isStaff ? "/admin/notifications" : "/member/notifications";
-  const unreadNotifications = nav.find((n) => n.href === notificationsHref)?.badge ?? 0;
-  const homeHref = isStaff ? "/admin" : "/member";
-
-  return (
-    <div className="flex min-h-dvh">
+    <div className="app-shell relative min-h-dvh">
       <LiveUpdates userId={user.id} role={isStaff ? "staff" : "member"} />
 
-      {/* ─── Desktop sidebar (full height) ─────────────────────────── */}
-      <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col border-r border-ink-border bg-ink md:flex">
-        <div className="flex h-16 shrink-0 items-center border-b border-ink-border px-5">
-          <Logo variant="full" href={homeHref} />
-        </div>
-        <SidebarContent nav={nav} pathname={pathname} userId={user.id} freshness={freshness} isStaff={isStaff} />
-      </aside>
+      {/* Ambient arena light */}
+      <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,rgba(225,29,72,0.16),transparent_70%)]" />
 
-      <div className="flex min-w-0 flex-1 flex-col">
-        {/* ─── Top bar ──────────────────────────────────────────────── */}
-        <header className="sticky top-0 z-40 border-b border-ink-border bg-background/90 backdrop-blur-md">
-          <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
-            <div className="flex items-center gap-2 md:hidden">
-              <button
-                type="button"
-                onClick={() => setDrawerOpen(true)}
-                className="flex h-11 w-11 items-center justify-center rounded-md text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground"
-                aria-label="Open navigation"
-                aria-expanded={drawerOpen}
-                aria-controls="dashboard-drawer"
-              >
-                <Menu className="h-5 w-5" aria-hidden />
-              </button>
-              <Logo variant="icon" href={homeHref} />
-            </div>
-            <p className="hidden text-sm text-muted md:block">
-              {isStaff ? "Coach console" : "Welcome back"}
-              {user.fullName ? <span className="text-foreground">, {user.fullName.split(" ")[0]}</span> : null}
-            </p>
-
-            <div className="flex items-center gap-1.5 sm:gap-3">
-              <Link
-                href={notificationsHref}
-                aria-label={unreadNotifications ? `Notifications (${unreadNotifications} unread)` : "Notifications"}
-                className="relative flex h-11 w-11 items-center justify-center rounded-md text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground"
-              >
-                <Bell className="h-5 w-5" aria-hidden />
-                {unreadNotifications ? (
-                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" aria-hidden />
-                ) : null}
-              </Link>
-              <Link
-                href={isStaff ? "/admin/settings" : "/member/profile"}
-                className="hidden items-center gap-3 rounded-md py-1.5 pl-1.5 pr-3 transition-colors hover:bg-white/[0.04] sm:flex"
-              >
-                <Avatar initials={initials} avatarUrl={user.avatarUrl} className="h-8 w-8" />
-                <span className="hidden flex-col leading-tight xl:flex">
-                  <span className="text-sm font-medium text-foreground">{user.fullName ?? "Member"}</span>
-                  <span className="text-xs text-muted-foreground">{isStaff ? "Coach" : "Member"}</span>
-                </span>
-              </Link>
-              <SignOutButton />
+      {/* ─── Floating top bar ─────────────────────────────────────── */}
+      <header className={cn("fixed inset-x-0 top-0 z-40 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5", chatRoute && "hidden lg:block")}>
+        <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-ink/70 pl-3 pr-1.5 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:pl-4">
+          <div className="flex min-w-0 items-center gap-3">
+            <Logo variant="icon" href={homeHref} />
+            <span className="h-7 w-px shrink-0 bg-white/10" aria-hidden />
+            <div key={screenTitle} className="flex min-w-0 flex-col justify-center animate-[fz-backdrop-in_260ms_ease-out_both]">
+              <span className="flex items-center gap-1.5 text-[10px] font-semibold uppercase leading-none tracking-[0.16em] text-muted-foreground">
+                <span className="h-1.5 w-1.5 shrink-0 rounded-full bg-primary shadow-[0_0_8px_rgba(225,29,72,0.8)]" aria-hidden />
+                {isStaff ? "Coach console" : "Member area"}
+              </span>
+              <span className="mt-1 truncate font-display text-lg font-bold uppercase leading-none tracking-tight">
+                {screenTitle}
+              </span>
             </div>
           </div>
-        </header>
-
-        {/* Bottom padding clears the fixed mobile nav (+ iPhone home indicator). */}
-        <main
-          id="main"
-          className="mx-auto w-full max-w-[1320px] min-w-0 flex-1 px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-8 md:pb-12 lg:px-10"
-        >
-          {children}
-        </main>
-      </div>
-
-      {/* ─── Mobile drawer ─────────────────────────────────────────── */}
-      {drawerOpen && (
-        <div id="dashboard-drawer" className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
-          <div
-            className="absolute inset-0 bg-black/70 animate-[fz-backdrop-in_200ms_ease-out_both]"
-            onClick={() => setDrawerOpen(false)}
-            aria-hidden
-          />
-          <div className="absolute left-0 top-0 flex h-full w-[min(20rem,86vw)] flex-col border-r border-ink-border bg-ink shadow-2xl animate-[fz-drawer-in_280ms_var(--ease-out)_both]">
-            <div className="flex h-16 shrink-0 items-center justify-between border-b border-ink-border px-4">
-              <Logo variant="full" href={homeHref} />
+          <div className="flex items-center gap-1">
+            <Link
+              href={notificationsHref}
+              aria-label={unread ? `Notifications, ${unread} unread` : "Notifications"}
+              className="relative flex h-11 w-11 items-center justify-center rounded-xl text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground"
+            >
+              <Bell className="h-5 w-5" aria-hidden />
+              {unread ? <Count n={unread} className="absolute right-1 top-1" /> : null}
+            </Link>
+            <div className="relative" ref={menuRef}>
               <button
                 type="button"
-                onClick={() => setDrawerOpen(false)}
-                className="flex h-11 w-11 items-center justify-center rounded-md text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground"
-                aria-label="Close navigation"
+                onClick={() => setMenuOpen((v) => !v)}
+                aria-haspopup="menu"
+                aria-expanded={menuOpen}
+                className="flex h-11 items-center gap-2.5 rounded-xl pl-1.5 pr-2 transition-colors hover:bg-white/[0.06] sm:pr-3"
               >
+                <span className="relative flex h-8 w-8 items-center justify-center overflow-hidden rounded-full bg-primary text-xs font-bold text-white">
+                  {user.avatarUrl ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- storage avatar
+                    <img src={user.avatarUrl} alt="" className="h-full w-full object-cover" />
+                  ) : (
+                    initials
+                  )}
+                </span>
+                <span className="hidden text-sm font-medium sm:block">{firstName}</span>
+              </button>
+              {menuOpen ? (
+                <div
+                  role="menu"
+                  className="absolute right-0 top-[calc(100%+8px)] w-60 rounded-2xl border border-white/[0.08] bg-ink-soft/95 p-1.5 shadow-[var(--shadow-lift)] backdrop-blur-xl animate-[fz-panel-in_200ms_var(--ease-out)_both]"
+                >
+                  <div className="px-3 py-2.5">
+                    <p className="truncate text-sm font-semibold">{user.fullName ?? "Member"}</p>
+                    <p className="truncate text-xs text-muted">{user.email}</p>
+                  </div>
+                  <MenuLink href={isStaff ? "/admin/settings" : "/member/profile"} icon={isStaff ? Settings : User}>
+                    {isStaff ? "Settings" : "Profile"}
+                  </MenuLink>
+                  <MenuLink href="/" icon={ArrowUpRight}>View public site</MenuLink>
+                  <form action={signOut}>
+                    <button type="submit" role="menuitem" className="flex w-full items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-red-300 transition-colors hover:bg-danger-soft">
+                      <LogOut className="h-4 w-4" aria-hidden /> Sign out
+                    </button>
+                  </form>
+                </div>
+              ) : null}
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <main
+        id="main"
+        className={cn(
+          "mx-auto w-full max-w-[1200px] px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-[calc(5.5rem+env(safe-area-inset-top))] sm:px-6 sm:pt-28",
+          chatRoute && "max-lg:p-0",
+        )}
+      >
+        {children}
+      </main>
+
+      {/* ─── Floating dock ────────────────────────────────────────── */}
+      <nav
+        aria-label="Primary"
+        className={cn("fixed inset-x-0 bottom-0 z-40 flex justify-center px-2 min-[360px]:px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]", chatRoute && "max-lg:hidden")}
+      >
+        <div className="flex w-full max-w-[460px] items-stretch gap-0.5 rounded-[28px] border border-white/[0.08] bg-ink/75 p-1 min-[360px]:p-1.5 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.95)] backdrop-blur-xl sm:gap-1 lg:w-auto lg:max-w-none">
+          {dock.map((item) => {
+            const active = isActiveNav(pathname, item.href, nav);
+            const Icon = ICONS[item.href] ?? LayoutGrid;
+            return (
+              <Link
+                key={item.href}
+                href={item.href}
+                aria-current={active ? "page" : undefined}
+                className={cn(DOCK_ITEM, active ? "bg-primary text-white shadow-[var(--shadow-hit)]" : "text-muted hover:bg-white/[0.06] hover:text-foreground")}
+              >
+                <span className="relative flex shrink-0">
+                  <Icon className="h-[22px] w-[22px] lg:h-5 lg:w-5" aria-hidden />
+                  {item.badge ? <Count n={item.badge} className="absolute -right-2.5 -top-2" /> : null}
+                  {item.href === "/member/events" ? (
+                    <span className="absolute -right-1 -top-1 flex">
+                      <FreshnessDot kind="events" hrefs={EVENTS_HREFS} userId={user.id} initial={freshness?.events ?? null} />
+                    </span>
+                  ) : null}
+                </span>
+                <span className={DOCK_LABEL}>{item.label}</span>
+              </Link>
+            );
+          })}
+          <button
+            type="button"
+            onClick={() => setMoreOpen(true)}
+            aria-expanded={moreOpen}
+            aria-controls="more-sheet"
+            className={cn(DOCK_ITEM, moreActive ? "bg-white/[0.1] text-foreground" : "text-muted hover:bg-white/[0.06] hover:text-foreground")}
+          >
+            <span className="relative flex shrink-0">
+              <LayoutGrid className="h-[22px] w-[22px] lg:h-5 lg:w-5" aria-hidden />
+              {moreBadge ? <span className="absolute -right-1 -top-1 h-2 w-2 rounded-full bg-primary ring-2 ring-ink" aria-hidden /> : null}
+            </span>
+            <span className={DOCK_LABEL}>More</span>
+          </button>
+        </div>
+      </nav>
+
+      {/* ─── More sheet ───────────────────────────────────────────── */}
+      {moreOpen ? (
+        <div id="more-sheet" role="dialog" aria-modal="true" aria-label="More" className="fixed inset-0 z-50">
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-[fz-backdrop-in_200ms_ease-out_both]" onClick={() => setMoreOpen(false)} aria-hidden />
+          <div className="absolute inset-x-0 bottom-0 max-h-[85dvh] overflow-y-auto rounded-t-[32px] border-t border-white/[0.08] bg-ink-soft px-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] pt-3 animate-[fz-sheet-up_320ms_var(--ease-out)_both] sm:inset-x-auto sm:bottom-28 sm:left-1/2 sm:w-[min(640px,92vw)] sm:-translate-x-1/2 sm:rounded-[32px] sm:border sm:pb-6 sm:animate-[fz-panel-in_260ms_var(--ease-out)_both]">
+            <div className="mx-auto mb-4 h-1.5 w-10 rounded-full bg-white/15 sm:hidden" aria-hidden />
+            <div className="mb-5 flex items-center justify-between">
+              <p className="font-display text-2xl font-bold uppercase tracking-tight">More</p>
+              <button type="button" onClick={() => setMoreOpen(false)} aria-label="Close" className="flex h-11 w-11 items-center justify-center rounded-full bg-white/[0.06] text-muted transition-colors hover:text-foreground">
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
-            <div className="flex items-center gap-3 border-b border-ink-border px-5 py-4">
-              <Avatar initials={initials} avatarUrl={user.avatarUrl} className="h-10 w-10" />
-              <div className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-sm font-semibold text-foreground">{user.fullName ?? "Member"}</span>
-                <span className="truncate text-xs text-muted">{user.email}</span>
-              </div>
-            </div>
-            <div className="min-h-0 flex-1">
-              <SidebarContent
-                nav={nav}
-                pathname={pathname}
-                onLinkClick={() => setDrawerOpen(false)}
-                userId={user.id}
-                freshness={freshness}
-                isStaff={isStaff}
-              />
+            <div className="flex flex-col gap-6">
+              {groups.map((g) => (
+                <section key={g.name}>
+                  <p className="type-overline mb-2.5 text-[10px] text-muted-foreground">{g.name}</p>
+                  <div className="grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                    {g.items.map((item) => {
+                      const Icon = ICONS[item.href] ?? LayoutGrid;
+                      const active = isActiveNav(pathname, item.href, nav);
+                      return (
+                        <Link
+                          key={item.href}
+                          href={item.href}
+                          aria-current={active ? "page" : undefined}
+                          className={cn(
+                            "group relative flex min-h-[92px] flex-col justify-between rounded-2xl border p-4 transition-[transform,border-color,background-color] duration-200 active:scale-[0.97]",
+                            active ? "border-primary/60 bg-primary/10" : "border-white/[0.06] bg-white/[0.03] hover:border-white/15 hover:bg-white/[0.05]",
+                          )}
+                        >
+                          <span className={cn("flex h-9 w-9 items-center justify-center rounded-xl", active ? "bg-primary text-white" : "bg-white/[0.06] text-foreground/80 group-hover:text-foreground")}>
+                            <Icon className="h-[18px] w-[18px]" aria-hidden />
+                          </span>
+                          <span className="text-sm font-semibold">{item.label}</span>
+                          {item.badge ? <Count n={item.badge} className="absolute right-3 top-3" /> : null}
+                        </Link>
+                      );
+                    })}
+                  </div>
+                </section>
+              ))}
             </div>
           </div>
         </div>
-      )}
-
-      {/* ─── Mobile bottom tab bar ─────────────────────────────────── */}
-      <nav
-        aria-label="Primary"
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-ink-border bg-ink/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
-      >
-        {primaryMobileNav.map((item) => {
-          const active = isActive(item.href);
-          return (
-            <Link
-              key={item.href}
-              href={item.href}
-              aria-current={active ? "page" : undefined}
-              className={cn(
-                "relative flex min-h-16 flex-1 flex-col items-center justify-center gap-1 px-1 transition-colors",
-                active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
-              )}
-            >
-              <span
-                aria-hidden
-                className={cn(
-                  "absolute top-0 h-[3px] w-8 -skew-x-12 bg-primary transition-transform duration-200",
-                  active ? "scale-x-100" : "scale-x-0",
-                )}
-              />
-              <span className={active ? "text-primary" : undefined}>{NAV_ICONS[item.href]}</span>
-              <span className="max-w-16 truncate text-[11px] font-medium">{item.label}</span>
-              {item.badge ? <CountPill value={item.badge} className="absolute left-1/2 top-2 ml-1.5 h-4 min-w-4 px-1 text-[9px]" /> : null}
-            </Link>
-          );
-        })}
-        <button
-          type="button"
-          onClick={() => setDrawerOpen(true)}
-          className="flex min-h-16 flex-1 flex-col items-center justify-center gap-1 px-1 text-muted-foreground transition-colors hover:text-foreground"
-          aria-label="More navigation options"
-          aria-expanded={drawerOpen}
-          aria-controls="dashboard-drawer"
-        >
-          <Menu className={ICON} aria-hidden />
-          <span className="text-[11px] font-medium">More</span>
-        </button>
-      </nav>
+      ) : null}
     </div>
+  );
+}
+
+function MenuLink({ href, icon: Icon, children }: { href: string; icon: typeof Home; children: ReactNode }) {
+  return (
+    <Link href={href} role="menuitem" className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm text-foreground/85 transition-colors hover:bg-white/[0.06] hover:text-foreground">
+      <Icon className="h-4 w-4 text-muted" aria-hidden />
+      {children}
+    </Link>
   );
 }

@@ -32,6 +32,7 @@ import {
 } from "@/lib/types/events";
 import { PROOF_MAX_BYTES, PROOF_MIME_TYPES } from "@/lib/validations/events";
 import { formatDate } from "@/lib/utils";
+import { DateInput } from "@/components/ui/date-input";
 
 interface Props {
   event: EventDetail;
@@ -295,7 +296,7 @@ function PaymentBlock({
           {latest.rejection_reason}. You can upload a new proof below or pay in person.
         </Notice>
       ) : null}
-      <div className="grid gap-3 md:grid-cols-2">
+      <div className="grid gap-3 @sm:grid-cols-2">
         <div className="space-y-2 rounded-lg border border-ink-border p-4">
           <p className="flex items-center gap-2 text-sm font-medium"><Banknote className="h-4 w-4 text-primary" aria-hidden /> In person</p>
           <p className="whitespace-pre-line text-sm text-muted">
@@ -366,8 +367,8 @@ function ProofUploadForm({ registration, userId }: { registration: MemberRegistr
   return (
     <form onSubmit={onSubmit} noValidate className="space-y-4 border-t border-ink-border pt-4" aria-busy={busy !== "idle"}>
       <p className="text-sm font-medium">Already transferred? Upload your receipt</p>
-      <div className="grid gap-4 sm:grid-cols-2">
-        <div className="space-y-1.5 sm:col-span-2">
+      <div className="grid gap-4 @sm:grid-cols-2">
+        <div className="space-y-1.5 @sm:col-span-2">
           <label htmlFor="proof" className="text-sm">Receipt (image or PDF, max 5 MB)</label>
           <input
             ref={fileRef}
@@ -390,7 +391,7 @@ function ProofUploadForm({ registration, userId }: { registration: MemberRegistr
           <label htmlFor="reference" className="text-sm">Transfer reference <span className="text-muted">(optional)</span></label>
           <input id="reference" name="reference" maxLength={120} placeholder="e.g. TRF-2026-0042" className={fieldClass(!!errors.reference)} />
         </div>
-        <div className="space-y-1.5 sm:col-span-2">
+        <div className="space-y-1.5 @sm:col-span-2">
           <label htmlFor="note" className="text-sm">Note for Coach Seif <span className="text-muted">(optional)</span></label>
           <textarea id="note" name="note" rows={2} maxLength={1000} placeholder="Anything he should know about this transfer"
             className={fieldClass(!!errors.note, "resize-y")} />
@@ -439,7 +440,7 @@ function PaymentPlanFields({ today, lastDay, initial }: { today: string; lastDay
   return (
     <fieldset className="space-y-3">
       <legend className="mb-2 text-sm font-medium">How will you pay?</legend>
-      <div className="grid gap-2 sm:grid-cols-2">
+      <div className="grid gap-2 @sm:grid-cols-2">
         {([
           { v: "CASH", t: "In person", d: "Pay Coach Seif at the gym before the event." },
           { v: "BANK_TRANSFER", t: "Bank transfer", d: "Transfer, then upload the receipt here." },
@@ -451,18 +452,18 @@ function PaymentPlanFields({ today, lastDay, initial }: { today: string; lastDay
         ))}
       </div>
       {method === "BANK_TRANSFER" ? (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 @sm:grid-cols-2">
           <label className="space-y-1">
             <span className="text-sm">When will you transfer?</span>
-            <input type="date" name="plannedDate" required min={today} max={lastDay} defaultValue={initial?.date ?? ""}
+            <DateInput name="plannedDate" required min={today} max={lastDay} defaultValue={initial?.date ?? ""}
               className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft px-3 text-base sm:text-sm" />
           </label>
-          <label className="space-y-1 sm:col-span-2">
+          <label className="space-y-1 @sm:col-span-2">
             <span className="text-sm">Message to Coach Seif <span className="text-muted">(optional)</span></span>
             <input name="note" maxLength={500} placeholder="e.g. I'll transfer from my BIAT account"
               className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft px-3 text-base sm:text-sm" />
           </label>
-          <p className="text-xs text-muted sm:col-span-2">Your plan is sent to Coach Seif in Messages so you can discuss the transfer with him.</p>
+          <p className="text-xs text-muted @sm:col-span-2">Your plan is sent to Coach Seif in Messages so you can discuss the transfer with him.</p>
         </div>
       ) : null}
     </fieldset>

@@ -7,6 +7,7 @@ import { updateSession } from "@/lib/actions/services";
 import type { SessionActionState } from "@/lib/actions/services";
 import { DISCIPLINES, disciplineLabel, sessionTypeLabel, skillLevelLabel } from "@/lib/types/services";
 import type { Discipline } from "@/lib/types/services";
+import { Select } from "@/components/ui/select";
 
 const types = Object.entries(sessionTypeLabel);
 const levels = Object.entries(skillLevelLabel);
@@ -81,7 +82,7 @@ export function SessionEditForm({ session }: SessionEditFormProps) {
           <label htmlFor="type" className="text-sm font-medium">
             Session type <span className="text-destructive">*</span>
           </label>
-          <select
+          <Select
             id="type"
             name="type"
             required
@@ -93,14 +94,14 @@ export function SessionEditForm({ session }: SessionEditFormProps) {
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="space-y-1.5">
           <label htmlFor="discipline" className="text-sm font-medium">
             Discipline
           </label>
-          <select
+          <Select
             id="discipline"
             name="discipline"
             defaultValue={session.discipline ?? ""}
@@ -112,7 +113,7 @@ export function SessionEditForm({ session }: SessionEditFormProps) {
                 {disciplineLabel[d as Discipline]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -121,7 +122,7 @@ export function SessionEditForm({ session }: SessionEditFormProps) {
           <label htmlFor="level" className="text-sm font-medium">
             Level
           </label>
-          <select
+          <Select
             id="level"
             name="level"
             defaultValue={session.level ?? ""}
@@ -133,7 +134,7 @@ export function SessionEditForm({ session }: SessionEditFormProps) {
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="space-y-1.5">

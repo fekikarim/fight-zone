@@ -3,10 +3,11 @@
 import { Fragment, useCallback, useEffect, useId, useLayoutEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import {
-  ArrowDown, Check, CheckCheck, Clock, FileText, Loader2, MessageCircle, Paperclip, RotateCw, Send, ShieldCheck, X,
+  ArrowDown, ArrowUp, Check, CheckCheck, ChevronLeft, Clock, FileText, Loader2, MessageCircle, Plus, RotateCw, ShieldCheck, X,
 } from "lucide-react";
+import Link from "next/link";
+import type { ReactNode } from "react";
 import { loadNewerMessages, loadOlderMessages, markConversationRead, sendMessage } from "@/lib/actions/messages";
-import { Button } from "@/components/ui/button";
 import { createClient } from "@/lib/supabase/client";
 import { businessDateKey } from "@/lib/timezone";
 import { cn, formatDate } from "@/lib/utils";
@@ -22,6 +23,10 @@ interface MessageThreadProps {
   hasMore: boolean;
   /** Label for messages from the other person. */
   otherLabel: string;
+  /** Chat header: subtitle, back link (phones; `backDesktop` keeps it on desktop) and actions. */
+  header?: { subtitle?: ReactNode; backHref?: string; backDesktop?: boolean; actions?: ReactNode };
+  /** Quick-start replies shown in an empty conversation (fill the composer). */
+  suggestions?: string[];
 }
 
 /** Local delivery state for my own messages (server rows are always "sent"). */
@@ -45,7 +50,7 @@ const byTime = (a: Msg, b: Msg) => a.created_at.localeCompare(b.created_at) || a
  * - Typing indicator over a broadcast channel keyed by the (unguessable)
  *   conversation id; it carries no message content.
  */
-export function MessageThread({ conversationId, memberId, currentUserId, initialMessages, hasMore, otherLabel }: MessageThreadProps) {
+export function MessageThread({ conversationId, memberId, currentUserId, initialMessages, hasMore, otherLabel, header, suggestions }: MessageThreadProps) {
   const [messages, setMessages] = useState<Msg[]>(() => [...initialMessages].sort(byTime));
   const [moreAvailable, setMoreAvailable] = useState(hasMore);
   const [loadingOlder, setLoadingOlder] = useState(false);
@@ -125,7 +130,12 @@ export function MessageThread({ conversationId, memberId, currentUserId, initial
   };
   useLayoutEffect(() => {
     const el = scrollRef.current;
-    if (el) el.scrollTop = el.scrollHeight;
+    if (!el) return;
+    el.scrollTop = el.scrollHeight;
+    // Photos load after the first paint — stay pinned to the latest message.
+    const onMediaLoad = () => { if (atBottomRef.current) el.scrollTop = el.scrollHeight; };
+    el.addEventListener("load", onMediaLoad, true);
+    return () => el.removeEventListener("load", onMediaLoad, true);
   }, []);
   useEffect(() => {
     const added = messages.length - prevCount.current;
@@ -312,88 +322,146 @@ export function MessageThread({ conversationId, memberId, currentUserId, initial
   }, [body]);
 
   const lastSeenMine = [...messages].reverse().find((m) => m.sender_id === currentUserId && m.kind === "USER" && m.read_at)?.id;
+  const sameGroup = (a?: Msg, b?: Msg) =>
+    !!a && !!b && a.kind === "USER" && b.kind === "USER" && a.sender_id === b.sender_id &&
+    businessDateKey(a.created_at) === businessDateKey(b.created_at) &&
+    Math.abs(new Date(b.created_at).getTime() - new Date(a.created_at).getTime()) < 5 * 60_000;
+  const canSend = !!body.trim() || !!file;
+  const initials = otherLabel.split(" ").map((p) => p[0]).filter(Boolean).slice(0, 2).join("").toUpperCase();
 
   return (
-    <div className="relative flex min-h-0 flex-1 flex-col overflow-hidden rounded-xl border border-ink-border bg-ink-soft/30">
+    <div className="fixed inset-0 z-30 flex flex-col bg-ink lg:relative lg:inset-auto lg:z-auto lg:h-full lg:min-h-0 lg:overflow-hidden lg:rounded-[28px] lg:border lg:border-white/[0.08]">
+      {/* Chat header */}
+      <header className="relative z-10 flex items-center gap-3 border-b border-white/[0.06] bg-ink/85 px-3 pb-3 pt-[max(0.75rem,env(safe-area-inset-top))] backdrop-blur-xl sm:px-5 lg:pt-3">
+        {header?.backHref ? (
+          <Link href={header.backHref} aria-label="Back" className={cn("flex h-11 w-11 shrink-0 items-center justify-center rounded-full text-foreground transition-colors hover:bg-white/[0.06]", header.backDesktop ? "" : "lg:hidden")}>
+            <ChevronLeft className="h-6 w-6" aria-hidden />
+          </Link>
+        ) : null}
+        <span className="relative flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark text-sm font-bold text-white">
+          {initials || "?"}
+          <span className={cn("absolute bottom-0 right-0 h-3 w-3 rounded-full ring-2 ring-ink", online ? "bg-success" : "bg-muted-foreground")} aria-hidden />
+        </span>
+        <div className="min-w-0 flex-1">
+          <p className="truncate font-display text-lg font-bold uppercase leading-tight tracking-tight">{otherLabel}</p>
+          <p className="truncate text-xs text-muted" aria-live="polite">
+            {otherTyping ? <span className="font-semibold text-primary-readable">typing…</span> : header?.subtitle ?? "Private conversation"}
+          </p>
+        </div>
+        {header?.actions ? <div className="flex shrink-0 items-center gap-1">{header.actions}</div> : null}
+      </header>
+
       {!online ? (
-        <p className="border-b border-amber-500/30 bg-amber-500/10 px-4 py-1.5 text-center text-xs text-amber-200" role="status">
+        <p className="bg-warning-soft px-4 py-1.5 text-center text-xs text-warning" role="status">
           You&apos;re offline — messages will sync when you reconnect.
         </p>
       ) : null}
-      <div ref={scrollRef} onScroll={onScroll}
-        className="flex h-[calc(100dvh-20rem)] min-h-[320px] flex-col gap-1 overflow-y-auto overscroll-contain p-3 sm:h-[60dvh] sm:p-5"
-        role="log" aria-live="polite" aria-label="Messages">
+
+      {/* Timeline */}
+      <div
+        ref={scrollRef}
+        onScroll={onScroll}
+        className="relative flex min-h-0 flex-1 flex-col overflow-y-auto overscroll-contain bg-[radial-gradient(80%_50%_at_50%_0%,rgba(225,29,72,0.07),transparent_70%)] px-3 pb-4 pt-2 sm:px-6"
+        role="log"
+        aria-live="polite"
+        aria-label="Messages"
+      >
         {moreAvailable ? (
-          <Button type="button" variant="outline" size="sm" className="mx-auto mb-2 gap-2" onClick={handleLoadOlder} disabled={loadingOlder}>
-            {loadingOlder ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : null}
-            {loadingOlder ? "Loading…" : "Load older messages"}
-          </Button>
+          <button type="button" onClick={handleLoadOlder} disabled={loadingOlder}
+            className="mx-auto my-3 inline-flex min-h-9 items-center gap-2 rounded-full border border-white/10 bg-ink-soft px-4 text-xs font-semibold text-muted transition-colors hover:text-foreground disabled:opacity-60">
+            {loadingOlder ? <Loader2 className="h-3.5 w-3.5 animate-spin" aria-hidden /> : null}
+            {loadingOlder ? "Loading…" : "Earlier messages"}
+          </button>
         ) : null}
 
         {messages.length ? (
-          messages.map((m, i) => {
-            const prev = messages[i - 1];
-            const newDay = !prev || businessDateKey(prev.created_at) !== businessDateKey(m.created_at);
-            const grouped = !newDay && prev && prev.sender_id === m.sender_id && prev.kind === m.kind &&
-              new Date(m.created_at).getTime() - new Date(prev.created_at).getTime() < 5 * 60_000;
-            return (
-              <Fragment key={m.id}>
-                {newDay ? <DayDivider iso={m.created_at} /> : null}
-                {m.kind === "SYSTEM" ? (
-                  <SystemNotice m={m} />
-                ) : (
-                  <Bubble m={m} mine={m.sender_id === currentUserId} otherLabel={otherLabel} grouped={!!grouped}
-                    seen={m.id === lastSeenMine} onOpenImage={setLightbox} onRetry={retry} onDiscard={discard} />
-                )}
-              </Fragment>
-            );
-          })
+          <div className="mt-auto flex flex-col">
+            {messages.map((m, i) => {
+              const prev = messages[i - 1];
+              const next = messages[i + 1];
+              const newDay = !prev || businessDateKey(prev.created_at) !== businessDateKey(m.created_at);
+              return (
+                <Fragment key={m.id}>
+                  {newDay ? <DayDivider iso={m.created_at} /> : null}
+                  {m.kind === "SYSTEM" ? (
+                    <SystemNotice m={m} />
+                  ) : (
+                    <Bubble
+                      m={m}
+                      mine={m.sender_id === currentUserId}
+                      first={!sameGroup(prev, m)}
+                      last={!sameGroup(m, next)}
+                      seen={m.id === lastSeenMine}
+                      onOpenImage={setLightbox}
+                      onRetry={retry}
+                      onDiscard={discard}
+                    />
+                  )}
+                </Fragment>
+              );
+            })}
+          </div>
         ) : (
-          <div className="flex flex-1 flex-col items-center justify-center gap-2 text-center">
-            <MessageCircle className="h-8 w-8 text-muted" aria-hidden />
-            <p className="text-sm font-medium">No messages yet</p>
-            <p className="text-xs text-muted">Say hello and start the conversation.</p>
+          <div className="m-auto flex max-w-sm flex-col items-center gap-4 py-10 text-center">
+            <span className="flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark font-display text-2xl font-bold text-white shadow-[var(--shadow-hit)]">
+              {initials || <MessageCircle className="h-8 w-8" aria-hidden />}
+            </span>
+            <div>
+              <p className="font-display text-2xl font-bold uppercase leading-tight">Say hi to {otherLabel}</p>
+              <p className="mt-1.5 text-sm text-muted">Only the two of you can read this conversation.</p>
+            </div>
+            {suggestions?.length ? (
+              <div className="flex flex-wrap justify-center gap-2 pt-1">
+                {suggestions.map((sug) => (
+                  <button key={sug} type="button" onClick={() => { setBody(sug); inputRef.current?.focus(); }}
+                    className="rounded-full border border-white/10 bg-ink-soft px-4 py-2 text-sm text-foreground/85 transition-colors hover:border-primary/50 hover:text-foreground active:scale-[0.97]">
+                    {sug}
+                  </button>
+                ))}
+              </div>
+            ) : null}
           </div>
         )}
+
         {otherTyping ? (
-          <div className="mt-1 flex items-center gap-2 text-xs text-muted" aria-live="polite">
-            <span className="inline-flex gap-1 rounded-full bg-ink-soft px-3 py-2">
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.2s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted [animation-delay:-0.1s]" />
-              <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-muted" />
+          <div className="mt-2 flex items-end gap-2" aria-hidden>
+            <span className="inline-flex items-center gap-1 rounded-3xl rounded-bl-md bg-ink-softer px-4 py-3.5">
+              <span className="h-2 w-2 animate-bounce rounded-full bg-muted [animation-delay:-0.24s]" />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-muted [animation-delay:-0.12s]" />
+              <span className="h-2 w-2 animate-bounce rounded-full bg-muted" />
             </span>
-            {otherLabel} is typing…
           </div>
         ) : null}
       </div>
 
       {unseenBelow > 0 ? (
         <button type="button" onClick={() => scrollToEnd(true)}
-          className="absolute bottom-24 left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-3 py-1.5 text-xs font-medium text-white shadow-lg">
+          className="absolute bottom-[calc(5.5rem+env(safe-area-inset-bottom))] left-1/2 z-10 inline-flex -translate-x-1/2 items-center gap-1.5 rounded-full bg-primary px-4 py-2 text-xs font-semibold text-white shadow-[var(--shadow-hit)] animate-[fz-fade-up_220ms_var(--ease-out)_both] lg:bottom-24">
           <ArrowDown className="h-3.5 w-3.5" aria-hidden /> {unseenBelow} new message{unseenBelow === 1 ? "" : "s"}
         </button>
       ) : null}
 
+      {/* Composer */}
       <form onSubmit={(e) => { e.preventDefault(); send(); }}
-        className="border-t border-ink-border bg-background/80 p-2.5 pb-[calc(0.625rem+env(safe-area-inset-bottom))] sm:p-3">
+        className="relative z-10 bg-gradient-to-t from-ink via-ink to-ink/0 px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))] pt-2 sm:px-5 lg:pb-4">
         {file ? (
-          <div className="mb-2 flex items-center gap-3 rounded-lg border border-ink-border bg-ink-soft p-2 text-xs">
+          <div className="mb-2 flex items-center gap-3 rounded-2xl border border-white/10 bg-ink-soft p-2 pr-3 text-sm animate-[fz-fade-up_200ms_var(--ease-out)_both]">
             {filePreview ? (
               // eslint-disable-next-line @next/next/no-img-element
-              <img src={filePreview} alt="" className="h-12 w-12 rounded object-cover" />
-            ) : <FileText className="h-6 w-6" aria-hidden />}
+              <img src={filePreview} alt="" className="h-14 w-14 rounded-xl object-cover" />
+            ) : <span className="flex h-14 w-14 items-center justify-center rounded-xl bg-white/[0.06]"><FileText className="h-6 w-6" aria-hidden /></span>}
             <span className="min-w-0 flex-1 truncate">{file.name}</span>
-            <button type="button" onClick={clearFile} className="rounded p-1 text-muted hover:text-foreground" aria-label="Remove attachment">
+            <button type="button" onClick={clearFile} className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-white/[0.06] hover:text-foreground" aria-label="Remove attachment">
               <X className="h-4 w-4" aria-hidden />
             </button>
           </div>
         ) : null}
-        <div className="flex items-end gap-2">
+        <div className="flex items-end gap-2 rounded-[26px] border border-white/10 bg-ink-soft p-1.5 shadow-[0_12px_30px_-18px_rgba(0,0,0,0.9)] transition-colors focus-within:border-white/30 has-[textarea:focus-visible]:ring-2 has-[textarea:focus-visible]:ring-primary-ring">
           <input ref={fileRef} type="file" accept={ATTACHMENT_MIME_TYPES.join(",")} className="sr-only" id={`attach-${channelId}`}
             onChange={(e) => pickFile(e.target.files?.[0])} />
           <label htmlFor={`attach-${channelId}`} title="Attach a photo or PDF" aria-label="Attach a photo or PDF"
-            className="flex h-11 w-11 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted hover:bg-ink-soft hover:text-foreground">
-            <Paperclip className="h-5 w-5" aria-hidden />
+            className="flex h-10 w-10 shrink-0 cursor-pointer items-center justify-center rounded-full text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground">
+            <Plus className="h-5 w-5" aria-hidden />
           </label>
           <textarea
             ref={inputRef}
@@ -413,24 +481,29 @@ export function MessageThread({ conversationId, memberId, currentUserId, initial
               if (f) { e.preventDefault(); pickFile(f); }
             }}
             aria-label="Message"
-            placeholder="Message"
-            className="max-h-40 min-h-11 flex-1 resize-none rounded-2xl border border-ink-border bg-ink-soft px-4 py-2.5 text-base leading-snug focus-visible:border-primary focus-visible:outline-none sm:text-sm"
+            data-composer
+            placeholder={`Message ${otherLabel.split(" ")[0]}`}
+            className="max-h-40 min-h-10 flex-1 resize-none bg-transparent px-1 py-2 text-base leading-snug placeholder:text-muted-foreground focus-visible:outline-none sm:text-[15px]"
           />
-          <Button type="submit" className="h-11 w-11 shrink-0 rounded-full p-0" disabled={!body.trim() && !file} aria-label="Send">
-            <Send className="h-4 w-4" aria-hidden />
-          </Button>
+          <button type="submit" disabled={!canSend} aria-label="Send"
+            className={cn(
+              "flex h-10 w-10 shrink-0 items-center justify-center rounded-full transition-[transform,background-color,opacity] duration-200 ease-[cubic-bezier(0.22,1,0.36,1)] active:scale-90",
+              canSend ? "scale-100 bg-primary text-white opacity-100 shadow-[var(--shadow-hit)]" : "scale-75 bg-white/10 text-muted opacity-60",
+            )}>
+            <ArrowUp className="h-5 w-5" aria-hidden />
+          </button>
         </div>
-        <p className="mt-1 hidden px-14 text-[10px] text-muted sm:block">Enter to send · Shift+Enter for a new line · paste images directly</p>
+        <p className="mt-1.5 hidden text-center text-[11px] text-muted-foreground lg:block">Enter to send · Shift+Enter for a new line · paste images directly</p>
       </form>
 
       {lightbox ? (
-        <div role="dialog" aria-modal="true" aria-label="Image" className="fixed inset-0 z-50 flex items-center justify-center bg-black/90 p-4"
+        <div role="dialog" aria-modal="true" aria-label="Image" className="fixed inset-0 z-[80] flex items-center justify-center bg-black/95 p-4 animate-[fz-backdrop-in_200ms_ease-out_both]"
           onClick={() => setLightbox(null)} onKeyDown={(e) => e.key === "Escape" && setLightbox(null)}>
-          <button type="button" onClick={() => setLightbox(null)} className="absolute right-4 top-4 rounded-full bg-white/10 p-2 text-white" aria-label="Close" autoFocus>
+          <button type="button" onClick={() => setLightbox(null)} className="absolute right-4 top-[max(1rem,env(safe-area-inset-top))] flex h-11 w-11 items-center justify-center rounded-full bg-white/10 text-white" aria-label="Close" autoFocus>
             <X className="h-5 w-5" aria-hidden />
           </button>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-lg object-contain" />
+          <img src={lightbox} alt="" className="max-h-full max-w-full rounded-2xl object-contain animate-[fz-panel-in_260ms_var(--ease-out)_both]" />
         </div>
       ) : null}
     </div>
@@ -446,69 +519,69 @@ function relativeDayLabel(iso: string): string {
 }
 
 function DayDivider({ iso }: { iso: string }) {
-  const label = relativeDayLabel(iso);
   return (
-    <div className="my-3 flex justify-center" role="separator">
-      <span className="rounded-full bg-ink-soft px-3 py-1 text-[11px] text-muted">{label}</span>
+    <div className="sticky top-1 z-[1] my-3 flex justify-center" role="separator">
+      <span className="rounded-full border border-white/[0.06] bg-ink/80 px-3 py-1 text-[11px] font-semibold text-muted backdrop-blur-md">
+        {relativeDayLabel(iso)}
+      </span>
     </div>
   );
 }
 
 function SystemNotice({ m }: { m: Msg }) {
   return (
-    <div className="mx-auto my-2 w-full max-w-md rounded-xl border border-ink-border bg-background/60 px-4 py-3 text-sm">
-      <p className="mb-1 flex items-center gap-1.5 text-[11px] font-semibold uppercase tracking-wider text-primary">
-        <ShieldCheck className="h-3.5 w-3.5" aria-hidden /> Fight Zone · automatic message
+    <div className="mx-auto my-3 w-full max-w-md overflow-hidden rounded-3xl border border-white/[0.08] bg-ink-soft animate-[fz-fade-up_260ms_var(--ease-out)_both]">
+      <p className="flex items-center gap-2 border-b border-white/[0.06] px-4 py-2.5 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted">
+        <span className="flex h-5 w-5 items-center justify-center rounded-md bg-primary text-white"><ShieldCheck className="h-3 w-3" aria-hidden /></span>
+        Fight Zone · automatic
+        <time className="ml-auto font-normal normal-case tracking-normal">{formatDate(m.created_at, { hour: "numeric", minute: "2-digit" })}</time>
       </p>
-      <p className="whitespace-pre-wrap break-words text-foreground/90">{m.body}</p>
-      <time className="mt-1 block text-[10px] text-muted">{formatDate(m.created_at, { hour: "numeric", minute: "2-digit" })}</time>
+      <p className="whitespace-pre-wrap break-words px-4 py-3 text-sm leading-relaxed text-foreground/90">{m.body}</p>
     </div>
   );
 }
 
-function Bubble({ m, mine, otherLabel, grouped, seen, onOpenImage, onRetry, onDiscard }: {
-  m: Msg; mine: boolean; otherLabel: string; grouped: boolean; seen: boolean;
+function Bubble({ m, mine, first, last, seen, onOpenImage, onRetry, onDiscard }: {
+  m: Msg; mine: boolean; first: boolean; last: boolean; seen: boolean;
   onOpenImage: (src: string) => void; onRetry: (m: Msg) => void; onDiscard: (m: Msg) => void;
 }) {
   const local = m._local;
   const isImage = m.attachment_mime?.startsWith("image/");
   const src = local?.preview ?? (m.attachment_path ? `/api/message-attachments/${m.id}` : null);
   const autoCaption = m.body === "📷 Photo" || m.body === "📎 Document";
+  const hasAttachment = !!(m.attachment_path || local?.file);
+  const showText = !autoCaption || !hasAttachment;
+  // iMessage-style corners: the side facing the sender tightens inside a run.
+  const corners = mine
+    ? cn("rounded-[22px]", !first && "rounded-tr-md", !last && "rounded-br-md", last && "rounded-br-sm")
+    : cn("rounded-[22px]", !first && "rounded-tl-md", !last && "rounded-bl-md", last && "rounded-bl-sm");
   return (
-    <div className={cn("flex", mine ? "justify-end" : "justify-start", grouped ? "mt-0.5" : "mt-2")}>
-      <div className={cn("max-w-[85%] overflow-hidden rounded-2xl text-sm shadow-sm sm:max-w-[68%]",
-        mine ? "bg-primary text-white" : "border border-ink-border bg-ink-soft text-foreground",
-        mine && !grouped && "rounded-br-md", !mine && !grouped && "rounded-bl-md", local?.delivery === "failed" && "opacity-70")}>
-        {!mine && !grouped ? <p className="px-3.5 pt-2 text-[11px] font-semibold text-primary-readable">{otherLabel}</p> : null}
-        {(m.attachment_path || local?.file) && isImage && src ? (
+    <div className={cn("flex flex-col animate-[fz-fade-up_220ms_var(--ease-out)_both]", mine ? "items-end" : "items-start", first ? "mt-3" : "mt-[3px]")}>
+      <div className={cn(
+        "max-w-[82%] overflow-hidden text-[15px] leading-snug sm:max-w-[65%]",
+        corners,
+        mine ? "bg-gradient-to-br from-primary to-primary-hover text-white" : "bg-ink-softer text-foreground",
+        local?.delivery === "failed" && "opacity-70",
+      )}>
+        {hasAttachment && isImage && src ? (
           <button type="button" onClick={() => onOpenImage(src)} className="block w-full" aria-label="Open image">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={src} alt={m.attachment_name ?? "Photo"} loading="lazy" className="max-h-80 w-full object-cover" />
           </button>
         ) : null}
-        {(m.attachment_path || local?.file) && !isImage ? (
+        {hasAttachment && !isImage ? (
           <a href={local ? undefined : `/api/message-attachments/${m.id}`} target="_blank" rel="noopener noreferrer"
-            className={cn("m-1.5 flex items-center gap-2 rounded-xl px-3 py-2.5", mine ? "bg-white/15" : "bg-background/60")}>
-            <FileText className="h-5 w-5 shrink-0" aria-hidden />
+            className={cn("m-1.5 flex items-center gap-3 rounded-2xl px-3 py-2.5", mine ? "bg-white/15" : "bg-white/[0.05]")}>
+            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-black/20"><FileText className="h-5 w-5" aria-hidden /></span>
             <span className="min-w-0">
-              <span className="block truncate font-medium">{m.attachment_name ?? "Document"}</span>
-              {m.attachment_size ? <span className="text-[10px] opacity-75">PDF · {Math.max(1, Math.round(m.attachment_size / 1024))} KB</span> : null}
+              <span className="block truncate font-semibold">{m.attachment_name ?? "Document"}</span>
+              {m.attachment_size ? <span className="text-[11px] opacity-75">PDF · {Math.max(1, Math.round(m.attachment_size / 1024))} KB</span> : null}
             </span>
           </a>
         ) : null}
-        <div className="px-3.5 pb-1.5 pt-1.5">
-          {!autoCaption || !(m.attachment_path || local?.file) ? <p className="whitespace-pre-wrap break-words">{m.body}</p> : null}
-          <div className={cn("mt-0.5 flex items-center justify-end gap-1 text-[10px]", mine ? "text-white/75" : "text-muted")}>
-            <time>{formatDate(m.created_at, { hour: "numeric", minute: "2-digit" })}</time>
-            {mine ? (
-              local?.delivery === "sending" ? <Clock className="h-3 w-3" aria-label="Sending" /> :
-              local?.delivery === "failed" ? null :
-              m.read_at ? <CheckCheck className="h-3.5 w-3.5 text-sky-200" aria-label="Seen" /> : <Check className="h-3.5 w-3.5" aria-label="Sent" />
-            ) : null}
-          </div>
-        </div>
+        {showText ? <p className="whitespace-pre-wrap break-words px-4 py-2.5">{m.body}</p> : null}
         {local?.delivery === "failed" ? (
-          <div className="flex items-center justify-end gap-3 bg-black/20 px-3.5 py-1.5 text-[11px]">
+          <div className="flex items-center justify-end gap-3 bg-black/25 px-4 py-1.5 text-[11px]">
             <span>Not sent</span>
             <button type="button" onClick={() => onRetry(m)} className="inline-flex items-center gap-1 font-semibold underline-offset-2 hover:underline">
               <RotateCw className="h-3 w-3" aria-hidden /> Retry
@@ -517,7 +590,16 @@ function Bubble({ m, mine, otherLabel, grouped, seen, onOpenImage, onRetry, onDi
           </div>
         ) : null}
       </div>
-      {seen && mine ? <span className="sr-only">Seen</span> : null}
+      {last ? (
+        <span className="mt-1 flex items-center gap-1 px-2 text-[11px] text-muted-foreground">
+          <time dateTime={m.created_at}>{formatDate(m.created_at, { hour: "numeric", minute: "2-digit" })}</time>
+          {mine ? (
+            local?.delivery === "sending" ? <><Clock className="h-3 w-3" aria-hidden /> Sending</> :
+            local?.delivery === "failed" ? null :
+            m.read_at ? <><CheckCheck className="h-3.5 w-3.5 text-info" aria-hidden />{seen ? " Seen" : ""}</> : <><Check className="h-3.5 w-3.5" aria-hidden /> Sent</>
+          ) : null}
+        </span>
+      ) : null}
     </div>
   );
 }

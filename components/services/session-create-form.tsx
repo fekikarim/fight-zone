@@ -7,6 +7,7 @@ import { createSession } from "@/lib/actions/services";
 import type { SessionActionState } from "@/lib/actions/services";
 import { DISCIPLINES, disciplineLabel, sessionTypeLabel, skillLevelLabel } from "@/lib/types/services";
 import type { Discipline } from "@/lib/types/services";
+import { Select } from "@/components/ui/select";
 
 const types = Object.entries(sessionTypeLabel);
 const levels = Object.entries(skillLevelLabel);
@@ -61,7 +62,7 @@ export function SessionCreateForm() {
           <label htmlFor="type" className="text-sm font-medium">
             Session type <span className="text-destructive">*</span>
           </label>
-          <select
+          <Select
             id="type"
             name="type"
             required
@@ -72,14 +73,14 @@ export function SessionCreateForm() {
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="space-y-1.5">
           <label htmlFor="discipline" className="text-sm font-medium">
             Discipline
           </label>
-          <select
+          <Select
             id="discipline"
             name="discipline"
             className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm"
@@ -90,7 +91,7 @@ export function SessionCreateForm() {
                 {disciplineLabel[d as Discipline]}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
       </div>
 
@@ -99,7 +100,7 @@ export function SessionCreateForm() {
           <label htmlFor="level" className="text-sm font-medium">
             Level
           </label>
-          <select
+          <Select
             id="level"
             name="level"
             className="w-full rounded-lg border border-ink-border bg-ink-soft/40 px-3 py-2 text-sm"
@@ -110,7 +111,7 @@ export function SessionCreateForm() {
                 {label}
               </option>
             ))}
-          </select>
+          </Select>
         </div>
 
         <div className="space-y-1.5">

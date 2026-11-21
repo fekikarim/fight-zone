@@ -7,11 +7,11 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DailyMotivationGate } from "@/components/motivation/daily-motivation-gate";
 
 const memberNav = [
-  { href: "/member", label: "Overview", group: "Training" },
-  { href: "/member/events", label: "Events", group: "Training" },
+  { href: "/member", label: "Home", group: "Training", dock: true },
+  { href: "/member/events", label: "Events", group: "Training", dock: true },
   { href: "/member/schedule", label: "Schedule", group: "Training" },
-  { href: "/member/achievements", label: "Achievements", group: "Training" },
-  { href: "/member/messages", label: "Messages", group: "Connect" },
+  { href: "/member/achievements", label: "Badges", group: "Training", dock: true },
+  { href: "/member/messages", label: "Messages", group: "Connect", dock: true },
   { href: "/member/notifications", label: "Notifications", group: "Connect" },
   { href: "/member/reviews", label: "My reviews", group: "Connect" },
   { href: "/member/profile", label: "Profile", group: "Account" },

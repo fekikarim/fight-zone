@@ -1,17 +1,18 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { CalendarDays, CalendarPlus, ChevronRight, Lock, MapPin } from "lucide-react";
+import { CalendarPlus } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
 import { StatusBadge } from "@/components/ui/status-badge";
+import { AppTabs } from "@/components/ui/app-tabs";
+import { EventTile } from "@/components/events/event-tile";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { getMemberRegisteredEvents, getPublicEvents } from "@/lib/supabase/queries";
 import {
-  priceLabel,
   type EventDetail,
   type MemberRegistration,
 } from "@/lib/types/events";
-import { formatDate, cn, requestTime } from "@/lib/utils";
+import { requestTime } from "@/lib/utils";
 
 export const metadata: Metadata = {
   title: "My Events",
@@ -65,26 +66,14 @@ export default async function MemberEventsPage({ searchParams }: Props) {
     <Container className="flex max-w-none flex-col gap-6 px-0">
       <PageHeader eyebrow="Member area" title="Events" description="Your registrations, payments and what's coming up." />
 
-      <nav aria-label="Event lists" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
-        {TABS.map((t) => (
-          <Link
-            key={t.key}
-            href={`/member/events?tab=${t.key}`}
-            aria-current={tab === t.key ? "page" : undefined}
-            className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3.5 text-[13px] font-semibold transition-colors",
-              tab === t.key ? "border-foreground bg-foreground text-ink" : "border-ink-border text-muted hover:text-foreground",
-            )}
-          >
-            {t.label}
-            {counts[t.key] > 0 ? <span className="rounded-full bg-white/15 px-1.5 text-[10px]">{counts[t.key]}</span> : null}
-          </Link>
-        ))}
-      </nav>
+      <AppTabs
+        label="Event lists"
+        tabs={TABS.map((t) => ({ href: `/member/events?tab=${t.key}`, label: t.label, active: tab === t.key, count: counts[t.key] }))}
+      />
 
       {tab === "discover" ? (
         discover.length ? (
-          <ul className="space-y-2">
+          <ul className="grid gap-3 lg:grid-cols-2">
             {discover.map((e) => (
               <li key={e.id}>
                 <EventRow event={e} />
@@ -95,7 +84,7 @@ export default async function MemberEventsPage({ searchParams }: Props) {
           <Empty text="No other upcoming events right now — check back soon." />
         )
       ) : groups[tab].length ? (
-        <ul className="space-y-2">
+        <ul className="grid gap-3 lg:grid-cols-2">
           {groups[tab].map((x) => (
             <li key={x.registration.id}>
               <EventRow event={x.event} registration={x.registration} />
@@ -121,56 +110,31 @@ export default async function MemberEventsPage({ searchParams }: Props) {
 }
 
 function EventRow({ event, registration }: { event: EventDetail; registration?: MemberRegistration }) {
-  const needsPayment = registration && ["UNPAID", "REJECTED"].includes(registration.payment_status) &&
-    ["PENDING", "CONFIRMED"].includes(registration.registration_status);
   return (
-    <Link
+    <EventTile
+      event={event}
       href={`/member/events/${event.id}`}
-      className="group flex items-center gap-3 rounded-xl border border-ink-border bg-ink-soft/30 p-4 transition-colors hover:border-primary/40 active:bg-ink-soft/60"
-    >
-      <div className="flex w-12 shrink-0 flex-col items-center rounded-lg bg-ink-soft py-1.5 text-center">
-        <span className="text-[10px] uppercase text-muted">{formatDate(event.start_at, { month: "short" })}</span>
-        <span className="font-display text-lg font-bold leading-none">{formatDate(event.start_at, { day: "numeric" })}</span>
-      </div>
-      <div className="min-w-0 flex-1 space-y-1">
-        <p className="flex items-center gap-1.5 truncate text-sm font-semibold">
-          {event.is_private ? <Lock className="h-3.5 w-3.5 shrink-0 text-muted" aria-label="Private" /> : null}
-          <span className="truncate">{event.title}</span>
-        </p>
-        <p className="flex flex-wrap items-center gap-x-3 gap-y-0.5 text-xs text-muted">
-          <span className="inline-flex items-center gap-1">
-            <CalendarDays className="h-3 w-3" aria-hidden />
-            {formatDate(event.start_at, { weekday: "short", hour: "numeric", minute: "2-digit" })}
-          </span>
-          {event.location ? (
-            <span className="inline-flex min-w-0 items-center gap-1">
-              <MapPin className="h-3 w-3 shrink-0" aria-hidden />
-              <span className="truncate">{event.location}</span>
-            </span>
-          ) : null}
-          <span>{priceLabel(event)}</span>
-        </p>
-        {registration ? (
-          <div className="flex flex-wrap gap-1.5 pt-0.5">
+      badges={
+        registration ? (
+          <>
             <StatusBadge kind="registration" status={registration.registration_status} />
-            {registration.payment_status !== "NOT_REQUIRED" ? (
-              <StatusBadge kind="payment" status={registration.payment_status} />
-            ) : null}
-            {registration.attendance_status !== "UNMARKED" ? (
-              <StatusBadge kind="attendance" status={registration.attendance_status} />
-            ) : null}
+            {registration.payment_status !== "NOT_REQUIRED" ? <StatusBadge kind="payment" status={registration.payment_status} /> : null}
+            {registration.attendance_status !== "UNMARKED" ? <StatusBadge kind="attendance" status={registration.attendance_status} /> : null}
             {event.status === "CANCELLED" ? <Badge variant="danger" dot>Event cancelled</Badge> : null}
-          </div>
-        ) : null}
-      </div>
-      <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />
-    </Link>
+          </>
+        ) : event.spots_left === 0 ? (
+          <Badge variant="warning" dot>{event.waitlist_enabled ? "Full · waitlist" : "Full"}</Badge>
+        ) : event.spots_left != null ? (
+          <Badge variant="success" dot>{event.spots_left} left</Badge>
+        ) : null
+      }
+    />
   );
 }
 
 function Empty({ text, cta = false }: { text: string; cta?: boolean }) {
   return (
-    <div className="flex flex-col items-center gap-4 rounded-xl border border-dashed border-ink-border bg-ink-soft/40 px-6 py-14 text-center">
+    <div className="flex flex-col items-center gap-4 rounded-3xl border border-dashed border-white/15 px-6 py-14 text-center">
       <CalendarPlus className="h-10 w-10 text-primary" aria-hidden />
       <p className="text-muted">{text}</p>
       {cta ? (

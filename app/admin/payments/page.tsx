@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { AppTabs } from "@/components/ui/app-tabs";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { PaymentReviewList } from "@/components/payments/payment-review-list";
 import { getPaymentSubmissions } from "@/lib/payments/queries";
 import { requireRole } from "@/lib/auth/guards";
-import { cn } from "@/lib/utils";
 import type { PaymentSubmissionStatus } from "@/lib/types/events";
 
 export const metadata: Metadata = { title: "Payments" };
@@ -35,15 +35,15 @@ export default async function AdminPaymentsPage({ searchParams }: Props) {
           <Link href="/admin/reports" className="text-sm text-primary hover:underline">Income report →</Link>
         }
       />
-      <nav aria-label="Proof status" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 sm:mx-0 sm:px-0">
-        {TABS.map((t) => (
-          <Link key={t.key} href={`/admin/payments?status=${t.key}`} aria-current={status === t.key ? "page" : undefined}
-            className={cn("inline-flex h-9 shrink-0 items-center rounded-md border px-3.5 text-[13px] font-semibold transition-colors",
-              status === t.key ? "border-foreground bg-foreground text-ink" : "border-ink-border text-muted hover:text-foreground")}>
-            {t.label}{t.key === "SUBMITTED" && status === "SUBMITTED" && items.length ? ` · ${items.length}` : ""}
-          </Link>
-        ))}
-      </nav>
+      <AppTabs
+        label="Proof status"
+        tabs={TABS.map((t) => ({
+          href: `/admin/payments?status=${t.key}`,
+          label: t.label,
+          active: status === t.key,
+          count: t.key === "SUBMITTED" && status === "SUBMITTED" ? items.length : undefined,
+        }))}
+      />
       <PaymentReviewList items={items} highlight={sp.submission} reviewable={status === "SUBMITTED"} />
       <p className="text-xs text-muted">
         In-person payments are recorded from each event&apos;s registration list (&quot;Record payment&quot;) — no proof upload needed.

@@ -109,3 +109,102 @@ tones, dot), **`StatusBadge`** (one label+tone per backend status), `Card`, `Pag
   imagery, a short imperative action every time). No personal data is sent to the AI providers; the
   name is added on screen only. All 29 fallback lines now carry an action too.
 - Gates: tsc 0 · eslint 0 · npm test 104/104 · next build ✅. Screenshots 14–17.
+
+## 10. Portal redesign — app shell (2026-11-21)
+The member and coach portals no longer use a sidebar/admin layout:
+- **Floating glass top bar** (logo, portal name, notifications with count, avatar menu with profile/
+  settings, public site, sign out) and a **floating dock** (iOS tab-bar style) on phones *and* desktop
+  with four pinned destinations + **More**, which opens a bottom sheet (phones) / floating panel
+  (desktop) of large tiles grouped by section. Escape closes; scroll is locked while open.
+  Member dock: Home · Events · Badges · Messages. Coach dock: Home · Events · Payments · Messages.
+- **Member home:** "Let's go, {name}" hero with an activity-style progress ring (attended → next badge),
+  round quick actions with live counts, payment alerts, an "Up next" event poster with countdown,
+  the corner-talk card, and swipeable rails (open events, news).
+- **Coach home:** "Today, {name}" scoreboard (confirmed income / still to collect, 7-30-90 day switch),
+  round quick actions, "Your queue" tiles, "Next up" poster with a capacity ring, swipeable stats and
+  upcoming-event rails, latest activity.
+- Inside the shell the radius scale is softer (`.app-shell` overrides the theme variables), so every
+  inner page reads as an app; the public site keeps its tight poster radius.
+- Gates: tsc 0 · eslint 0 · npm test 104/104. Screenshots 18–22.
+- **Inner pages (follow-up):** shared `EventTile` (duotone art + date stamp, title, status badges;
+  coach version adds a capacity bar) replaces the member event rows and the coach events table;
+  `AppTabs` pill filters on events, payments; remaining filters (notifications, registrations, contact
+  inbox) restyled as pills; members as avatar cards; coach messages as chat-app conversation cards;
+  round search fields. Screenshots 23–25. Gates: tsc 0 · eslint 0 · npm test 104/104.
+
+## 11. Messaging redesign (chat-app experience)
+
+- **Phones:** chat routes (`/member/messages`, `/admin/messages/[id]`) go full-screen. The floating top bar and dock hide and the thread owns the viewport, with safe-area insets. The coach inbox (`/admin/messages`) keeps the app shell.
+- **Desktop:** the coach gets a split view, with the inbox (search, "New message to…", conversation cards) on the left and the chat card on the right. The member chat is one centred card.
+- **Thread (`components/messages/message-thread.tsx`):**
+  - chat header with an avatar, online dot, live "typing…" subtitle and actions (call, email, profile for the coach);
+  - iMessage-style grouped bubbles (crimson gradient for mine, ink for theirs);
+  - sticky day pills, automatic Fight Zone notices as cards, Sent/Seen under the last bubble;
+  - typing dots, a "New messages" jump pill and an image lightbox.
+- **Composer:** a floating pill with an attach button, an auto-growing textarea and a send button that scales in when there is something to send. Enter sends on desktop and makes a new line on touch devices. The focus ring sits on the pill.
+- **Starting a chat:** an empty conversation shows "Say hi" with one-tap suggestion chips (member side).
+- **Scrolling:** the thread stays pinned to the latest message while photos load.
+- **New components:** `conversation-list.tsx`, `inbox-panel.tsx`; `new-conversation-picker.tsx` restyled.
+- **Screenshots:** 26–30.
+
+## 12. Dock, select and date pickers
+
+- **Dock:**
+  - icon over label up to `lg`, and icon beside label (sized to content) on desktop;
+  - count badges are pinned to the icon, so they can no longer spill out of the active pill;
+  - tighter padding and labels below 360px, checked at 320, 375, 768, 1024 and 1440px with no truncation or overflow.
+- **`components/ui/select.tsx`:**
+  - a drop-in replacement for `<select>` (same props and `<option>` children) that keeps a hidden native select, so FormData, `register` and `required` keep working;
+  - a listbox popover on desktop and a bottom sheet on phones;
+  - a check mark on the chosen option and search when there are more than 8 options;
+  - full keyboard support (arrows, Home/End, typeahead, Enter, Esc).
+- **`components/ui/date-input.tsx`:**
+  - a drop-in replacement for `type="date"` and `type="datetime-local"` that keeps native min/max/required validation;
+  - a Monday-first calendar with today marked, disabled out-of-range days and month/year quick jump;
+  - hour and minute columns for date-time fields, plus Today, Clear and Done;
+  - arrow / PageUp / PageDown keyboard navigation.
+- **`components/ui/floating-panel.tsx`:** the shared surface for both pickers. It is portalled (never clipped by dialogs), flips above the field when there is no room below and closes on Esc or an outside click.
+- **Rollout:** all 26 selects and 12 date fields, across 18 files, were switched over.
+- **Screenshots:** 31–34.
+
+## 13. Profile photo header
+
+- **One identity header:** `components/member/avatar-uploader.tsx` replaces the separate avatar, buttons and email/Member row.
+- **Avatar:** a large circle (112–128px) with a crimson gradient ring and a permanent camera badge. Tapping or clicking the circle changes the photo, and on desktop you can also drag a photo onto it. Hovering shows a "Change" overlay; during an upload or removal the overlay shows a spinner.
+- **Identity:** a status chip, the name (display type) and the email, truncated with the full email on hover.
+- **Actions:** a primary "Change photo" / "Add photo" pill and a quiet "Remove" pill. Remove needs a second tap ("Tap to confirm", resets after 3.5s).
+- **Preview:** the new photo appears straight away while it uploads.
+- **Layout:** centred, with equal-width buttons, on phones; a row from 640px. Checked at 320, 375, 768 and 1440px with no overflow and 44px tap targets.
+- **Screenshots:** 35–36.
+
+## 14. Contextual top bar
+
+- **What it shows:** after the logo and a divider, a two-line label: a small "Member area" / "Coach console" overline with a crimson live dot, and the current screen's name in display type.
+- **Screen name:** "Hi, {first name}" on Home; otherwise the matching nav label, or the URL section for screens outside the nav (e.g. Profile).
+- **Motion:** the label fades in on each navigation.
+- **Responsive:** it stays one line at 320px; long titles truncate. Screenshot 37.
+
+## 15. Event detail layout
+
+`components/events/event-detail.tsx` is shared by the member, coach and public event pages.
+
+- **Left column:**
+  - a cover image (duotone, 21:9 on desktop) with a crimson date stamp, weekday and time range, plus a live countdown chip (Happening now / Today / Tomorrow / In N days, in Tunis days);
+  - "at a glance" tiles for date, time and duration, places with a capacity bar, and location;
+  - About, What to bring and How payment works cards.
+- **Right column:** a sticky ticket (400–420px) with a gradient price header, a one-line summary, the registration deadline and the action. The registration panel uses container queries (`@sm:`), so its fields lay out by the ticket's width instead of the viewport's.
+- **Phones:** cover, then the ticket, then the details, so registering stays near the top.
+- **Public page:** passes `showCover={false}` because it already has an image banner.
+- **Screenshots:** 38–39.
+
+## 16. Contact page side panel
+
+The "Talk to Coach Seif" panel in `app/(marketing)/contact/page.tsx` was mostly empty when no contact channels are configured. It is now a guided panel, with no invented promises such as reply times:
+
+- **Coach card:** slanted "SD" badge, Seif Dridi, head coach, "reads every message himself".
+- **Topic shortcuts** (`components/marketing/contact-topics.tsx`): picking one sets the form's Topic select, scrolls to the form and focuses Subject.
+- **What happens next:** a 3-step timeline (send → Seif reads it → he replies by email, or in Messages for members).
+- **Contact channels:** shown when set in Settings (two columns where there is room).
+- **Fast-track card:** "Open your Messages" for members, "Create a free account" for visitors; plus the privacy note.
+- **Responsive:** no horizontal scroll at 320px; on desktop the panel now roughly matches the form's height.
+- **Screenshots:** 40–41.

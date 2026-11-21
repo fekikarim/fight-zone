@@ -15,6 +15,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import { formatPrice } from "@/lib/utils";
+import { DateInput } from "@/components/ui/date-input";
 
 const initialState: MemberActionState = { ok: false };
 
@@ -71,7 +72,7 @@ export function BookingRequestForm({
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="scheduledAt">Preferred date &amp; time</Label>
-        <Input
+        <DateInput
           id="scheduledAt"
           type="datetime-local"
           min={minDatetime}

@@ -16,6 +16,7 @@ import {
   type EventActionState,
 } from "@/lib/actions/events";
 import type { EventStatus } from "@/lib/types/events";
+import { Select } from "@/components/ui/select";
 
 function useAction() {
   const router = useRouter();
@@ -153,14 +154,14 @@ export function EventInvitationsPanel({ eventId, invited, members }: Invitations
         }}
       >
         <label htmlFor="invite-member" className="sr-only">Member to invite</label>
-        <select id="invite-member" value={selected} onChange={(e) => setSelected(e.target.value)} className={fieldClass(false, "sm:flex-1")}>
+        <Select id="invite-member" value={selected} onChange={(e) => setSelected(e.target.value)} className={fieldClass(false, "sm:flex-1")}>
           <option value="">Choose a member…</option>
           {options.map((m) => (
             <option key={m.id} value={m.id}>
               {m.full_name ? `${m.full_name} — ${m.email}` : m.email}
             </option>
           ))}
-        </select>
+        </Select>
         <Button type="submit" disabled={pending || !selected} className="gap-2">
           <UserPlus className="h-4 w-4" aria-hidden /> Invite
         </Button>

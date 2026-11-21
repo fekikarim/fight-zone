@@ -1,10 +1,12 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
-import { Mail, Phone } from "lucide-react";
+import Link from "next/link";
+import { Mail, Phone, UserRound } from "lucide-react";
 import { requireRole } from "@/lib/auth/guards";
-import { getConversationMember, getConversationMessages } from "@/lib/supabase/queries";
-import { PageHeader } from "@/components/dashboard/page-header";
+import { getConversationMember, getConversationMessages, getInbox } from "@/lib/supabase/queries";
+import { getMembers } from "@/lib/members/queries";
 import { MessageThread } from "@/components/messages/message-thread";
+import { InboxPanel } from "@/components/messages/inbox-panel";
 
 type Params = Promise<{ conversationId: string }>;
 
@@ -14,33 +16,45 @@ export async function generateMetadata({ params }: { params: Params }): Promise<
   return { title: member?.full_name ? `Chat with ${member.full_name}` : "Messages" };
 }
 
+const iconBtn = "flex h-11 w-11 items-center justify-center rounded-full text-muted transition-colors hover:bg-white/[0.06] hover:text-foreground";
+
+/** Phones: full-screen chat. Desktop: inbox on the left, chat on the right. */
 export default async function AdminMessageThreadPage({ params }: { params: Params }) {
   const user = await requireRole(["ADMIN", "COACH"]);
   const { conversationId } = await params;
   const member = await getConversationMember(conversationId);
   if (!member) notFound();
-  const messages = await getConversationMessages(conversationId);
+  const [messages, inbox, members] = await Promise.all([
+    getConversationMessages(conversationId),
+    getInbox(""),
+    getMembers({ limit: 200 }),
+  ]);
+  const name = member.full_name ?? "Member";
 
   return (
-    <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
-      <PageHeader
-        eyebrow="Engage"
-        title={member.full_name ?? "Member"}
-        back={{ href: "/admin/messages", label: "All conversations" }}
-        description={
-          <span className="flex flex-wrap gap-x-4 gap-y-1">
-            <a href={`mailto:${member.email}`} className="inline-flex items-center gap-1 hover:text-foreground"><Mail className="h-3.5 w-3.5" aria-hidden />{member.email}</a>
-            {member.phone ? <a href={`tel:${member.phone}`} className="inline-flex items-center gap-1 hover:text-foreground"><Phone className="h-3.5 w-3.5" aria-hidden />{member.phone}</a> : null}
-          </span>
-        }
-      />
+    <div className="lg:grid lg:h-[calc(100dvh-15rem)] lg:min-h-[520px] lg:grid-cols-[minmax(0,360px)_minmax(0,1fr)] lg:gap-6">
+      <div className="hidden min-h-0 lg:flex">
+        <InboxPanel items={inbox} members={members.items} currentUserId={user.id} activeId={conversationId} headingLevel="h2" />
+      </div>
+      <h1 className="sr-only">Conversation with {name}</h1>
       <MessageThread
         conversationId={conversationId}
         memberId={member.member_id}
         currentUserId={user.id}
         initialMessages={messages}
         hasMore={messages.length >= 30}
-        otherLabel={member.full_name ?? "Member"}
+        otherLabel={name}
+        header={{
+          subtitle: member.email,
+          backHref: "/admin/messages",
+          actions: (
+            <>
+              {member.phone ? <a href={`tel:${member.phone}`} aria-label={`Call ${name}`} className={iconBtn}><Phone className="h-5 w-5" aria-hidden /></a> : null}
+              <a href={`mailto:${member.email}`} aria-label={`Email ${name}`} className={iconBtn}><Mail className="h-5 w-5" aria-hidden /></a>
+              <Link href={`/admin/members/${member.member_id}`} aria-label={`${name}'s profile`} className={iconBtn}><UserRound className="h-5 w-5" aria-hidden /></Link>
+            </>
+          ),
+        }}
       />
     </div>
   );

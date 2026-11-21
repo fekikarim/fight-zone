@@ -102,7 +102,7 @@ export function RegistrationsManager({ participants, eventStarted, eventId }: Pr
       <div role="tablist" aria-label="Filter registrations" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
         {FILTERS.filter((f) => f.key === "ALL" || counts[f.key]).map((f) => (
           <button key={f.key} type="button" role="tab" aria-selected={filter === f.key} onClick={() => setFilter(f.key)}
-            className={cn("inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3.5 text-[13px] font-semibold transition-colors",
+            className={cn("inline-flex h-10 shrink-0 items-center gap-1.5 rounded-full border px-4 text-sm font-semibold transition-colors",
               filter === f.key ? "border-foreground bg-foreground text-ink" : "border-ink-border text-muted hover:text-foreground")}>
             {f.label} <span className="opacity-75">{counts[f.key] ?? 0}</span>
           </button>

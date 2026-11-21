@@ -25,6 +25,8 @@ import type { AdminAchievementItem } from "@/lib/types/content";
 import { createAchievementSchema } from "@/lib/validations/content";
 import { issuesToFieldErrors } from "@/lib/validations/form-errors";
 import { formatDate } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
+import { DateInput } from "@/components/ui/date-input";
 
 // Must match the `achievement_type` enum (see lib/validations/content.ts).
 const ACHIEVEMENT_TYPES = ["TITLE", "TROPHY", "MEDAL", "CERTIFICATE", "RANKING"] as const;
@@ -69,13 +71,13 @@ function AchievementFields({ errors, item }: { errors: FieldErrors; item?: Admin
         <label htmlFor={`${idp}type`} className="text-sm font-medium">
           Type <span className="text-primary">*</span>
         </label>
-        <select id={`${idp}type`} name="type" defaultValue={item?.type ?? "TITLE"} className={fieldClass(!!errors.type)} {...fieldA11y("type", errors.type)}>
+        <Select id={`${idp}type`} name="type" defaultValue={item?.type ?? "TITLE"} className={fieldClass(!!errors.type)} {...fieldA11y("type", errors.type)}>
           {ACHIEVEMENT_TYPES.map((t) => (
             <option key={t} value={t}>
               {achievementTypeLabel[t]}
             </option>
           ))}
-        </select>
+        </Select>
         <FieldError id="type-error" message={errors.type} />
       </div>
 
@@ -83,7 +85,7 @@ function AchievementFields({ errors, item }: { errors: FieldErrors; item?: Admin
         <label htmlFor={`${idp}date`} className="text-sm font-medium">
           Date
         </label>
-        <input id={`${idp}date`} name="date" type="date" defaultValue={item?.date ?? ""} className={fieldClass(!!errors.date)} {...fieldA11y("date", errors.date)} />
+        <DateInput id={`${idp}date`} name="date" defaultValue={item?.date ?? ""} className={fieldClass(!!errors.date)} {...fieldA11y("date", errors.date)} />
         <FieldError id="date-error" message={errors.date} />
       </div>
 

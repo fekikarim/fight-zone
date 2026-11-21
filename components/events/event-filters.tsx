@@ -3,6 +3,7 @@ import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FIELD_BASE } from "@/components/ui/field-styles";
+import { Select } from "@/components/ui/select";
 
 const TYPES = [
   { value: "", label: "All" },
@@ -64,10 +65,10 @@ export function EventFilters({ values, categories }: { values: EventFilterValues
           {categories.length ? (
             <>
               <label htmlFor="event-cat" className="sr-only">Category</label>
-              <select id="event-cat" name="category" defaultValue={values.category ?? ""} className={cn(FIELD_BASE, "h-11 border-ink-border sm:w-44")}>
+              <Select id="event-cat" name="category" defaultValue={values.category ?? ""} className={cn(FIELD_BASE, "h-11 border-ink-border sm:w-44")}>
                 <option value="">All categories</option>
                 {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-              </select>
+              </Select>
             </>
           ) : null}
           {!isPast ? (

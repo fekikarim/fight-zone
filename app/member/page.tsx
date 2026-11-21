@@ -2,20 +2,16 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   AlertCircle,
-  ArrowRight,
   Bell,
   CalendarCheck,
   ChevronRight,
-  Gift,
   MapPin,
   MessageSquare,
-  Newspaper,
   Trophy,
 } from "lucide-react";
 import { requireUser } from "@/lib/auth/guards";
 import { Button } from "@/components/ui/button";
 import { Container } from "@/components/ui/container";
-import { BadgeMedal } from "@/components/badges/badge-medal";
 import { TodayMotivationCard } from "@/components/motivation/today-motivation-card";
 import {
   getMemberRegisteredEvents,
@@ -25,9 +21,14 @@ import {
   getUnreadNotificationCount,
 } from "@/lib/supabase/queries";
 import { getMyProgress } from "@/lib/members/progress";
-import { formatTnd, priceLabel } from "@/lib/types/events";
+import { formatTnd } from "@/lib/types/events";
 import { StatusBadge } from "@/components/ui/status-badge";
-import { EmptyState } from "@/components/empty-state";
+import Image from "next/image";
+import { ProgressRing } from "@/components/dashboard/progress-ring";
+import { Rail } from "@/components/dashboard/rail";
+import { EventCard } from "@/components/marketing/event-card";
+import { NewsCard } from "@/components/marketing/news-card";
+import { isRemoteImage, resolveEventImage } from "@/lib/events/images";
 import { formatDate, requestTime } from "@/lib/utils";
 
 export const metadata: Metadata = {
@@ -57,228 +58,171 @@ export default async function MemberDashboardPage() {
   const mine = new Set(active.map((e) => e.event.id));
   const discover = publicEvents.filter((e) => !mine.has(e.id)).slice(0, 3);
   const available = progress.rewards.filter((r) => r.status === "AVAILABLE");
-  const pct = progress.next ? Math.min(100, Math.round((progress.attended / progress.next.threshold) * 100)) : 100;
 
-  const tiles = [
-    { href: "/member/messages", icon: MessageSquare, label: "Messages", meta: unreadMessages ? `${unreadMessages} unread` : "Talk to Coach Seif", hot: unreadMessages > 0 },
-    { href: "/member/notifications", icon: Bell, label: "Notifications", meta: unreadNotifications ? `${unreadNotifications} new` : "All caught up", hot: unreadNotifications > 0 },
-    { href: "/member/events?tab=discover", icon: CalendarCheck, label: "Find an event", meta: discover.length ? `${discover.length} open to join` : "See the calendar", hot: false },
-    { href: "/member/achievements", icon: Trophy, label: "Achievements", meta: `${progress.earned.length} badge${progress.earned.length === 1 ? "" : "s"} earned`, hot: available.length > 0 },
+  const days = next ? Math.max(0, Math.ceil((new Date(next.event.start_at).getTime() - now) / 86_400_000)) : null;
+  const countdown = days == null ? null : days === 0 ? "Today" : days === 1 ? "Tomorrow" : `In ${days} days`;
+  const nextImage = next
+    ? resolveEventImage({ image_url: next.event.image_url, event_type: next.event.event_type, is_private_coaching: false })
+    : null;
+  const ringValue = progress.next ? progress.attended / progress.next.threshold : progress.earned.length ? 1 : 0;
+
+  const quick = [
+    { href: "/member/events?tab=discover", icon: CalendarCheck, label: "Find events" },
+    { href: "/member/messages", icon: MessageSquare, label: "Coach chat", badge: unreadMessages },
+    { href: "/member/achievements", icon: Trophy, label: "Badges", badge: available.length },
+    { href: "/member/notifications", icon: Bell, label: "Alerts", badge: unreadNotifications },
   ];
 
   return (
-    <Container className="flex max-w-none flex-col gap-8 px-0 pb-12">
-      {/* Personal hero */}
-      <section className="relative overflow-hidden rounded-lg border border-ink-border bg-ink-soft">
-        <div className="pointer-events-none absolute -right-16 top-0 h-full w-2/5 -skew-x-12 bg-primary/[0.08]" aria-hidden />
-        <div className="relative grid gap-6 p-6 sm:p-8 lg:grid-cols-[minmax(0,1fr)_auto] lg:items-end">
-          <div>
-            <p className="type-overline flex items-center gap-2.5 text-muted">
-              <span className="slant-bar h-1 w-4" aria-hidden />
-              Member area
+    <Container className="flex max-w-none flex-col gap-10 px-0 pb-4">
+      {/* Hero: who you are, where you stand */}
+      <section className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-br from-ink-softer via-ink-soft to-ink p-6 sm:p-9">
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-10 h-[130%] w-1/2 -skew-x-12 bg-gradient-to-b from-primary/25 via-primary/5 to-transparent" />
+        <div className="relative flex flex-col gap-8 sm:flex-row sm:items-center sm:justify-between">
+          <div className="min-w-0 animate-fade-up">
+            <p className="type-overline text-[11px] text-muted">
+              {formatDate(new Date(now).toISOString(), { weekday: "long", day: "numeric", month: "long" })}
             </p>
-            <h1 className="mt-3 font-display text-4xl font-bold uppercase leading-none tracking-tight sm:text-5xl">
-              Welcome back, {firstName}
+            <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-[0.9] tracking-tight sm:text-7xl">
+              Let&apos;s go,
+              <br />
+              <span className="text-primary">{firstName}</span>
             </h1>
-            <p className="mt-3 max-w-xl text-sm text-muted sm:text-base">
-              {progress.attended
-                ? progress.next
-                  ? `${progress.next.threshold - progress.attended} more event${progress.next.threshold - progress.attended === 1 ? "" : "s"} to unlock ${progress.next.name}.`
-                  : "Every badge on the board is yours. Keep showing up."
-                : next
-                  ? `Your first event is ${formatDate(next.event.start_at, { weekday: "long", month: "long", day: "numeric" })}. Coach Seif records your attendance on the day.`
-                  : "Your first event is waiting — register and Coach Seif will record your attendance."}
+            <p className="mt-4 max-w-md text-sm text-foreground/75 sm:text-base">
+              {progress.next
+                ? `${progress.next.threshold - progress.attended} more event${progress.next.threshold - progress.attended === 1 ? "" : "s"} to unlock ${progress.next.name}.`
+                : progress.earned.length
+                  ? "Every badge on the board is yours. Keep showing up."
+                  : next
+                    ? "Your first event is booked. Coach Seif records your attendance on the day."
+                    : "Book your first event — every one you attend counts toward your badges."}
             </p>
           </div>
-          <div className="flex items-end gap-4 lg:border-l lg:border-ink-border lg:pl-8">
-            <p className="font-display text-7xl font-bold leading-[0.8] tabular">{progress.attended}</p>
-            <p className="type-overline pb-1 text-[10px] text-muted">
-              Event{progress.attended === 1 ? "" : "s"}
-              <br />attended
-            </p>
-          </div>
+          <Link href="/member/achievements" className="group flex items-center gap-5 self-start rounded-3xl transition-transform active:scale-[0.98] sm:self-auto">
+            <ProgressRing value={ringValue} label={`${progress.attended} events attended`}>
+              <span className="font-display text-5xl font-bold leading-none tabular">{progress.attended}</span>
+              <span className="mt-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-muted">attended</span>
+            </ProgressRing>
+            <span className="flex flex-col gap-1 sm:hidden lg:flex">
+              <span className="type-overline text-[10px] text-muted-foreground">Next badge</span>
+              <span className="font-display text-xl font-bold uppercase leading-tight">{progress.next?.name ?? (progress.earned.length ? "All earned" : "Coming soon")}</span>
+              {progress.next ? <span className="text-xs text-muted tabular">{progress.attended} / {progress.next.threshold}</span> : null}
+            </span>
+          </Link>
         </div>
       </section>
 
+      {/* Quick actions */}
+      <nav aria-label="Quick actions" className="grid grid-cols-4 gap-3 sm:max-w-xl">
+        {quick.map(({ href, icon: Icon, label, badge }) => (
+          <Link key={href} href={href} className="group flex flex-col items-center gap-2 text-center">
+            <span className="relative flex h-16 w-16 items-center justify-center rounded-full border border-white/[0.08] bg-ink-soft transition-[transform,background-color,border-color] duration-200 group-hover:border-primary/50 group-hover:bg-primary/10 group-active:scale-95 sm:h-[72px] sm:w-[72px]">
+              <Icon className="h-6 w-6 text-foreground" aria-hidden />
+              {badge ? (
+                <span className="absolute -right-0.5 -top-0.5 flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white ring-2 ring-ink">
+                  {badge}
+                </span>
+              ) : null}
+            </span>
+            <span className="text-xs font-semibold text-foreground/85">{label}</span>
+          </Link>
+        ))}
+      </nav>
+
       {actions.length ? (
-        <section aria-labelledby="todo-h" className="flex flex-col gap-2">
-          <h2 id="todo-h" className="type-overline text-[11px] text-warning">Needs your attention</h2>
+        <section aria-labelledby="todo-h" className="flex flex-col gap-2.5">
+          <h2 id="todo-h" className="sr-only">Needs your attention</h2>
           {actions.map((e) => (
             <Link
               key={e.registration.id}
               href={`/member/events/${e.event.id}`}
-              className="group flex items-center gap-3 rounded-md border border-warning/30 bg-warning-soft px-4 py-3.5 transition-colors hover:border-warning/60"
+              className="group flex items-center gap-4 rounded-2xl border border-warning/30 bg-warning-soft px-4 py-4 transition-colors hover:border-warning/60"
             >
-              <AlertCircle className="h-5 w-5 shrink-0 text-warning" aria-hidden />
-              <span className="min-w-0 flex-1 text-sm">
-                {e.registration.payment_status === "REJECTED" ? "Payment proof rejected — " : "Payment due — "}
-                <strong className="font-semibold">{e.event.title}</strong>
-                <span className="text-muted"> · {formatTnd(e.registration.amount_due_tnd)}</span>
+              <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-warning/15">
+                <AlertCircle className="h-5 w-5 text-warning" aria-hidden />
               </span>
-              <span className="hidden text-xs font-semibold text-warning sm:inline">
-                {e.registration.payment_status === "REJECTED" ? "Upload again" : "Pay now"}
+              <span className="min-w-0 flex-1">
+                <span className="block text-sm font-semibold">
+                  {e.registration.payment_status === "REJECTED" ? "Proof rejected — upload again" : "Payment due"}
+                </span>
+                <span className="block truncate text-xs text-foreground/70">{e.event.title} · {formatTnd(e.registration.amount_due_tnd)}</span>
               </span>
-              <ChevronRight className="h-4 w-4 shrink-0 transition-transform group-hover:translate-x-0.5" aria-hidden />
+              <ChevronRight className="h-5 w-5 shrink-0 text-warning transition-transform group-hover:translate-x-0.5" aria-hidden />
             </Link>
           ))}
         </section>
       ) : null}
 
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)]">
-        {/* Next event ticket */}
-        <section aria-labelledby="next-h" className="flex flex-col overflow-hidden rounded-lg border border-ink-border bg-ink-soft">
-          <h2 id="next-h" className="type-overline flex items-center gap-2 border-b border-ink-border px-5 py-3.5 text-[11px] text-muted">
-            <CalendarCheck className="h-4 w-4 text-primary" aria-hidden /> Your next event
-          </h2>
-          {next ? (
-            <Link href={`/member/events/${next.event.id}`} className="group flex flex-1 items-stretch transition-colors hover:bg-white/[0.02]">
-              <span className="flex w-24 shrink-0 flex-col items-center justify-center border-r border-ink-border sm:w-28">
-                <span className="type-overline text-[10px] text-primary">{formatDate(next.event.start_at, { month: "short" })}</span>
-                <span className="font-display text-5xl font-bold leading-none">{formatDate(next.event.start_at, { day: "numeric" })}</span>
-                <span className="mt-1 text-xs text-muted">{formatDate(next.event.start_at, { weekday: "short" })}</span>
-              </span>
-              <span className="flex min-w-0 flex-1 flex-col gap-2 p-5">
-                <span className="font-display text-2xl font-bold uppercase leading-tight transition-colors group-hover:text-primary sm:text-3xl">
-                  {next.event.title}
-                </span>
-                <span className="text-sm text-muted">
-                  {formatDate(next.event.start_at, { hour: "numeric", minute: "2-digit" })}
-                  {next.event.location ? (
-                    <span className="inline-flex items-center gap-1"> · <MapPin className="h-3.5 w-3.5" aria-hidden />{next.event.location}</span>
-                  ) : null}
-                </span>
-                <span className="mt-auto flex flex-wrap gap-1.5 pt-2">
-                  <StatusBadge kind="registration" status={next.registration.registration_status} />
-                  {next.registration.payment_status !== "NOT_REQUIRED" ? (
-                    <StatusBadge kind="payment" status={next.registration.payment_status} />
-                  ) : null}
-                </span>
-              </span>
-            </Link>
-          ) : (
-            <EmptyState
-              variant="inline"
-              icon={<CalendarCheck />}
-              title="No upcoming registration"
-              description="Pick an event from the calendar — your place is held as soon as you register."
-            />
-          )}
-          <div className="flex flex-wrap gap-2 border-t border-ink-border px-5 py-4">
-            <Button asChild size="sm"><Link href="/member/events?tab=discover">Find an event</Link></Button>
-            {active.length > 1 ? <Button asChild size="sm" variant="secondary"><Link href="/member/events">All my events ({active.length})</Link></Button> : null}
-          </div>
-        </section>
-
-        {/* Progress */}
-        <section aria-labelledby="prog-h" className="flex flex-col gap-5 rounded-lg border border-ink-border bg-ink-soft p-5 sm:p-6">
-          <h2 id="prog-h" className="type-overline flex items-center gap-2 text-[11px] text-muted">
-            <Trophy className="h-4 w-4 text-primary" aria-hidden /> Progress
-          </h2>
-          {progress.next ? (
-            <div className="flex items-center gap-4">
-              <BadgeMedal icon={progress.next.icon} accent={progress.next.accent} earned={false} />
-              <div className="min-w-0 flex-1">
-                <p className="text-sm">Next badge · <span className="font-semibold">{progress.next.name}</span></p>
-                <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-ink-softer" role="progressbar" aria-valuemin={0}
-                  aria-valuemax={progress.next.threshold} aria-valuenow={progress.attended} aria-label={`Progress to ${progress.next.name}`}>
-                  <div className="h-full origin-left -skew-x-12 bg-primary transition-[width] duration-700" style={{ width: `${pct}%` }} />
-                </div>
-                <p className="mt-1.5 text-xs text-muted tabular">{progress.attended} / {progress.next.threshold} events attended</p>
-              </div>
+      {/* Up next */}
+      <section aria-labelledby="next-h" className="flex flex-col gap-4">
+        <h2 id="next-h" className="font-display text-2xl font-bold uppercase leading-none tracking-tight sm:text-3xl">Up next</h2>
+        {next && nextImage ? (
+          <Link
+            href={`/member/events/${next.event.id}`}
+            className="group relative flex min-h-[300px] flex-col justify-end overflow-hidden rounded-[28px] border border-white/[0.08] sm:min-h-[340px]"
+          >
+            <div className="zoom-img duotone absolute inset-0">
+              <Image src={nextImage} alt="" fill sizes="(min-width: 1200px) 1200px, 100vw" unoptimized={isRemoteImage(nextImage)} className="object-cover" />
             </div>
-          ) : progress.earned.length ? (
-            <p className="text-sm text-muted">You&apos;ve earned every badge available. Respect.</p>
-          ) : (
-            <p className="text-sm text-muted">Badges are earned from the events Coach Seif records you at.</p>
-          )}
-          {progress.earned.length ? (
-            <ul className="flex flex-wrap gap-2" aria-label="Earned badges">
-              {progress.earned.slice(-6).map((b) => (
-                <li key={b.id} title={b.name}><BadgeMedal icon={b.icon} accent={b.accent} size="sm" /></li>
-              ))}
-            </ul>
-          ) : null}
-          {available.length ? (
-            <p className="flex items-center gap-2 rounded-md border border-info/30 bg-info-soft px-3 py-2 text-sm text-info">
-              <Gift className="h-4 w-4" aria-hidden />{available.length} reward{available.length === 1 ? "" : "s"} available
-            </p>
-          ) : null}
-          <Link href="/member/achievements" className="group mt-auto inline-flex items-center gap-1.5 text-sm font-semibold">
-            <span className="link-draw">See all badges</span>
-            <ArrowRight className="h-4 w-4 transition-transform group-hover:translate-x-0.5" aria-hidden />
+            <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink via-ink/70 to-transparent" />
+            {countdown ? (
+              <span className="absolute left-5 top-5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-white sm:left-7 sm:top-7">
+                {countdown}
+              </span>
+            ) : null}
+            <div className="relative flex flex-col gap-4 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-8">
+              <div className="min-w-0">
+                <p className="type-overline text-[11px] text-foreground/75">
+                  {formatDate(next.event.start_at, { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" })}
+                </p>
+                <p className="mt-2 font-display text-3xl font-bold uppercase leading-[0.95] tracking-tight sm:text-5xl">{next.event.title}</p>
+                {next.event.location ? (
+                  <p className="mt-2 flex items-center gap-1.5 text-sm text-foreground/75"><MapPin className="h-4 w-4" aria-hidden />{next.event.location}</p>
+                ) : null}
+              </div>
+              <span className="flex flex-wrap gap-1.5">
+                <StatusBadge kind="registration" status={next.registration.registration_status} />
+                {next.registration.payment_status !== "NOT_REQUIRED" ? <StatusBadge kind="payment" status={next.registration.payment_status} /> : null}
+              </span>
+            </div>
           </Link>
-        </section>
-      </div>
-
-      {/* Shortcuts with live counts */}
-      <nav aria-label="Shortcuts" className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-        {tiles.map(({ href, icon: Icon, label, meta, hot }) => (
-          <Link key={href} href={href} className="group lift flex flex-col gap-4 rounded-lg border border-ink-border bg-ink-soft p-4 sm:p-5">
-            <span className="flex items-center justify-between">
-              <Icon className={hot ? "h-5 w-5 text-primary" : "h-5 w-5 text-muted"} aria-hidden />
-              {hot ? <span className="h-2 w-2 rounded-full bg-primary" aria-hidden /> : null}
-            </span>
-            <span>
-              <span className="block font-display text-lg font-semibold uppercase leading-tight">{label}</span>
-              <span className={hot ? "text-xs font-medium text-foreground/80" : "text-xs text-muted"}>{meta}</span>
-            </span>
+        ) : (
+          <div className="flex flex-col items-start gap-4 rounded-[28px] border border-dashed border-white/15 p-7 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-display text-2xl font-bold uppercase leading-tight">Nothing booked yet</p>
+              <p className="mt-1 text-sm text-muted">Pick an event — your place is held the moment you register.</p>
+            </div>
+            <Button asChild size="lg" className="w-full sm:w-auto"><Link href="/member/events?tab=discover">Find an event</Link></Button>
+          </div>
+        )}
+        {active.length > 1 ? (
+          <Link href="/member/events" className="link-draw w-fit text-sm font-semibold text-muted hover:text-foreground">
+            All my events ({active.length})
           </Link>
-        ))}
-      </nav>
+        ) : null}
+      </section>
 
       <TodayMotivationCard />
 
-      <div className="grid gap-6 lg:grid-cols-2">
-        <section aria-labelledby="disc-h" className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 id="disc-h" className="type-overline text-[11px] text-muted">Open to join</h2>
-            <Link href="/member/events?tab=discover" className="link-draw text-xs font-semibold">All events</Link>
-          </div>
-          {discover.length ? (
-            <ul className="divide-y divide-ink-border overflow-hidden rounded-lg border border-ink-border bg-ink-soft">
-              {discover.map((e) => (
-                <li key={e.id}>
-                  <Link href={`/member/events/${e.id}`} className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/[0.03]">
-                    <span className="w-11 shrink-0 text-center">
-                      <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">{formatDate(e.start_at, { month: "short" })}</span>
-                      <span className="block font-display text-2xl font-bold leading-none">{formatDate(e.start_at, { day: "numeric" })}</span>
-                    </span>
-                    <span className="min-w-0 flex-1">
-                      <span className="block truncate text-sm font-semibold">{e.title}</span>
-                      <span className="text-xs text-muted">{formatDate(e.start_at, { weekday: "short", hour: "numeric", minute: "2-digit" })} · {priceLabel(e)}</span>
-                    </span>
-                    <span className="shrink-0 text-xs text-muted">{e.spots_left === 0 ? "Full" : e.spots_left != null ? `${e.spots_left} left` : ""}</span>
-                    <ChevronRight className="h-4 w-4 shrink-0 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState icon={<CalendarCheck />} title="Nothing else open" description="You're registered for everything on the calendar right now." />
-          )}
-        </section>
-        <section aria-labelledby="news-h" className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 id="news-h" className="type-overline text-[11px] text-muted">Latest news</h2>
-            <Link href="/news" className="link-draw text-xs font-semibold">All news</Link>
-          </div>
-          {news.length ? (
-            <ul className="divide-y divide-ink-border overflow-hidden rounded-lg border border-ink-border bg-ink-soft">
-              {news.map((n) => (
-                <li key={n.id}>
-                  <Link href={`/news/${n.slug}`} className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.03]">
-                    <Newspaper className="h-4 w-4 shrink-0 text-muted" aria-hidden />
-                    <span className="min-w-0 flex-1 truncate text-sm font-medium">{n.title}</span>
-                    {n.published_at ? <span className="shrink-0 text-xs text-muted">{formatDate(n.published_at, { month: "short", day: "numeric" })}</span> : null}
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <EmptyState icon={<Newspaper />} title="No news yet" description="Announcements from Coach Seif will appear here." />
-          )}
-        </section>
-      </div>
+      {discover.length ? (
+        <Rail id="discover-h" title="Open to join" href="/member/events?tab=discover">
+          {discover.map((e) => (
+            <div key={e.id} className="w-[82%] shrink-0 snap-start sm:w-[340px]">
+              <EventCard event={e} href={`/member/events/${e.id}`} />
+            </div>
+          ))}
+        </Rail>
+      ) : null}
+
+      {news.length ? (
+        <Rail id="news-h" title="From the corner" href="/news">
+          {news.map((n) => (
+            <div key={n.id} className="w-[82%] shrink-0 snap-start sm:w-[340px]">
+              <NewsCard article={n} />
+            </div>
+          ))}
+        </Rail>
+      ) : null}
     </Container>
   );
 }

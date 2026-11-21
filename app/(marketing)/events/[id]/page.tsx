@@ -66,6 +66,7 @@ export default async function PublicEventDetailPage({ params }: Props) {
           {user ? <EventParticipantsRealtime eventId={id} /> : null}
           <EventDetailDisplay
             event={event}
+            showCover={false}
             action={
               isStaff ? (
                 <Button asChild size="lg" className="w-full">

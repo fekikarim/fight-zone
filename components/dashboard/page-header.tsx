@@ -19,7 +19,7 @@ interface PageHeaderProps {
  */
 export function PageHeader({ title, description, eyebrow, back, actions }: PageHeaderProps) {
   return (
-    <header className="flex flex-col gap-4 border-b border-ink-border pb-6">
+    <header className="flex flex-col gap-4 pb-2">
       {back ? (
         <Link
           href={back.href}
@@ -37,7 +37,7 @@ export function PageHeader({ title, description, eyebrow, back, actions }: PageH
               {eyebrow}
             </p>
           ) : null}
-          <h1 className="font-display text-[1.75rem] font-bold uppercase leading-none tracking-tight text-balance sm:text-4xl">
+          <h1 className="font-display text-4xl font-bold uppercase leading-[0.95] tracking-tight text-balance sm:text-5xl">
             {title}
           </h1>
           {description ? <p className="max-w-2xl text-sm leading-relaxed text-muted">{description}</p> : null}

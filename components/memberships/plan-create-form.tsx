@@ -6,6 +6,7 @@ import { Loader2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { createMembershipPlan } from "@/lib/actions/memberships";
 import type { MembershipActionState } from "@/lib/actions/memberships";
+import { Select } from "@/components/ui/select";
 
 export function PlanCreateForm() {
   const router = useRouter();
@@ -72,7 +73,7 @@ export function PlanCreateForm() {
           <label htmlFor="tier" className="text-sm font-medium">
             Tier <span className="text-destructive">*</span>
           </label>
-          <select
+          <Select
             id="tier"
             name="tier"
             required
@@ -84,13 +85,13 @@ export function PlanCreateForm() {
             <option value="FAMILY">Family</option>
             <option value="PRO_FIGHTER">Pro Fighter</option>
             <option value="UNLIMITED">Unlimited</option>
-          </select>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="billing_interval" className="text-sm font-medium">
             Billing interval <span className="text-destructive">*</span>
           </label>
-          <select
+          <Select
             id="billing_interval"
             name="billing_interval"
             required
@@ -100,7 +101,7 @@ export function PlanCreateForm() {
             <option value="QUARTERLY">Quarterly</option>
             <option value="ANNUAL">Annual</option>
             <option value="CUSTOM">Custom</option>
-          </select>
+          </Select>
         </div>
         <div className="space-y-1.5">
           <label htmlFor="price" className="text-sm font-medium">

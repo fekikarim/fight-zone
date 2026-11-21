@@ -32,23 +32,24 @@ export default async function AdminMembersPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Operate" title="Members" description={`${total} member${total === 1 ? "" : "s"} · profiles, registrations, payments and badges.`} />
-      <form role="search" className="relative sm:w-96">
-        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+      <form role="search" className="relative sm:max-w-md">
+        <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <label htmlFor="member-search" className="sr-only">Search members</label>
         <input id="member-search" name="q" type="search" defaultValue={q} placeholder="Name, email or phone"
-          className={cn(FIELD_BASE, "h-11 border-ink-border pl-10")} />
+          className={cn(FIELD_BASE, "h-12 rounded-full border-white/[0.08] pl-11")} />
       </form>
       {items.length ? (
-        <ul className="divide-y divide-ink-border overflow-hidden rounded-lg border border-ink-border bg-ink-soft">
+        <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((m) => (
             <li key={m.id}>
-              <Link href={`/admin/members/${m.id}`} className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.03]">
-                <UserAvatar name={m.full_name} />
+              <Link href={`/admin/members/${m.id}`} className="group flex h-full items-center gap-4 rounded-3xl border border-white/[0.06] bg-ink-soft p-4 transition-[transform,border-color,background-color] duration-200 hover:border-white/15 hover:bg-ink-softer active:scale-[0.99]">
+                <UserAvatar name={m.full_name} size="lg" />
                 <span className="min-w-0 flex-1">
-                  <span className="block truncate text-sm font-medium">{m.full_name ?? "Unnamed member"}</span>
-                  <span className="block truncate text-xs text-muted">{m.email}{m.phone ? ` · ${m.phone}` : ""}</span>
+                  <span className="block truncate font-display text-lg font-semibold uppercase leading-tight">{m.full_name ?? "Unnamed member"}</span>
+                  <span className="block truncate text-xs text-muted">{m.email}</span>
+                  <span className="mt-1 block text-[11px] text-muted-foreground">Joined {formatDate(m.created_at, { month: "short", year: "numeric" })}{m.phone ? ` · ${m.phone}` : ""}</span>
                 </span>
-                <span className="hidden text-xs text-muted sm:inline">Joined {formatDate(m.created_at, { month: "short", year: "numeric" })}</span>
+                
                 {!m.is_active ? <Badge variant="danger" dot>Inactive</Badge> : null}
                 <ChevronRight className="h-4 w-4 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />
               </Link>

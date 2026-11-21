@@ -17,6 +17,8 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Spinner } from "@/components/ui/spinner";
 import type { Database } from "@/types/database.types";
+import { Select } from "@/components/ui/select";
+import { DateInput } from "@/components/ui/date-input";
 
 type MemberProfileRow = Pick<
   Database["public"]["Tables"]["member_profiles"]["Row"],
@@ -125,7 +127,7 @@ export function ProfileForm({ fullName, phone, member }: ProfileFormProps) {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="dateOfBirth">Date of birth</Label>
-          <Input id="dateOfBirth" type="date" {...register("dateOfBirth")} />
+          <DateInput id="dateOfBirth" {...register("dateOfBirth")} />
           {errors.dateOfBirth ? (
             <p className="text-xs font-medium text-primary">
               {String(errors.dateOfBirth.message ?? "")}
@@ -135,12 +137,12 @@ export function ProfileForm({ fullName, phone, member }: ProfileFormProps) {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="gender">Gender</Label>
-          <select id="gender" className={selectClass} {...register("gender")}>
+          <Select id="gender" className={selectClass} {...register("gender")}>
             <option value="">Prefer not to say</option>
             <option value="MALE">Male</option>
             <option value="FEMALE">Female</option>
             <option value="OTHER">Other</option>
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-2 sm:col-span-2">
@@ -155,13 +157,13 @@ export function ProfileForm({ fullName, phone, member }: ProfileFormProps) {
 
         <div className="flex flex-col gap-2">
           <Label htmlFor="skillLevel">Skill level</Label>
-          <select id="skillLevel" className={selectClass} {...register("skillLevel")}>
+          <Select id="skillLevel" className={selectClass} {...register("skillLevel")}>
             <option value="">Not sure yet</option>
             <option value="BEGINNER">Beginner</option>
             <option value="INTERMEDIATE">Intermediate</option>
             <option value="ADVANCED">Advanced</option>
             <option value="PROFESSIONAL">Professional</option>
-          </select>
+          </Select>
         </div>
 
         <div className="flex flex-col gap-2">

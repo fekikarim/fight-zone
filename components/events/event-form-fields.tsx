@@ -6,6 +6,8 @@ import { ImageUploadField } from "@/components/ui/image-upload-field";
 import { EVENT_LIMITS } from "@/lib/validations/events";
 import { toBusinessDateTimeInput } from "@/lib/timezone";
 import type { EventDetail, EventType } from "@/lib/types/events";
+import { Select } from "@/components/ui/select";
+import { DateInput } from "@/components/ui/date-input";
 
 const EVENT_TYPE_OPTIONS: Array<{ value: EventType; label: string }> = [
   { value: "TRAINING", label: "Training" },
@@ -118,7 +120,7 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
             Type
             <Required />
           </label>
-          <select
+          <Select
             id="event_type"
             name="event_type"
             required
@@ -131,7 +133,7 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
                 {t.label}
               </option>
             ))}
-          </select>
+          </Select>
           <FieldError id="event_type-error" message={errors.event_type} />
         </div>
 
@@ -159,7 +161,7 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
             Start
             <Required />
           </label>
-          <input
+          <DateInput
             id="start_at"
             name="start_at"
             type="datetime-local"
@@ -177,7 +179,7 @@ export function EventFormFields({ event, errors, disabled }: EventFormFieldsProp
           <label htmlFor="end_at" className={labelClass}>
             End
           </label>
-          <input
+          <DateInput
             id="end_at"
             name="end_at"
             type="datetime-local"
@@ -408,13 +410,13 @@ function RegistrationRules({
         </div>
         <div className="space-y-1.5">
           <label htmlFor="registration_opens_at" className={labelClass}>Registration opens</label>
-          <input id="registration_opens_at" name="registration_opens_at" type="datetime-local" defaultValue={toInput(event?.registration_opens_at)}
+          <DateInput id="registration_opens_at" name="registration_opens_at" type="datetime-local" defaultValue={toInput(event?.registration_opens_at)}
             className={fieldClass(Boolean(errors.registration_opens_at))} {...fieldA11y("registration_opens_at", errors.registration_opens_at)} />
           {errors.registration_opens_at ? <FieldError id="registration_opens_at-error" message={errors.registration_opens_at} /> : <p className={hintClass}>Empty = as soon as it&apos;s published.</p>}
         </div>
         <div className="space-y-1.5">
           <label htmlFor="registration_closes_at" className={labelClass}>Registration closes</label>
-          <input id="registration_closes_at" name="registration_closes_at" type="datetime-local" defaultValue={toInput(event?.registration_closes_at)}
+          <DateInput id="registration_closes_at" name="registration_closes_at" type="datetime-local" defaultValue={toInput(event?.registration_closes_at)}
             className={fieldClass(Boolean(errors.registration_closes_at))} {...fieldA11y("registration_closes_at", errors.registration_closes_at)} />
           {errors.registration_closes_at ? <FieldError id="registration_closes_at-error" message={errors.registration_closes_at} /> : <p className={hintClass}>Empty = until the event starts.</p>}
         </div>

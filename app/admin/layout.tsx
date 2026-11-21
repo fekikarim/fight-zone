@@ -7,12 +7,12 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { AccessDenied } from "@/components/dashboard/access-denied";
 
 const adminNav = [
-  { href: "/admin", label: "Overview", group: "Operate" },
-  { href: "/admin/events", label: "Events", group: "Operate" },
+  { href: "/admin", label: "Home", group: "Operate", dock: true },
+  { href: "/admin/events", label: "Events", group: "Operate", dock: true },
   { href: "/admin/calendar", label: "Calendar", group: "Operate" },
-  { href: "/admin/payments", label: "Payments", group: "Operate" },
+  { href: "/admin/payments", label: "Payments", group: "Operate", dock: true },
   { href: "/admin/members", label: "Members", group: "Operate" },
-  { href: "/admin/messages", label: "Messages", group: "Engage" },
+  { href: "/admin/messages", label: "Messages", group: "Engage", dock: true },
   { href: "/admin/notifications", label: "Notifications", group: "Engage" },
   { href: "/admin/badges", label: "Badges & rewards", group: "Engage" },
   { href: "/admin/reviews", label: "Reviews", group: "Engage" },

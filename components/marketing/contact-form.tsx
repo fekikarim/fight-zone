@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
+import { Select } from "@/components/ui/select";
 
 const initialState: ContactActionState = { ok: false };
 
@@ -103,12 +104,12 @@ export function ContactForm() {
 
       <div className="flex flex-col gap-2">
         <Label htmlFor="category">Topic</Label>
-        <select id="category" {...register("category")}
+        <Select id="category" {...register("category")}
           className="flex h-11 w-full rounded-md border border-ink-border bg-ink-soft px-3.5 text-base text-foreground focus-visible:border-primary focus-visible:outline-none sm:text-sm">
           {CONTACT_CATEGORIES.map((c) => (
             <option key={c} value={c}>{{ GENERAL: "General question", EVENTS: "Events & registration", PAYMENT: "Payment", COACHING: "Coaching", OTHER: "Other" }[c]}</option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-2">

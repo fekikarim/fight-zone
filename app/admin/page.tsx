@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import {
   AlertCircle,
+  ChevronRight,
   Banknote,
   CalendarDays,
   ClipboardCheck,
@@ -16,9 +17,12 @@ import {
 import { requireRole } from "@/lib/auth/guards";
 import { createClient } from "@/lib/supabase/server";
 import { getAdminEvents } from "@/lib/supabase/queries";
-import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
-import { EmptyState } from "@/components/empty-state";
+import Image from "next/image";
+import { ProgressRing } from "@/components/dashboard/progress-ring";
+import { Rail } from "@/components/dashboard/rail";
+import { EventCard } from "@/components/marketing/event-card";
+import { isRemoteImage, resolveEventImage } from "@/lib/events/images";
 import { EnterPreviewButton } from "@/components/preview/enter-preview-button";
 import { formatTnd } from "@/lib/types/events";
 import { cn, formatDate, requestTime } from "@/lib/utils";
@@ -43,7 +47,7 @@ interface Dashboard {
 }
 
 export default async function AdminPage({ searchParams }: Props) {
-  await requireRole(["ADMIN", "COACH"]);
+  const user = await requireRole(["ADMIN", "COACH"]);
   const { range: raw } = await searchParams;
   const range: RangeKey = raw && raw in RANGES ? (raw as RangeKey) : "30";
   const now = requestTime();
@@ -69,180 +73,227 @@ export default async function AdminPage({ searchParams }: Props) {
       ].filter((a) => a.n > 0)
     : [];
 
-  const rangeNav = (
-    <nav aria-label="Period" className="inline-flex rounded-lg border border-ink-border bg-ink-soft p-1">
-      {(Object.keys(RANGES) as RangeKey[]).map((k) => (
-        <Link
-          key={k}
-          href={`/admin?range=${k}`}
-          aria-current={k === range ? "page" : undefined}
-          className={cn(
-            "inline-flex h-8 items-center rounded-md px-3 text-xs font-semibold transition-colors",
-            k === range ? "bg-foreground text-ink" : "text-muted hover:text-foreground",
-          )}
-        >
-          {RANGES[k]}
-        </Link>
-      ))}
-    </nav>
-  );
+  const now2 = requestTime();
+  const [lead, ...moreEvents] = upcoming;
+  const leadPct = lead?.max_participants ? lead.participant_count / lead.max_participants : null;
+  const leadImage = lead ? resolveEventImage({ image_url: lead.image_url, event_type: lead.event_type, is_private_coaching: false }) : null;
+  const leadDays = lead ? Math.max(0, Math.ceil((new Date(lead.start_at).getTime() - now2) / 86_400_000)) : null;
+  const firstName = user.fullName?.split(" ")[0] ?? "Coach";
+
+  const quick = [
+    { href: "/admin/events/new", icon: Plus, label: "New event" },
+    { href: "/admin/calendar", icon: CalendarDays, label: "Calendar" },
+    { href: "/admin/members", icon: Users, label: "Members" },
+    { href: "/admin/reports", icon: Banknote, label: "Reports" },
+  ];
 
   return (
-    <div className="flex flex-col gap-8">
-      <PageHeader
-        eyebrow="Coach console"
-        title="Overview"
-        description="Live figures from your records. Income counts only the payments you confirmed."
-        actions={
-          <>
-            <Button asChild><Link href="/admin/events/new"><Plus className="h-4 w-4" aria-hidden /> New event</Link></Button>
-            <EnterPreviewButton returnTo="/events" />
-          </>
-        }
-      />
-
-      {!d ? (
-        <p role="alert" className="flex items-center gap-2 rounded-md border border-danger/35 bg-danger-soft p-4 text-sm text-red-100">
-          <AlertCircle className="h-4 w-4" aria-hidden /> The figures could not be loaded. Refresh to try again.
-        </p>
-      ) : (
-        <>
-          <section aria-labelledby="todo-h" className="flex flex-col gap-3">
-            <h2 id="todo-h" className={cn("type-overline text-[11px]", attention.length ? "text-warning" : "text-muted")}>
-              Needs your attention
-            </h2>
-            {attention.length ? (
-              <ul className="grid gap-2 sm:grid-cols-2 xl:grid-cols-3">
-                {attention.map((a) => (
-                  <li key={a.label}>
-                    <Link
-                      href={a.href}
-                      className="group flex h-full items-center gap-4 rounded-md border border-warning/30 bg-warning-soft px-4 py-3.5 transition-colors hover:border-warning/60"
-                    >
-                      <span className="font-display text-3xl font-bold leading-none text-warning tabular">{a.n}</span>
-                      <span className="min-w-0 flex-1 text-sm leading-snug">{a.label}</span>
-                      <a.icon className="h-4 w-4 shrink-0 text-warning/80 transition-transform group-hover:translate-x-0.5" aria-hidden />
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            ) : (
-              <p className="flex items-center gap-2 rounded-md border border-success/25 bg-success-soft px-4 py-3 text-sm text-emerald-200">
-                <ClipboardCheck className="h-4 w-4" aria-hidden /> All caught up — nothing is waiting on you.
+    <div className="flex flex-col gap-10 pb-4">
+      {/* Hero scoreboard */}
+      <section className="relative overflow-hidden rounded-[28px] border border-white/[0.08] bg-gradient-to-br from-ink-softer via-ink-soft to-ink p-6 sm:p-9">
+        <div aria-hidden className="pointer-events-none absolute -right-16 -top-10 h-[130%] w-1/2 -skew-x-12 bg-gradient-to-b from-primary/25 via-primary/5 to-transparent" />
+        <div className="relative flex flex-col gap-8">
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-end sm:justify-between">
+            <div className="animate-fade-up">
+              <p className="type-overline text-[11px] text-muted">
+                {formatDate(new Date(now2).toISOString(), { weekday: "long", day: "numeric", month: "long" })}
               </p>
-            )}
-          </section>
-
-          <section aria-labelledby="kpi-h" className="flex flex-col gap-4">
-            <div className="flex flex-wrap items-center justify-between gap-3">
-              <h2 id="kpi-h" className="type-overline text-[11px] text-muted">Last {RANGES[range]}</h2>
-              {rangeNav}
+              <h1 className="mt-3 font-display text-5xl font-bold uppercase leading-[0.9] tracking-tight sm:text-7xl">
+                Today,
+                <br />
+                <span className="text-primary">{firstName}</span>
+              </h1>
             </div>
-
-            {/* Money first: the two figures Seif acts on, set large. */}
-            <div className="grid overflow-hidden rounded-lg border border-ink-border bg-ink-soft sm:grid-cols-2">
-              <Link href="/admin/reports" className="group relative flex flex-col gap-2 p-6 transition-colors hover:bg-white/[0.02] sm:p-7">
-                <span className="type-overline flex items-center gap-2 text-[11px] text-muted">
-                  <Banknote className="h-4 w-4 text-success" aria-hidden /> Confirmed income
-                </span>
-                <span className="font-display text-5xl font-bold leading-none tabular sm:text-6xl">{formatTnd(d.income_confirmed)}</span>
-                <span className="text-sm text-muted">{d.income_count} payment{d.income_count === 1 ? "" : "s"} confirmed by you</span>
-                <span className="absolute inset-x-6 bottom-0 h-[3px] -skew-x-12 bg-success/70 sm:inset-x-7" aria-hidden />
-              </Link>
-              <Link href="/admin/payments" className="group relative flex flex-col gap-2 border-t border-ink-border p-6 transition-colors hover:bg-white/[0.02] sm:border-l sm:border-t-0 sm:p-7">
-                <span className="type-overline flex items-center gap-2 text-[11px] text-muted">
-                  <AlertCircle className="h-4 w-4 text-warning" aria-hidden /> Still unpaid
-                </span>
-                <span className="font-display text-5xl font-bold leading-none tabular sm:text-6xl">{formatTnd(d.outstanding_unpaid)}</span>
-                <span className="text-sm text-muted">{d.outstanding_count} active registration{d.outstanding_count === 1 ? "" : "s"} with payment due</span>
-                <span className="absolute inset-x-6 bottom-0 h-[3px] -skew-x-12 bg-warning/70 sm:inset-x-7" aria-hidden />
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-3 xl:grid-cols-6">
-              <Kpi icon={UserPlus} label="New members" value={String(d.members_new)} sub={`${d.members_total} in total`} href="/admin/members" />
-              <Kpi icon={ClipboardCheck} label="Registrations" value={String(d.registrations_new)} sub={`${d.registrations_waitlisted} waitlisted`} href="/admin/events" />
-              <Kpi icon={CalendarDays} label="Upcoming events" value={String(d.events_upcoming)} sub={`${d.events_next_7_days} this week · ${d.events_drafts} draft${d.events_drafts === 1 ? "" : "s"}`} href="/admin/events" />
-              <Kpi icon={Users} label="Attendances" value={String(d.attendance_recorded)} sub={`${d.events_completed} completed event${d.events_completed === 1 ? "" : "s"}`} href="/admin/reports" />
-              <Kpi icon={Gift} label="Reward liability" value={formatTnd(d.reward_outstanding_value)} sub={`${d.badges_awarded} badge${d.badges_awarded === 1 ? "" : "s"} awarded`} href="/admin/badges" />
-              <Kpi icon={Inbox} label="News published" value={String(d.news_published)} sub={`${d.events_cancelled} event${d.events_cancelled === 1 ? "" : "s"} cancelled`} href="/admin/news" />
-            </div>
-          </section>
-        </>
-      )}
-
-      <div className="grid gap-6 lg:grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)]">
-        <section aria-labelledby="next-h" className="flex flex-col gap-3">
-          <div className="flex items-center justify-between">
-            <h2 id="next-h" className="type-overline text-[11px] text-muted">Next events</h2>
-            <Link href="/admin/events" className="link-draw text-xs font-semibold">All events</Link>
+            <nav aria-label="Period" className="inline-flex w-fit rounded-full border border-white/[0.08] bg-ink/60 p-1">
+              {(Object.keys(RANGES) as RangeKey[]).map((k) => (
+                <Link
+                  key={k}
+                  href={`/admin?range=${k}`}
+                  aria-current={k === range ? "page" : undefined}
+                  className={cn(
+                    "inline-flex h-9 items-center rounded-full px-4 text-xs font-semibold transition-colors",
+                    k === range ? "bg-foreground text-ink" : "text-muted hover:text-foreground",
+                  )}
+                >
+                  {RANGES[k]}
+                </Link>
+              ))}
+            </nav>
           </div>
-          {upcoming.length ? (
-            <ul className="divide-y divide-ink-border overflow-hidden rounded-lg border border-ink-border bg-ink-soft">
-              {upcoming.slice(0, 6).map((e) => {
-                const pct = e.max_participants ? Math.min(100, Math.round((e.participant_count / e.max_participants) * 100)) : null;
-                return (
-                  <li key={e.id}>
-                    <Link href={`/admin/events/${e.id}`} className="group flex items-center gap-4 px-4 py-3.5 transition-colors hover:bg-white/[0.03]">
-                      <span className="w-11 shrink-0 text-center">
-                        <span className="block text-[10px] font-semibold uppercase tracking-[0.14em] text-primary">{formatDate(e.start_at, { month: "short" })}</span>
-                        <span className="block font-display text-2xl font-bold leading-none">{formatDate(e.start_at, { day: "numeric" })}</span>
-                      </span>
-                      <span className="min-w-0 flex-1">
-                        <span className="block truncate text-sm font-semibold">{e.title}</span>
-                        <span className="text-xs text-muted">{formatDate(e.start_at, { weekday: "short", hour: "numeric", minute: "2-digit" })}</span>
-                      </span>
-                      <span className="w-24 shrink-0 text-right">
-                        <span className="block text-xs text-muted tabular">
-                          {e.max_participants ? `${e.participant_count}/${e.max_participants}` : `${e.participant_count}`} places
-                        </span>
-                        {pct != null ? (
-                          <span className="mt-1.5 block h-1 overflow-hidden rounded-full bg-ink-softer" aria-hidden>
-                            <span className={cn("block h-full", pct >= 100 ? "bg-warning" : "bg-primary")} style={{ width: `${pct}%` }} />
-                          </span>
-                        ) : null}
-                      </span>
-                    </Link>
-                  </li>
-                );
-              })}
-            </ul>
+          {d ? (
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Link href="/admin/reports" className="group rounded-3xl bg-ink/50 p-5 ring-1 ring-white/[0.06] transition-colors hover:ring-success/40 sm:p-6">
+                <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-success">
+                  <Banknote className="h-4 w-4" aria-hidden /> Confirmed · last {RANGES[range]}
+                </span>
+                <span className="mt-3 block font-display text-5xl font-bold leading-none tabular sm:text-6xl">{formatTnd(d.income_confirmed)}</span>
+                <span className="mt-2 block text-sm text-muted">{d.income_count} payment{d.income_count === 1 ? "" : "s"} you confirmed</span>
+              </Link>
+              <Link href="/admin/payments" className="group rounded-3xl bg-ink/50 p-5 ring-1 ring-white/[0.06] transition-colors hover:ring-warning/40 sm:p-6">
+                <span className="flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.14em] text-warning">
+                  <AlertCircle className="h-4 w-4" aria-hidden /> Still to collect
+                </span>
+                <span className="mt-3 block font-display text-5xl font-bold leading-none tabular sm:text-6xl">{formatTnd(d.outstanding_unpaid)}</span>
+                <span className="mt-2 block text-sm text-muted">{d.outstanding_count} active registration{d.outstanding_count === 1 ? "" : "s"}</span>
+              </Link>
+            </div>
           ) : (
-            <EmptyState icon={<CalendarDays />} title="No upcoming events" description="Publish an event and it will show up here with its registrations." actionLabel="Create an event" actionHref="/admin/events/new" />
+            <p role="alert" className="flex items-center gap-2 rounded-2xl border border-danger/35 bg-danger-soft p-4 text-sm text-red-100">
+              <AlertCircle className="h-4 w-4" aria-hidden /> The figures could not be loaded. Refresh to try again.
+            </p>
           )}
-        </section>
-        <section aria-labelledby="audit-h" className="flex flex-col gap-3">
-          <h2 id="audit-h" className="type-overline text-[11px] text-muted">Recent activity</h2>
-          {audit.data?.length ? (
-            <ol className="relative flex flex-col rounded-lg border border-ink-border bg-ink-soft px-5 py-3">
-              {audit.data.map((a) => (
-                <li key={a.id} className="relative flex items-start gap-3 py-2.5 pl-5 text-sm before:absolute before:left-[3px] before:top-0 before:h-full before:w-px before:bg-ink-border first:before:top-4 last:before:h-4">
-                  <span className="absolute left-0 top-[15px] h-[7px] w-[7px] rounded-full bg-primary ring-4 ring-ink-soft" aria-hidden />
-                  <span className="min-w-0 flex-1 truncate first-letter:uppercase">{a.action.replace(/[._]/g, " ")}</span>
-                  <time dateTime={a.created_at} className="shrink-0 text-xs text-muted">
-                    {formatDate(a.created_at, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
-                  </time>
+        </div>
+      </section>
+
+      {/* Quick actions */}
+      <nav aria-label="Quick actions" className="flex flex-wrap items-start gap-x-3 gap-y-4">
+        {quick.map(({ href, icon: Icon, label }) => (
+          <Link key={href} href={href} className="group flex w-[72px] flex-col items-center gap-2 text-center sm:w-20">
+            <span className="flex h-16 w-16 items-center justify-center rounded-full border border-white/[0.08] bg-ink-soft transition-[transform,background-color,border-color] duration-200 group-hover:border-primary/50 group-hover:bg-primary/10 group-active:scale-95 sm:h-[72px] sm:w-[72px]">
+              <Icon className="h-6 w-6" aria-hidden />
+            </span>
+            <span className="text-xs font-semibold text-foreground/85">{label}</span>
+          </Link>
+        ))}
+        <div className="ml-auto self-center"><EnterPreviewButton returnTo="/events" /></div>
+      </nav>
+
+      {/* Your queue */}
+      {d ? (
+        <section aria-labelledby="todo-h" className="flex flex-col gap-4">
+          <h2 id="todo-h" className="font-display text-2xl font-bold uppercase leading-none tracking-tight sm:text-3xl">Your queue</h2>
+          {attention.length ? (
+            <ul className="grid grid-cols-2 gap-3 lg:grid-cols-4">
+              {attention.map((a) => (
+                <li key={a.label}>
+                  <Link
+                    href={a.href}
+                    className="group flex h-full min-h-[132px] flex-col justify-between rounded-3xl border border-warning/25 bg-warning-soft p-4 transition-[transform,border-color] duration-200 hover:border-warning/60 active:scale-[0.98] sm:p-5"
+                  >
+                    <span className="flex items-center justify-between">
+                      <a.icon className="h-5 w-5 text-warning" aria-hidden />
+                      <ChevronRight className="h-4 w-4 text-warning/70 transition-transform group-hover:translate-x-0.5" aria-hidden />
+                    </span>
+                    <span>
+                      <span className="block font-display text-4xl font-bold leading-none text-warning tabular">{a.n}</span>
+                      <span className="mt-1 block text-sm leading-snug text-foreground/85">{a.label}</span>
+                    </span>
+                  </Link>
                 </li>
               ))}
-            </ol>
+            </ul>
           ) : (
-            <EmptyState icon={<ClipboardCheck />} title="No activity yet" description="Decisions, payments and edits you make are logged here." />
+            <p className="flex items-center gap-3 rounded-3xl border border-success/25 bg-success-soft px-5 py-4 text-sm text-emerald-200">
+              <ClipboardCheck className="h-5 w-5" aria-hidden /> All clear — nothing is waiting on you.
+            </p>
           )}
         </section>
-      </div>
+      ) : null}
+
+      {/* Next up */}
+      <section aria-labelledby="next-h" className="flex flex-col gap-4">
+        <div className="flex items-end justify-between gap-4">
+          <h2 id="next-h" className="font-display text-2xl font-bold uppercase leading-none tracking-tight sm:text-3xl">Next up</h2>
+          <Link href="/admin/events" className="link-draw text-sm font-semibold text-muted hover:text-foreground">All events</Link>
+        </div>
+        {lead && leadImage ? (
+          <Link href={`/admin/events/${lead.id}`} className="group relative flex min-h-[280px] flex-col justify-end overflow-hidden rounded-[28px] border border-white/[0.08]">
+            <div className="zoom-img duotone absolute inset-0">
+              <Image src={leadImage} alt="" fill sizes="(min-width: 1200px) 1200px, 100vw" unoptimized={isRemoteImage(leadImage)} className="object-cover" />
+            </div>
+            <div aria-hidden className="absolute inset-0 bg-gradient-to-t from-ink via-ink/75 to-ink/10" />
+            <span className="absolute left-5 top-5 rounded-full bg-primary px-3.5 py-1.5 text-xs font-bold uppercase tracking-[0.12em] text-white sm:left-7 sm:top-7">
+              {leadDays === 0 ? "Today" : leadDays === 1 ? "Tomorrow" : `In ${leadDays} days`}
+            </span>
+            <div className="relative flex flex-col gap-5 p-5 sm:flex-row sm:items-end sm:justify-between sm:p-8">
+              <div className="min-w-0">
+                <p className="type-overline text-[11px] text-foreground/75">
+                  {formatDate(lead.start_at, { weekday: "long", day: "numeric", month: "long", hour: "numeric", minute: "2-digit" })}
+                </p>
+                <p className="mt-2 font-display text-3xl font-bold uppercase leading-[0.95] tracking-tight sm:text-5xl">{lead.title}</p>
+              </div>
+              <ProgressRing
+                value={leadPct ?? 0}
+                size={104}
+                stroke={10}
+                tone={leadPct != null && leadPct >= 1 ? "warning" : "primary"}
+                label={lead.max_participants ? `${lead.participant_count} of ${lead.max_participants} places taken` : `${lead.participant_count} registered`}
+              >
+                <span className="font-display text-2xl font-bold leading-none tabular">
+                  {lead.participant_count}
+                  {lead.max_participants ? <span className="text-sm text-muted">/{lead.max_participants}</span> : null}
+                </span>
+                <span className="mt-0.5 text-[9px] font-semibold uppercase tracking-[0.14em] text-muted">places</span>
+              </ProgressRing>
+            </div>
+          </Link>
+        ) : (
+          <div className="flex flex-col items-start gap-4 rounded-[28px] border border-dashed border-white/15 p-7 sm:flex-row sm:items-center sm:justify-between">
+            <div>
+              <p className="font-display text-2xl font-bold uppercase leading-tight">No upcoming events</p>
+              <p className="mt-1 text-sm text-muted">Publish an event and it shows up here with its registrations.</p>
+            </div>
+            <Button asChild size="lg" className="w-full sm:w-auto"><Link href="/admin/events/new">Create an event</Link></Button>
+          </div>
+        )}
+      </section>
+
+      {/* Scoreboard */}
+      {d ? (
+        <Rail id="kpi-h" title={`Last ${RANGES[range]}`}>
+          <Kpi icon={UserPlus} label="New members" value={String(d.members_new)} sub={`${d.members_total} in total`} href="/admin/members" />
+          <Kpi icon={ClipboardCheck} label="Registrations" value={String(d.registrations_new)} sub={`${d.registrations_waitlisted} waitlisted`} href="/admin/events" />
+          <Kpi icon={CalendarDays} label="Upcoming" value={String(d.events_upcoming)} sub={`${d.events_next_7_days} this week · ${d.events_drafts} draft${d.events_drafts === 1 ? "" : "s"}`} href="/admin/events" />
+          <Kpi icon={Users} label="Attendances" value={String(d.attendance_recorded)} sub={`${d.events_completed} event${d.events_completed === 1 ? "" : "s"} done`} href="/admin/reports" />
+          <Kpi icon={Gift} label="Reward liability" value={formatTnd(d.reward_outstanding_value)} sub={`${d.badges_awarded} badge${d.badges_awarded === 1 ? "" : "s"} awarded`} href="/admin/badges" />
+          <Kpi icon={Inbox} label="News published" value={String(d.news_published)} sub={`${d.events_cancelled} cancelled event${d.events_cancelled === 1 ? "" : "s"}`} href="/admin/news" />
+        </Rail>
+      ) : null}
+
+      {moreEvents.length ? (
+        <Rail id="more-events-h" title="Coming up" href="/admin/events">
+          {moreEvents.slice(0, 8).map((e) => (
+            <div key={e.id} className="w-[82%] shrink-0 snap-start sm:w-[340px]">
+              <EventCard event={e} href={`/admin/events/${e.id}`} />
+            </div>
+          ))}
+        </Rail>
+      ) : null}
+
+      <section aria-labelledby="audit-h" className="flex flex-col gap-4">
+        <h2 id="audit-h" className="font-display text-2xl font-bold uppercase leading-none tracking-tight sm:text-3xl">Latest activity</h2>
+        {audit.data?.length ? (
+          <ol className="flex flex-col gap-2">
+            {audit.data.map((a) => (
+              <li key={a.id} className="flex items-center gap-4 rounded-2xl border border-white/[0.06] bg-ink-soft px-4 py-3.5">
+                <span className="h-2 w-2 shrink-0 rounded-full bg-primary" aria-hidden />
+                <span className="min-w-0 flex-1 truncate text-sm first-letter:uppercase">{a.action.replace(/[._]/g, " ")}</span>
+                <time dateTime={a.created_at} className="shrink-0 text-xs text-muted">
+                  {formatDate(a.created_at, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}
+                </time>
+              </li>
+            ))}
+          </ol>
+        ) : (
+          <p className="text-sm text-muted">Decisions, payments and edits you make will appear here.</p>
+        )}
+      </section>
     </div>
   );
 }
 
 function Kpi({ icon: Icon, label, value, sub, href }: { icon: typeof Users; label: string; value: string; sub: string; href: string }) {
   return (
-    <Link href={href} className="group lift flex flex-col rounded-lg border border-ink-border bg-ink-soft p-4">
-      <span className="flex items-center gap-2 text-xs text-muted">
-        <Icon className="h-4 w-4 text-muted-foreground transition-colors group-hover:text-primary" aria-hidden />
-        {label}
+    <Link
+      href={href}
+      className="group flex w-[46%] shrink-0 snap-start flex-col rounded-3xl border border-white/[0.06] bg-ink-soft p-5 transition-[transform,border-color] duration-200 hover:border-white/15 active:scale-[0.98] sm:w-[220px]"
+    >
+      <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-white/[0.06] transition-colors group-hover:bg-primary">
+        <Icon className="h-[18px] w-[18px]" aria-hidden />
       </span>
-      <span className="mt-3 font-display text-2xl font-bold leading-none tabular">{value}</span>
-      <span className="mt-1.5 text-xs text-muted-foreground">{sub}</span>
+      <span className="mt-5 font-display text-3xl font-bold leading-none tabular">{value}</span>
+      <span className="mt-1.5 text-sm font-semibold">{label}</span>
+      <span className="mt-0.5 text-xs text-muted">{sub}</span>
     </Link>
   );
 }

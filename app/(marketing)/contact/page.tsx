@@ -1,11 +1,12 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import {
-  ArrowRight, CalendarDays, Clock, HelpCircle, Mail, MapPin, MessageCircle, MessageSquare, Phone, ShieldCheck, UserPlus,
+  ArrowRight, CalendarDays, Clock, Eye, HelpCircle, Mail, MapPin, MessageCircle, MessageSquare, Phone, Reply, Send, ShieldCheck, UserPlus,
 } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Reveal } from "@/components/ui/reveal";
 import { ContactForm } from "@/components/marketing/contact-form";
+import { ContactTopics } from "@/components/marketing/contact-topics";
 import { PageHero } from "@/components/marketing/page-hero";
 import { getSiteSettings } from "@/lib/settings/queries";
 import { createClient } from "@/lib/supabase/server";
@@ -70,21 +71,63 @@ export default async function ContactPage() {
 
           <div className="grid gap-8 lg:grid-cols-[1fr_1.35fr] lg:gap-12">
             <Reveal>
-              <div className="flex h-full flex-col gap-6 rounded-3xl border border-ink-border bg-gradient-to-br from-ink-soft/80 to-ink p-6 sm:p-8">
-                <div>
-                  <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">Talk to Coach Seif</p>
-                  <h2 className="mt-2 font-display text-3xl font-bold uppercase leading-tight tracking-tight">Ready when you are</h2>
+              <div className="relative flex h-full flex-col gap-7 overflow-hidden rounded-3xl border border-ink-border bg-gradient-to-br from-ink-soft/80 to-ink p-5 sm:p-8">
+                <div aria-hidden className="pointer-events-none absolute -right-24 -top-24 h-64 w-64 rounded-full bg-primary/15 blur-3xl" />
+
+                {/* Coach */}
+                <div className="relative flex items-center gap-4">
+                  <span className="flex h-14 w-14 shrink-0 items-center justify-center bg-primary font-display text-lg font-bold text-white shadow-[var(--shadow-hit)] [clip-path:polygon(12%_0,100%_0,88%_100%,0_100%)]">
+                    SD
+                  </span>
+                  <div className="min-w-0">
+                    <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">Talk to Coach Seif</p>
+                    <p className="font-display text-xl font-bold uppercase leading-tight tracking-tight">Seif Dridi</p>
+                    <p className="flex items-center gap-1.5 text-xs text-muted">
+                      <span className="h-1.5 w-1.5 rounded-full bg-primary" aria-hidden /> Head coach · reads every message himself
+                    </p>
+                  </div>
+                </div>
+
+                <div className="relative">
+                  <h2 className="font-display text-3xl font-bold uppercase leading-tight tracking-tight sm:text-4xl">Ready when you are</h2>
                   <p className="mt-3 text-sm leading-relaxed text-muted">
                     Beginner or experienced fighter, ask anything — level, schedule, equipment or payment.
-                    {user ? " As a member, the fastest way is your private conversation in Messages." : " Members can also chat with Coach Seif privately from their account."}
                   </p>
                 </div>
 
+                {/* Topic shortcuts → pre-select the form topic */}
+                <div className="relative">
+                  <p className="mb-2.5 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">What&apos;s it about?</p>
+                  <ContactTopics />
+                </div>
+
+                {/* What happens next */}
+                <div className="relative">
+                  <p className="mb-3 text-[11px] font-semibold uppercase tracking-widest text-muted-foreground">What happens next</p>
+                  <ol className="relative flex flex-col gap-4 before:absolute before:bottom-3 before:left-[15px] before:top-3 before:w-px before:bg-gradient-to-b before:from-primary before:to-white/10">
+                    {[
+                      { icon: Send, title: "You send your message", text: "Use the form — it takes a minute." },
+                      { icon: Eye, title: "Coach Seif reads it", text: "Personally, no bots or call centre." },
+                      { icon: Reply, title: "He replies to you", text: user ? "By email, or in your Messages." : "By email, at the address you give." },
+                    ].map(({ icon: Icon, title, text }) => (
+                      <li key={title} className="relative flex items-start gap-3.5">
+                        <span className="relative z-10 flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-primary/40 bg-ink text-primary-readable">
+                          <Icon className="h-3.5 w-3.5" aria-hidden />
+                        </span>
+                        <span className="min-w-0 pt-0.5">
+                          <span className="block text-sm font-semibold">{title}</span>
+                          <span className="block text-xs text-muted">{text}</span>
+                        </span>
+                      </li>
+                    ))}
+                  </ol>
+                </div>
+
                 {channels.length ? (
-                  <ul className="grid gap-3">
+                  <ul className="relative grid gap-2.5 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">
                     {channels.map(({ icon: Icon, label, value, href }) => (
-                      <li key={label} className="flex items-start gap-4 rounded-xl border border-ink-border bg-ink/60 p-4">
-                        <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary-soft text-primary">
+                      <li key={label} className="flex min-w-0 items-start gap-3 rounded-2xl border border-ink-border bg-ink/60 p-3.5">
+                        <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-primary/30 bg-primary-soft text-primary">
                           <Icon className="h-4 w-4" aria-hidden />
                         </span>
                         <span className="min-w-0">
@@ -97,15 +140,26 @@ export default async function ContactPage() {
                       </li>
                     ))}
                   </ul>
-                ) : (
-                  <div className="rounded-xl border border-dashed border-ink-border p-5 text-sm text-muted">
-                    Use the form — your message goes straight to Coach Seif.
-                  </div>
-                )}
+                ) : null}
 
-                <p className="mt-auto flex items-start gap-2 text-xs text-muted">
+                {/* Fast track */}
+                <Link
+                  href={user ? "/member/messages" : "/sign-up"}
+                  className="group relative mt-auto flex items-center gap-4 rounded-2xl border border-primary/30 bg-primary/[0.08] p-4 transition-colors hover:border-primary/60 hover:bg-primary/[0.12]"
+                >
+                  <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-primary text-white">
+                    {user ? <MessageSquare className="h-5 w-5" aria-hidden /> : <UserPlus className="h-5 w-5" aria-hidden />}
+                  </span>
+                  <span className="min-w-0 flex-1">
+                    <span className="block text-sm font-semibold">{user ? "Faster: open your Messages" : "Members chat with Seif directly"}</span>
+                    <span className="block text-xs text-muted">{user ? "Your private conversation with Coach Seif." : "Create a free account — it takes a minute."}</span>
+                  </span>
+                  <ArrowRight className="h-4 w-4 shrink-0 text-primary-readable transition-transform group-hover:translate-x-0.5" aria-hidden />
+                </Link>
+
+                <p className="relative flex items-start gap-2 text-xs text-muted">
                   <ShieldCheck className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />
-                  Your message is only used to answer you. See our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.
+                  <span>Your message is only used to answer you. See our <Link href="/privacy" className="text-primary hover:underline">Privacy Policy</Link>.</span>
                 </p>
               </div>
             </Reveal>

@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { eventStatusLabel, formatTnd } from "@/lib/types/events";
 import { formatDate, requestTime } from "@/lib/utils";
+import { DateInput } from "@/components/ui/date-input";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -44,11 +45,11 @@ export default async function AdminReportsPage({ searchParams }: Props) {
       <form className="flex flex-col gap-3 rounded-xl border border-ink-border bg-ink-soft/40 p-4 sm:flex-row sm:items-end">
         <div className="space-y-1">
           <label htmlFor="from" className="text-xs text-muted">From</label>
-          <input id="from" name="from" type="date" defaultValue={range.fromDay} className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft px-3 text-base sm:text-sm" />
+          <DateInput id="from" name="from" defaultValue={range.fromDay} className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft px-3 text-base sm:text-sm" />
         </div>
         <div className="space-y-1">
           <label htmlFor="to" className="text-xs text-muted">To</label>
-          <input id="to" name="to" type="date" defaultValue={range.toDay} className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft px-3 text-base sm:text-sm" />
+          <DateInput id="to" name="to" defaultValue={range.toDay} className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft px-3 text-base sm:text-sm" />
         </div>
         <Button type="submit">Apply</Button>
       </form>

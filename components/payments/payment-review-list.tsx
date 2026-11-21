@@ -59,7 +59,7 @@ export function PaymentReviewList({ items, highlight, reviewable }: { items: Pay
           const mismatch = Math.round(it.amount_declared * 1000) !== Math.round(it.amount_due * 1000);
           return (
             <li key={it.id} id={`submission-${it.id}`}
-              className={cn("rounded-lg border bg-ink-soft p-4 sm:p-5", highlight === it.id ? "border-primary ring-1 ring-primary/40" : "border-ink-border")}>
+              className={cn("rounded-3xl border bg-ink-soft p-4 sm:p-5", highlight === it.id ? "border-primary ring-1 ring-primary/40" : "border-white/[0.06]")}>
               <div className="flex flex-col gap-4 md:flex-row md:items-start">
                 <a href={`/api/payment-proofs/${it.id}`} target="_blank" rel="noopener noreferrer"
                   className="group flex h-32 w-full shrink-0 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-ink-strong bg-ink text-sm text-muted transition-colors hover:border-foreground/50 hover:text-foreground md:w-44"

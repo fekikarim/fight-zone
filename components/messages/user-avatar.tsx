@@ -6,7 +6,7 @@ interface UserAvatarProps {
 const sizeClasses = {
   sm: "h-8 w-8 text-xs",
   md: "h-10 w-10 text-sm",
-  lg: "h-12 w-12 text-base",
+  lg: "h-14 w-14 text-base",
 } as const;
 
 /**
@@ -26,7 +26,7 @@ export function UserAvatar({ name, size = "md" }: UserAvatarProps) {
   return (
     <span
       aria-hidden
-      className={`flex shrink-0 items-center justify-center rounded-full bg-primary-soft font-bold text-primary ${sizeClasses[size]}`}
+      className={`flex shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-primary to-primary-dark font-bold text-white ring-2 ring-white/10 ${sizeClasses[size]}`}
     >
       {initials}
     </span>

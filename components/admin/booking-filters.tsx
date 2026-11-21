@@ -6,6 +6,8 @@ import { RotateCcw, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import type { Database } from "@/types/database.types";
+import { Select } from "@/components/ui/select";
+import { DateInput } from "@/components/ui/date-input";
 
 type BookingStatus = Database["public"]["Enums"]["booking_status"];
 
@@ -70,7 +72,7 @@ export function BookingFilters() {
         <label htmlFor="booking-status" className="text-xs font-semibold uppercase tracking-widest text-muted">
           Status
         </label>
-        <select
+        <Select
           id="booking-status"
           className={selectClass}
           value={searchParams.get("status") ?? ""}
@@ -81,14 +83,14 @@ export function BookingFilters() {
               {option.label}
             </option>
           ))}
-        </select>
+        </Select>
       </div>
 
       <div className="flex flex-col gap-1.5">
         <label htmlFor="booking-from" className="text-xs font-semibold uppercase tracking-widest text-muted">
           From
         </label>
-        <Input
+        <DateInput
           id="booking-from"
           type="datetime-local"
           value={searchParams.get("from") ?? ""}
@@ -101,7 +103,7 @@ export function BookingFilters() {
         <label htmlFor="booking-to" className="text-xs font-semibold uppercase tracking-widest text-muted">
           To
         </label>
-        <Input
+        <DateInput
           id="booking-to"
           type="datetime-local"
           value={searchParams.get("to") ?? ""}

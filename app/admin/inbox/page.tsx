@@ -23,7 +23,7 @@ export default async function AdminInboxPage({ searchParams }: { searchParams: P
       <nav aria-label="Status" className="flex gap-2">
         {TABS.map((t) => (
           <Link key={t.k} href={`/admin/inbox?status=${t.k}`} aria-current={status === t.k ? "page" : undefined}
-            className={cn("inline-flex h-9 items-center rounded-md border px-3.5 text-[13px] font-semibold transition-colors", status === t.k ? "border-foreground bg-foreground text-ink" : "border-ink-border text-muted hover:text-foreground")}>{t.l}</Link>
+            className={cn("inline-flex h-10 items-center rounded-full border px-4 text-sm font-semibold transition-colors", status === t.k ? "border-foreground bg-foreground text-ink" : "border-ink-border text-muted hover:text-foreground")}>{t.l}</Link>
         ))}
       </nav>
       <ContactInbox rows={(data ?? []) as ContactRow[]} />

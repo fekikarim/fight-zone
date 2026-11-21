@@ -14,6 +14,7 @@ import { BADGE_ACCENTS, BADGE_ICONS, BADGE_TIERS } from "@/lib/validations/badge
 import { formatTnd } from "@/lib/types/events";
 import { BadgeMedal } from "@/components/badges/badge-medal";
 import { formatDate } from "@/lib/utils";
+import { Select } from "@/components/ui/select";
 
 export interface BadgeDef {
   id: string; name: string; description: string | null; threshold: number; tier: string; icon: string; accent: string;
@@ -67,9 +68,9 @@ export function BadgeForm({ badge, onDone }: { badge?: BadgeDef; onDone?: () => 
         {([["tier", BADGE_TIERS], ["icon", BADGE_ICONS], ["accent", BADGE_ACCENTS]] as const).map(([name, opts]) => (
           <div key={name} className="space-y-1.5">
             <label htmlFor={`${idp}${name}`} className="text-sm font-medium capitalize">{name === "accent" ? "Colour" : name}</label>
-            <select id={`${idp}${name}`} name={name} defaultValue={badge?.[name] ?? opts[0]} className={fieldClass(false, "capitalize")}>
+            <Select id={`${idp}${name}`} name={name} defaultValue={badge?.[name] ?? opts[0]} className={fieldClass(false, "capitalize")}>
               {opts.map((o) => <option key={o} value={o}>{o.toLowerCase()}</option>)}
-            </select>
+            </Select>
           </div>
         ))}
         <label className="flex min-h-11 items-center gap-3 text-sm">
@@ -80,11 +81,11 @@ export function BadgeForm({ badge, onDone }: { badge?: BadgeDef; onDone?: () => 
 
       <fieldset className="space-y-3 rounded-xl border border-ink-border p-4">
         <legend className="px-1 text-sm font-semibold">Optional reward</legend>
-        <select name="reward_type" value={rewardType} onChange={(ev) => setRewardType(ev.target.value)} className={fieldClass(false)} aria-label="Reward type">
+        <Select name="reward_type" value={rewardType} onChange={(ev) => setRewardType(ev.target.value)} className={fieldClass(false)} aria-label="Reward type">
           <option value="NONE">No reward — recognition only</option>
           <option value="DISCOUNT_TND">Fixed discount on one event</option>
           <option value="FREE_ENTRY">Free entry to one event (up to a price)</option>
-        </select>
+        </Select>
         {rewardType !== "NONE" ? (
           <div className="grid gap-3 sm:grid-cols-3">
             <div className="space-y-1">
@@ -217,10 +218,10 @@ export function RewardQueue({ rewards }: { rewards: RewardRow[] }) {
           if (dialog) run(() => redeemReward(dialog.r.id, reg));
         }}>
         <label htmlFor="redeem-reg" className="text-sm">Registration</label>
-        <select id="redeem-reg" name="registrationId" defaultValue="" className={fieldClass(false)}>
+        <Select id="redeem-reg" name="registrationId" defaultValue="" className={fieldClass(false)}>
           <option value="" disabled>Choose…</option>
           {dialog?.r.candidates.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-        </select>
+        </Select>
       </FormDialog>
     </>
   );
