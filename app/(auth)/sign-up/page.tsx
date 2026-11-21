@@ -6,7 +6,7 @@ import { SignUpForm } from "./sign-up-form";
 import { safeNextPath } from "@/lib/auth/redirect";
 
 export const metadata: Metadata = {
-  title: "Join the gym",
+  title: "Create your account",
   description: "Create your Fight Zone account and start training.",
 };
 
@@ -18,24 +18,24 @@ export default async function SignUpPage({ searchParams }: { searchParams: Promi
 
   return (
     <div className="flex flex-col gap-8">
-      <div className="flex flex-col gap-2 text-center">
-        <h1 className="font-display text-3xl font-bold uppercase tracking-tight">
-          Join the gym
-        </h1>
-        <p className="text-sm text-muted">
-          Create your account to book sessions and stay in the loop.
+      <div className="flex flex-col gap-3">
+        <p className="type-overline flex items-center gap-2.5 text-muted">
+          <span className="slant-bar h-1 w-4" aria-hidden />
+          Free account
         </p>
+        <h1 className="font-display text-4xl font-bold uppercase leading-none tracking-tight sm:text-5xl">
+          Join Fight Zone
+        </h1>
+        <p className="text-sm text-muted">Create your account to register for events and talk to Coach Seif.</p>
       </div>
 
-      <div className="rounded-xl border border-ink-border bg-ink-soft/60 p-6 sm:p-8">
-        <SignUpForm next={next || undefined} />
-      </div>
+      <SignUpForm next={next || undefined} />
 
-      <p className="text-center text-sm text-muted">
+      <p className="border-t border-ink-border pt-6 text-sm text-muted">
         Already a member?{" "}
         <Link
           href={next ? `/sign-in?next=${encodeURIComponent(next)}` : "/sign-in"}
-          className="font-semibold text-primary transition-colors hover:text-primary-hover"
+          className="link-draw font-semibold text-foreground"
         >
           Sign in
         </Link>

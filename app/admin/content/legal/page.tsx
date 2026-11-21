@@ -17,7 +17,7 @@ export default async function AdminLegalPage() {
   const docs = data ?? [];
   return (
     <div className="mx-auto max-w-4xl space-y-10">
-      <PageHeader title="Privacy & Terms" back={{ href: "/admin/content", label: "Back to content" }}
+      <PageHeader eyebrow="Publish" title="Privacy & Terms" back={{ href: "/admin/content", label: "Back to content" }}
         description="Versioned legal documents. Published versions can't be edited — create a new draft version instead. Have the text reviewed by a qualified lawyer before publishing." />
       {(["privacy", "terms"] as const).map((kind) => {
         const list = docs.filter((d) => d.kind === kind);

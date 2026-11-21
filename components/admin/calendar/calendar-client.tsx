@@ -183,7 +183,7 @@ export function CalendarClient({
               onClick={() => navigate({ view: option.value })}
               className={`min-h-9 rounded-md px-4 py-1.5 text-sm transition-colors ${
                 view === option.value
-                  ? "bg-primary text-white"
+                  ? "bg-foreground text-ink"
                   : "text-muted hover:text-foreground"
               }`}
             >

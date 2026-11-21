@@ -1,14 +1,6 @@
 import Image from "next/image";
-import { Trophy } from "lucide-react";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardTitle,
-} from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { PlaceholderImage } from "@/components/ui/placeholder-image";
 import { formatDate } from "@/lib/utils";
+import { isRemoteImage } from "@/lib/events/images";
 import type { Database } from "@/types/database.types";
 
 export type AchievementItem = Pick<
@@ -24,39 +16,50 @@ const achievementTypeLabel: Record<string, string> = {
   RANKING: "Ranking",
 };
 
+/**
+ * A palmares record: the year set large, a slanted type tag, the title.
+ * Text-led so an entry without a picture is complete (no placeholder);
+ * an uploaded picture shows as a duotone thumbnail.
+ */
 export function AchievementCard({ achievement }: { achievement: AchievementItem }) {
+  const year = achievement.date ? new Date(achievement.date).getFullYear() : null;
   return (
-    <Card className="group overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10">
-      <div className="relative aspect-[4/3] overflow-hidden bg-ink-softer">
-        {achievement.image_url ? (
-          <Image
-            src={achievement.image_url}
-            alt={achievement.title}
-            fill
-            sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
-            className="object-cover transition-transform duration-500 group-hover:scale-105"
-          />
-        ) : (
-          <PlaceholderImage label="Achievement image" className="h-full rounded-none border-0" />
-        )}
-        <div className="absolute left-3 top-3">
-          <Badge variant="solid">
-            <Trophy className="h-3 w-3" />
+    <article className="group lift relative flex h-full flex-col gap-5 overflow-hidden rounded-lg border border-ink-border bg-ink-soft p-6">
+      <div className="flex items-start justify-between gap-4">
+        <div>
+          <span className="tag-slant text-[11px] font-semibold uppercase tracking-[0.14em] text-white">
             {achievementTypeLabel[achievement.type] ?? achievement.type}
-          </Badge>
+          </span>
+          {year ? (
+            <p className="mt-4 font-display text-6xl font-bold leading-none text-ink-strong transition-colors duration-300 group-hover:text-foreground/25 tabular">
+              {year}
+            </p>
+          ) : null}
         </div>
+        {achievement.image_url ? (
+          <div className="duotone relative h-20 w-20 shrink-0 overflow-hidden rounded-md border border-ink-border">
+            <Image
+              src={achievement.image_url}
+              alt=""
+              fill
+              sizes="80px"
+              unoptimized={isRemoteImage(achievement.image_url)}
+              className="object-cover"
+            />
+          </div>
+        ) : null}
       </div>
-      <CardContent className="flex flex-col gap-2 p-5">
-        <CardTitle className="text-base">{achievement.title}</CardTitle>
+      <div className="mt-auto flex flex-col gap-2">
+        <h3 className="font-display text-xl font-semibold uppercase leading-tight">{achievement.title}</h3>
         {achievement.description ? (
-          <CardDescription className="line-clamp-2">{achievement.description}</CardDescription>
+          <p className="line-clamp-3 text-sm leading-relaxed text-muted">{achievement.description}</p>
         ) : null}
         {achievement.date ? (
-          <span className="mt-auto text-xs font-semibold uppercase tracking-widest text-primary">
-            {formatDate(achievement.date)}
-          </span>
+          <time dateTime={achievement.date} className="text-xs text-muted-foreground">
+            {formatDate(achievement.date, { month: "long", day: "numeric", year: "numeric" })}
+          </time>
         ) : null}
-      </CardContent>
-    </Card>
+      </div>
+    </article>
   );
 }

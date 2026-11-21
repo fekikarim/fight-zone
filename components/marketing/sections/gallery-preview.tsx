@@ -8,9 +8,11 @@ import { getPublicMedia, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function GalleryPreview() {
   const media = await resolveOrFallback(() => getPublicMedia(6), []);
+  // A gallery of one or two pictures reads as unfinished: show it from three.
+  if (media.length < 3) return null;
 
   return (
-    <section className="border-y border-ink-border bg-ink-soft/30 py-20 lg:py-28">
+    <section className="border-t border-ink-border py-20 lg:py-28">
       <Container>
         <Reveal>
           <SectionHeading
@@ -26,7 +28,7 @@ export async function GalleryPreview() {
           {media.map((item, i) => (
             <Reveal key={item.id} delay={(i % 3) * 80}>
               <figure
-                className={`group relative overflow-hidden rounded-xl border border-ink-border bg-ink-softer ${
+                className={`group relative overflow-hidden rounded-lg border border-ink-border bg-ink-softer ${
                   i === 0 || i === 3 ? "aspect-square" : "aspect-[4/5]"
                 }`}
               >
@@ -42,11 +44,6 @@ export async function GalleryPreview() {
                   <PlaceholderImage label="Gallery image" className="h-full rounded-none border-0" />
                 )}
                 <div className="absolute inset-0 bg-gradient-to-t from-ink/80 via-transparent to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-                {item.title ? (
-                  <figcaption className="absolute inset-x-0 bottom-0 translate-y-2 p-4 text-sm font-medium text-white opacity-0 transition-all duration-300 group-hover:translate-y-0 group-hover:opacity-100">
-                    {item.title}
-                  </figcaption>
-                ) : null}
               </figure>
             </Reveal>
           ))}

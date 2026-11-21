@@ -7,19 +7,19 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { AccessDenied } from "@/components/dashboard/access-denied";
 
 const adminNav = [
-  { href: "/admin", label: "Overview" },
-  { href: "/admin/events", label: "Events" },
-  { href: "/admin/calendar", label: "Calendar" },
-  { href: "/admin/payments", label: "Payments" },
-  { href: "/admin/members", label: "Members" },
-  { href: "/admin/reports", label: "Reports" },
-  { href: "/admin/badges", label: "Badges" },
-  { href: "/admin/news", label: "News" },
-  { href: "/admin/reviews", label: "Reviews" },
-  { href: "/admin/messages", label: "Messages" },
-  { href: "/admin/notifications", label: "Notifications" },
-  { href: "/admin/content", label: "Content" },
-  { href: "/admin/settings", label: "Settings" },
+  { href: "/admin", label: "Overview", group: "Operate" },
+  { href: "/admin/events", label: "Events", group: "Operate" },
+  { href: "/admin/calendar", label: "Calendar", group: "Operate" },
+  { href: "/admin/payments", label: "Payments", group: "Operate" },
+  { href: "/admin/members", label: "Members", group: "Operate" },
+  { href: "/admin/messages", label: "Messages", group: "Engage" },
+  { href: "/admin/notifications", label: "Notifications", group: "Engage" },
+  { href: "/admin/badges", label: "Badges & rewards", group: "Engage" },
+  { href: "/admin/reviews", label: "Reviews", group: "Engage" },
+  { href: "/admin/news", label: "News", group: "Publish" },
+  { href: "/admin/content", label: "Site content", group: "Publish" },
+  { href: "/admin/reports", label: "Reports", group: "Insight" },
+  { href: "/admin/settings", label: "Settings", group: "Insight" },
 ];
 
 export default async function AdminLayout({ children }: { children: ReactNode }) {

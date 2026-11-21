@@ -1,5 +1,9 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/empty-state";
+import { FIELD_BASE } from "@/components/ui/field-styles";
 import { ChevronRight, Search, Users } from "lucide-react";
 import { requireRole } from "@/lib/auth/guards";
 import { getMembers } from "@/lib/members/queries";
@@ -27,41 +31,42 @@ export default async function AdminMembersPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-6">
-      <PageHeader title="Members" description={`${total} member${total === 1 ? "" : "s"}`} />
+      <PageHeader eyebrow="Operate" title="Members" description={`${total} member${total === 1 ? "" : "s"} · profiles, registrations, payments and badges.`} />
       <form role="search" className="relative sm:w-96">
-        <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
+        <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <label htmlFor="member-search" className="sr-only">Search members</label>
-        <input id="member-search" name="q" defaultValue={q} placeholder="Name, email or phone…"
-          className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft/40 pl-9 pr-3 text-base sm:text-sm" />
+        <input id="member-search" name="q" type="search" defaultValue={q} placeholder="Name, email or phone"
+          className={cn(FIELD_BASE, "h-11 border-ink-border pl-10")} />
       </form>
       {items.length ? (
-        <ul className="divide-y divide-ink-border overflow-hidden rounded-xl border border-ink-border">
+        <ul className="divide-y divide-ink-border overflow-hidden rounded-lg border border-ink-border bg-ink-soft">
           {items.map((m) => (
             <li key={m.id}>
-              <Link href={`/admin/members/${m.id}`} className="flex items-center gap-3 px-4 py-3 hover:bg-ink-soft/40">
+              <Link href={`/admin/members/${m.id}`} className="group flex items-center gap-3 px-4 py-3.5 transition-colors hover:bg-white/[0.03]">
                 <UserAvatar name={m.full_name} />
                 <span className="min-w-0 flex-1">
                   <span className="block truncate text-sm font-medium">{m.full_name ?? "Unnamed member"}</span>
                   <span className="block truncate text-xs text-muted">{m.email}{m.phone ? ` · ${m.phone}` : ""}</span>
                 </span>
                 <span className="hidden text-xs text-muted sm:inline">Joined {formatDate(m.created_at, { month: "short", year: "numeric" })}</span>
-                {!m.is_active ? <Badge variant="outline">Inactive</Badge> : null}
-                <ChevronRight className="h-4 w-4 text-muted" aria-hidden />
+                {!m.is_active ? <Badge variant="danger" dot>Inactive</Badge> : null}
+                <ChevronRight className="h-4 w-4 text-muted transition-transform group-hover:translate-x-0.5" aria-hidden />
               </Link>
             </li>
           ))}
         </ul>
       ) : (
-        <div className="flex flex-col items-center gap-3 rounded-xl border border-dashed border-ink-border px-6 py-14 text-center">
-          <Users className="h-9 w-9 text-primary" aria-hidden />
-          <p className="text-sm text-muted">{q ? "No member matches your search." : "No members yet."}</p>
-        </div>
+        <EmptyState
+          icon={<Users />}
+          title={q ? "No member matches" : "No members yet"}
+          description={q ? "Try a name, an email address or a phone number." : "Members appear here as soon as they create an account."}
+        />
       )}
       {pages > 1 ? (
         <nav aria-label="Pages" className="flex items-center justify-between text-sm">
-          {page > 1 ? <Link href={link(page - 1)} className="text-primary hover:underline">← Previous</Link> : <span />}
-          <span className="text-muted">Page {page} of {pages}</span>
-          {page < pages ? <Link href={link(page + 1)} className="text-primary hover:underline">Next →</Link> : <span />}
+          {page > 1 ? <Button asChild variant="secondary" size="sm"><Link href={link(page - 1)}>Previous</Link></Button> : <span />}
+          <span className="text-muted tabular">Page {page} of {pages}</span>
+          {page < pages ? <Button asChild variant="secondary" size="sm"><Link href={link(page + 1)}>Next</Link></Button> : <span />}
         </nav>
       ) : null}
     </div>

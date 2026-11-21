@@ -25,6 +25,7 @@ export default async function AdminMessagesPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow="Engage"
         title="Messages"
         description={unread ? `${unread} unread message${unread === 1 ? "" : "s"}` : "Private conversations with your members."}
       />

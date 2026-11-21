@@ -14,8 +14,8 @@ export interface AchievementLite {
 
 const bg: Record<string, string> = {
   default: "",
-  muted: "bg-ink-soft/50",
-  accent: "bg-gradient-to-br from-primary/15 via-transparent to-transparent",
+  muted: "bg-ink-soft",
+  accent: "bg-bone text-bone-ink",
 };
 
 /**
@@ -27,8 +27,8 @@ export function BlockRenderer({ blocks, achievements = [] }: { blocks: CmsBlock[
   return (
     <div className="flex flex-col">
       {blocks.map((b) => (
-        <section key={b.id} className={cn("px-4 py-10 sm:px-6 sm:py-14 lg:px-8", bg[b.background] ?? "")}>
-          <div className="mx-auto w-full max-w-5xl break-words">{renderBlock(b, achievements)}</div>
+        <section key={b.id} className={cn("px-4 py-12 sm:px-6 sm:py-16 lg:px-8", bg[b.background] ?? "")}>
+          <div className="mx-auto w-full max-w-7xl break-words">{renderBlock(b, achievements)}</div>
         </section>
       ))}
     </div>
@@ -36,7 +36,7 @@ export function BlockRenderer({ blocks, achievements = [] }: { blocks: CmsBlock[
 }
 
 function Heading({ children }: { children: React.ReactNode }) {
-  return <h2 className="mb-6 font-display text-2xl font-bold uppercase tracking-tight sm:text-3xl">{children}</h2>;
+  return <h2 className="type-h2 mb-8 text-balance">{children}</h2>;
 }
 
 function renderBlock(b: CmsBlock, achievements: AchievementLite[]) {
@@ -45,8 +45,8 @@ function renderBlock(b: CmsBlock, achievements: AchievementLite[]) {
       return (
         <div className="grid items-center gap-8 md:grid-cols-[1.2fr_1fr]">
           <div>
-            {b.eyebrow ? <p className="text-xs font-semibold uppercase tracking-[0.25em] text-primary">{b.eyebrow}</p> : null}
-            <h1 className="mt-2 font-display text-4xl font-bold uppercase leading-none tracking-tight sm:text-5xl lg:text-6xl">{b.title}</h1>
+            {b.eyebrow ? <p className="type-overline flex items-center gap-3 text-muted"><span className="slant-bar" aria-hidden />{b.eyebrow}</p> : null}
+            <h1 className="type-h1 mt-5 text-balance">{b.title}</h1>
             {b.subtitle ? <p className="mt-4 max-w-xl text-base text-muted sm:text-lg">{b.subtitle}</p> : null}
           </div>
           {b.image?.url ? (

@@ -6,7 +6,7 @@ const Card = React.forwardRef<HTMLDivElement, React.HTMLAttributes<HTMLDivElemen
     <div
       ref={ref}
       className={cn(
-        "rounded-xl border border-ink-border bg-ink-soft/60 backdrop-blur-sm",
+        "rounded-lg border border-ink-border bg-ink-soft",
         className,
       )}
       {...props}
@@ -31,7 +31,7 @@ const CardTitle = React.forwardRef<
   // heading order valid without requiring an extra section heading.
   <h2
     ref={ref}
-    className={cn("font-display text-lg font-semibold uppercase tracking-wide", className)}
+    className={cn("font-display text-lg font-semibold uppercase tracking-[0.02em]", className)}
     {...props}
   />
 ));

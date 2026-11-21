@@ -43,7 +43,8 @@ export default async function AdminEventDetailPage({ params }: Props) {
   return (
     <Container className="flex max-w-none flex-col gap-8 px-0">
       <PageHeader
-        title={eventStatusLabel[event.status]}
+        eyebrow={eventStatusLabel[event.status]}
+        title={event.title}
         description="Manage this event's details, registrations, payments and attendance."
         back={{ href: "/admin/events", label: "Back to events" }}
         actions={<EventLifecycleControls eventId={event.id} status={event.status} seatsTaken={event.participant_count} />}
@@ -57,14 +58,14 @@ export default async function AdminEventDetailPage({ params }: Props) {
           { label: "Paid", value: event.is_free ? "Free" : String(paidCount) },
           { label: "Attended", value: String(attended) },
         ].map((s) => (
-          <div key={s.label} className="rounded-xl border border-ink-border bg-ink-soft/40 px-4 py-3">
-            <dt className="text-xs uppercase tracking-wide text-muted">{s.label}</dt>
-            <dd className="mt-1 font-display text-2xl font-bold">{s.value}</dd>
+          <div key={s.label} className="rounded-lg border border-ink-border bg-ink-soft px-4 py-3.5">
+            <dt className="type-overline text-[10px] text-muted-foreground">{s.label}</dt>
+            <dd className="mt-1.5 font-display text-3xl font-bold leading-none tabular">{s.value}</dd>
           </div>
         ))}
       </dl>
 
-      <EventDetailDisplay event={event} showParticipants />
+      <EventDetailDisplay event={event} showParticipants showTitle={false} />
 
       <section className="space-y-4" aria-labelledby="reg-title">
         <h2 id="reg-title" className="font-display text-xl font-semibold uppercase tracking-tight">

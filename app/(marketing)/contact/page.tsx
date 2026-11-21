@@ -53,7 +53,7 @@ export default async function ContactPage() {
         <Container className="relative">
           <ul className="mb-10 grid gap-3 lg:grid-cols-3">
             {quick.map((q, i) => (
-              <li key={q.href}>
+              <li key={q.href} className="min-w-0">
                 <Reveal delay={i * 60}>
                   <Link href={q.href} className="group flex h-full items-center gap-4 rounded-2xl border border-ink-border bg-ink-soft/50 p-4 transition-colors hover:border-primary/50">
                     <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-soft text-primary"><q.icon className="h-5 w-5" aria-hidden /></span>

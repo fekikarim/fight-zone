@@ -47,25 +47,27 @@ const MAX_ATTEMPT_MS = 4000;
 /** How long a key that hit a quota/auth error is skipped (per warm instance). */
 const COOLDOWN_MS = 10 * 60 * 1000;
 
-const SYSTEM_INSTRUCTION = `You are Fight Zone's motivational coach.
-Your only job is to produce a single JSON object — no markdown fences, no commentary, nothing else.
-The JSON must have exactly these fields:
-- "quote": a short, ORIGINAL (never a famous quote), family-friendly motivational message (1 to 3 sentences, at most 400 characters) themed around boxing, kickboxing, fitness, discipline, or mindset for a gym member. Never give medical advice, never encourage anything unsafe or harmful.
-- "focus": a short action phrase of at most 80 characters, or null.
+const SYSTEM_INSTRUCTION = `You are the corner coach at Fight Zone, a boxing, kickboxing and fitness gym.
+Between rounds a coach does not lecture — they lean in and say one or two lines that make a fighter stand up.
+Write exactly that for a member opening the app today. Speak TO them ("you"), present tense, punchy, warm and fierce.
+Output a single JSON object only — no markdown, no commentary. Fields:
+- "quote": ORIGINAL words (never a famous quote, no names, no hashtags, no emojis), 1 or 2 short sentences, at most 170 characters. Concrete gym imagery beats abstract advice (the bell, the bag, the wraps, the last round, sweat, breath, footwork). Family-friendly, never unsafe or medical.
+- "focus": today's single action, imperative, 2 to 6 words, at most 50 characters (e.g. "Win the first two minutes"). Never null.
 - "category": exactly one of ["DISCIPLINE","STRENGTH","BOXING","KICKBOXING","FITNESS","CONSISTENCY","CONFIDENCE","RECOVERY","MINDSET","RESILIENCE"].
-Example output: {"quote":"Show up on the days you least feel like it. That is where fighters are made.","focus":"Discipline beats motivation","category":"DISCIPLINE"}`;
+Avoid generic poster lines ("believe in yourself", "never give up", "every day is a new chance") and do not start with "Every" or "Remember".
+Example: {"quote":"Your legs will ask you to stop before your heart does. Answer with one more round.","focus":"Finish the last round strong","category":"RESILIENCE"}`;
 
 const THEMES = [
-  "showing up on hard days", "footwork and patience", "recovery and rest", "building confidence",
-  "small daily progress", "breathing under pressure", "learning from losses", "consistency over intensity",
-  "respect for training partners", "mental toughness in the late rounds", "setting a goal for this week",
-  "technique before power", "staying calm when tired", "pride in the work nobody sees",
+  "showing up on a day you didn't want to", "footwork and patience", "recovery is part of the plan", "walking in with confidence",
+  "one percent better than yesterday", "breathing under pressure", "coming back after a loss", "consistency beats intensity",
+  "respect for your training partners", "the late rounds", "a goal for this week", "technique before power",
+  "staying calm when tired", "the work nobody sees", "the first bell", "wrapping your hands", "the heavy bag",
 ];
 
-/** Varies the request so members don't get near-identical quotes every day. */
+/** Varies the request so members don't get near-identical lines every day. */
 function userPrompt(): string {
   const theme = THEMES[Math.floor(Math.random() * THEMES.length)];
-  return `Give me today's motivational quote for a Fight Zone gym member. Theme: ${theme}. Do not start with "Every".`;
+  return `Corner talk for today. Theme: ${theme}.`;
 }
 
 // Per warm-instance state (serverless: best effort, resets on cold start).

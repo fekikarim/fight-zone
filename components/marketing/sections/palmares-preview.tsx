@@ -10,16 +10,17 @@ import { getAchievements, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function PalmaresPreview() {
   const achievements = await resolveOrFallback(() => getAchievements(3), []);
+  if (achievements.length === 0) return null;
 
   return (
-    <section className="py-20 lg:py-28">
+    <section className="border-t border-ink-border py-20 lg:py-28">
       <Container>
         <div className="mb-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <Reveal>
             <SectionHeading
               eyebrow="Palmares"
               title="A record that speaks"
-              description="Titles, medals and honors earned through years of discipline inside the ring and beyond."
+              description="Titles and honors on Coach Seif's record."
             />
           </Reveal>
           <Reveal delay={100}>

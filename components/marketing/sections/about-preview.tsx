@@ -1,6 +1,6 @@
 import Image from "next/image";
 import Link from "next/link";
-import { ArrowRight, Award, Dumbbell, ShieldCheck } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -8,78 +8,62 @@ import { Reveal } from "@/components/ui/reveal";
 import { Skeleton } from "@/components/ui/skeleton";
 import { getPublicCoach, resolveOrFallback } from "@/lib/supabase/queries";
 
-const highlights = [
-  { icon: Award, label: "Champion athlete" },
-  { icon: Dumbbell, label: "15+ years coaching" },
-  { icon: ShieldCheck, label: "Pro-level discipline" },
-];
-
+/**
+ * The coach. Shows only what Seif recorded in his profile — years of
+ * experience, specialization and biography appear when they exist and are
+ * never filled in with invented figures.
+ */
 export async function AboutPreview() {
   const coach = await resolveOrFallback(() => getPublicCoach(), null);
+  const name = coach?.full_name ?? "Seif Dridi";
+  const facts = [
+    coach?.experience_years ? { value: `${coach.experience_years}`, label: "Years coaching" } : null,
+    coach?.specialization ? { value: coach.specialization, label: "Specialization" } : null,
+  ].filter(Boolean) as { value: string; label: string }[];
 
   return (
-    <section className="py-20 lg:py-28">
+    <section aria-labelledby="coach-h" className="border-t border-ink-border py-20 lg:py-28">
       <Container>
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
+        <div className="grid items-center gap-12 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.1fr)] lg:gap-20">
           <Reveal>
-            <div className="relative">
-              <div className="relative overflow-hidden rounded-2xl border border-ink-border">
-                <Image
-                  src="/components/coach-seif-dridi-illustration-pdp-1024x1024.jpeg"
-                  alt={`Coach ${coach?.full_name ?? "Seif Dridi"}`}
-                  width={1024}
-                  height={1024}
-                  sizes="(min-width: 1024px) 50vw, 100vw"
-                  className="aspect-square w-full object-cover"
-                  priority
-                />
-              </div>
-              <div className="absolute -bottom-5 -right-4 rounded-xl border border-primary/30 bg-ink px-5 py-3 shadow-lg shadow-primary/10 sm:-right-6">
-                <p className="font-display text-2xl font-bold text-primary">
-                  {coach?.experience_years ?? 15}+
-                </p>
-                <p className="text-xs uppercase tracking-widest text-muted">
-                  Years in the ring
-                </p>
-              </div>
+            <div className="duotone relative aspect-[4/5] overflow-hidden rounded-lg border border-ink-border lg:[clip-path:polygon(0_0,100%_0,100%_100%,12%_100%)]">
+              <Image
+                src="/components/coach-seif-dridi-illustration-at-the-gym-1024x1037.jpeg"
+                alt={`Coach ${name}`}
+                fill
+                sizes="(min-width: 1024px) 45vw, 100vw"
+                className="object-cover"
+              />
             </div>
           </Reveal>
 
-          <div className="flex flex-col gap-6">
+          <div className="flex flex-col gap-7">
             <Reveal>
-              <SectionHeading
-                eyebrow="The Coach"
-                title={coach?.full_name ?? "Coach Seif Dridi"}
-                description={coach?.specialization ?? "Boxing · Kickboxing · Fitness"}
-              />
+              <SectionHeading id="coach-h" index="04" eyebrow="Your coach" title={`Coach ${name}`} />
             </Reveal>
-
-            <Reveal delay={100}>
-              <p className="text-base leading-relaxed text-muted">
-                {coach?.biography ??
-                  "Professional boxing coach and athlete, dedicated to building champions — in the ring and in life."}
+            <Reveal delay={80}>
+              <p className="max-w-xl text-lg leading-relaxed text-foreground/80 text-pretty">
+                {coach?.biography ||
+                  "Fight Zone is Coach Seif's own gym and community. He runs every event, answers your messages himself and confirms every payment by hand."}
               </p>
             </Reveal>
-
-            <Reveal delay={150}>
-              <ul className="grid gap-3 sm:grid-cols-3">
-                {highlights.map(({ icon: Icon, label }) => (
-                  <li
-                    key={label}
-                    className="flex items-center gap-2 rounded-lg border border-ink-border bg-ink-soft px-3 py-2.5 text-sm text-muted"
-                  >
-                    <Icon className="h-4 w-4 shrink-0 text-primary" />
-                    {label}
-                  </li>
-                ))}
-              </ul>
-            </Reveal>
-
-            <Reveal delay={200}>
-              <Button variant="outline" size="lg" className="w-fit" asChild>
+            {facts.length ? (
+              <Reveal delay={120}>
+                <dl className="grid max-w-xl grid-cols-2 border-y border-ink-border">
+                  {facts.map((f) => (
+                    <div key={f.label} className="py-5 pr-4 [&+&]:border-l [&+&]:border-ink-border [&+&]:pl-5">
+                      <dt className="type-overline text-[10px] text-muted-foreground">{f.label}</dt>
+                      <dd className="mt-1 font-display text-2xl font-bold uppercase leading-tight">{f.value}</dd>
+                    </div>
+                  ))}
+                </dl>
+              </Reveal>
+            ) : null}
+            <Reveal delay={160}>
+              <Button variant="outline" size="lg" className="w-full sm:w-fit" asChild>
                 <Link href="/about">
-                  Discover my story
-                  <ArrowRight className="h-4 w-4" />
+                  Read Coach Seif&apos;s story
+                  <ArrowRight className="h-4 w-4" aria-hidden />
                 </Link>
               </Button>
             </Reveal>
@@ -92,19 +76,14 @@ export async function AboutPreview() {
 
 export function AboutPreviewSkeleton() {
   return (
-    <section className="py-20 lg:py-28">
+    <section className="border-t border-ink-border py-20 lg:py-28">
       <Container>
-        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-16">
-          <Skeleton className="aspect-square w-full rounded-2xl" />
+        <div className="grid items-center gap-12 lg:grid-cols-2 lg:gap-20">
+          <Skeleton className="aspect-[4/5] w-full rounded-lg" />
           <div className="flex flex-col gap-6">
-            <Skeleton className="h-12 w-2/3" />
-            <Skeleton className="h-4 w-1/3" />
+            <Skeleton className="h-14 w-2/3" />
             <Skeleton className="h-24 w-full" />
-            <div className="grid gap-3 sm:grid-cols-3">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
+            <Skeleton className="h-12 w-48" />
           </div>
         </div>
       </Container>

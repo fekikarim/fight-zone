@@ -1,6 +1,8 @@
 import Link from "next/link";
 import { Search } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { FIELD_BASE } from "@/components/ui/field-styles";
 
 const TYPES = [
   { value: "", label: "All" },
@@ -33,45 +35,77 @@ function href(base: EventFilterValues, patch: Partial<EventFilterValues>) {
 
 /** Server-rendered filters (work without JS; shareable URLs). */
 export function EventFilters({ values, categories }: { values: EventFilterValues; categories: string[] }) {
+  const isPast = values.when === "past";
+  const tab = (active: boolean) =>
+    cn(
+      "inline-flex h-10 items-center rounded-md px-4 text-sm font-semibold transition-colors",
+      active ? "bg-foreground text-ink" : "text-muted hover:text-foreground",
+    );
   return (
-    <div className="space-y-4">
-      <form role="search" action="/events" className="flex flex-col gap-2 sm:flex-row">
-        {values.type ? <input type="hidden" name="type" value={values.type} /> : null}
-        {values.when === "past" ? <input type="hidden" name="when" value="past" /> : null}
-        <div className="relative flex-1">
-          <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted" aria-hidden />
-          <label htmlFor="event-q" className="sr-only">Search events</label>
-          <input id="event-q" name="q" defaultValue={values.q} placeholder="Search events…" className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft/40 pl-9 pr-3 text-base sm:text-sm" />
-        </div>
-        {categories.length ? (
-          <>
-            <label htmlFor="event-cat" className="sr-only">Category</label>
-            <select id="event-cat" name="category" defaultValue={values.category ?? ""} className="h-11 rounded-lg border border-ink-border bg-ink-soft/40 px-3 text-base sm:text-sm">
-              <option value="">All categories</option>
-              {categories.map((c) => <option key={c} value={c}>{c}</option>)}
-            </select>
-          </>
-        ) : null}
-        <label className="flex h-11 items-center gap-2 rounded-lg border border-ink-border px-3 text-sm">
-          <input type="checkbox" name="open" value="1" defaultChecked={values.open} className="h-4 w-4 accent-primary" /> Places available
-        </label>
-        <button type="submit" className="h-11 rounded-lg bg-primary px-5 text-sm font-medium text-white hover:bg-primary-hover">Search</button>
-      </form>
-      <div className="flex flex-wrap items-center gap-2">
-        {TYPES.map((f) => (
-          <Link key={f.value} href={href(values, { type: f.value || undefined })} scroll={false}
-            aria-current={(values.type ?? "") === f.value ? "true" : undefined}
-            className={cn("inline-flex h-8 items-center rounded-full border px-3 text-xs font-medium transition-colors",
-              (values.type ?? "") === f.value ? "border-primary bg-primary text-white" : "border-ink-border text-muted hover:border-primary/50 hover:text-foreground")}>
-            {f.label}
+    <div className="space-y-5">
+      <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+        <nav aria-label="When" className="inline-flex w-fit rounded-lg border border-ink-border bg-ink-soft p-1">
+          <Link href={href(values, { when: undefined })} scroll={false} aria-current={!isPast ? "page" : undefined} className={tab(!isPast)}>
+            Upcoming
           </Link>
-        ))}
-        <span className="mx-1 h-4 w-px bg-ink-border" aria-hidden />
-        <Link href={href(values, { when: values.when === "past" ? undefined : "past", open: undefined })} scroll={false}
-          className="text-xs text-muted underline-offset-2 hover:text-foreground hover:underline">
-          {values.when === "past" ? "Show upcoming events" : "Show past events"}
-        </Link>
+          <Link href={href(values, { when: "past", open: undefined })} scroll={false} aria-current={isPast ? "page" : undefined} className={tab(isPast)}>
+            Past
+          </Link>
+        </nav>
+
+        <form role="search" action="/events" className="flex flex-col gap-2 sm:flex-row lg:max-w-2xl lg:flex-1 lg:justify-end">
+          {values.type ? <input type="hidden" name="type" value={values.type} /> : null}
+          {isPast ? <input type="hidden" name="when" value="past" /> : null}
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
+            <label htmlFor="event-q" className="sr-only">Search events</label>
+            <input id="event-q" name="q" type="search" defaultValue={values.q} placeholder="Search events" className={cn(FIELD_BASE, "h-11 border-ink-border pl-10")} />
+          </div>
+          {categories.length ? (
+            <>
+              <label htmlFor="event-cat" className="sr-only">Category</label>
+              <select id="event-cat" name="category" defaultValue={values.category ?? ""} className={cn(FIELD_BASE, "h-11 border-ink-border sm:w-44")}>
+                <option value="">All categories</option>
+                {categories.map((c) => <option key={c} value={c}>{c}</option>)}
+              </select>
+            </>
+          ) : null}
+          {!isPast ? (
+            <label className="flex h-11 shrink-0 cursor-pointer items-center gap-2.5 rounded-md border border-ink-border bg-ink-softer px-3.5 text-sm transition-colors hover:border-ink-strong">
+              <input type="checkbox" name="open" value="1" defaultChecked={values.open} className="h-4 w-4 accent-primary" />
+              Places left
+            </label>
+          ) : null}
+          <Button type="submit" className="h-11 shrink-0">Search</Button>
+        </form>
       </div>
+
+      <nav aria-label="Event type" className="-mx-4 flex gap-1 overflow-x-auto border-b border-ink-border px-4 sm:mx-0 sm:px-0">
+        {TYPES.map((f) => {
+          const active = (values.type ?? "") === f.value;
+          return (
+            <Link
+              key={f.value}
+              href={href(values, { type: f.value || undefined })}
+              scroll={false}
+              aria-current={active ? "page" : undefined}
+              className={cn(
+                "relative inline-flex h-11 shrink-0 items-center px-3.5 text-[13px] font-semibold uppercase tracking-[0.1em] transition-colors",
+                active ? "text-foreground" : "text-muted hover:text-foreground",
+              )}
+            >
+              {f.label}
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute inset-x-3 -bottom-px h-[3px] origin-left -skew-x-12 bg-primary transition-transform duration-200",
+                  active ? "scale-x-100" : "scale-x-0",
+                )}
+              />
+            </Link>
+          );
+        })}
+      </nav>
     </div>
   );
 }

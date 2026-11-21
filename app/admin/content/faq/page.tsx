@@ -14,7 +14,7 @@ export default async function AdminFaqPage() {
   const categories = [...new Set(["General", "Events", "Payments", ...items.map((i) => i.category)])];
   return (
     <div className="mx-auto max-w-3xl space-y-8">
-      <PageHeader title="FAQ" back={{ href: "/admin/content", label: "Back to content" }} description="Questions shown on the public FAQ page, in this order." />
+      <PageHeader eyebrow="Publish" title="FAQ" back={{ href: "/admin/content", label: "Back to content" }} description="Questions shown on the public FAQ page, in this order." />
       <FaqList items={items} categories={categories} />
       <section className="space-y-3" aria-labelledby="new-faq">
         <h2 id="new-faq" className="font-display text-xl font-semibold uppercase tracking-tight">Add a question</h2>

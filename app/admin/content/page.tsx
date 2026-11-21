@@ -63,6 +63,7 @@ export default async function AdminContentPage() {
   return (
     <div className="space-y-8">
       <PageHeader
+        eyebrow="Publish"
         title="Content"
         description={
           <>

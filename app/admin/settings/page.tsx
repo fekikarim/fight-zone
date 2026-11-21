@@ -16,7 +16,7 @@ export default async function AdminSettingsPage() {
   await requireRole(["ADMIN", "COACH"]);
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Settings" description="Choose what you want to set up." />
+      <PageHeader eyebrow="Insight" title="Settings" description="Choose what you want to set up." />
       <ul className="space-y-3">
         {SECTIONS.map((s) => (
           <li key={s.href}>

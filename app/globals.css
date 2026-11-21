@@ -1,31 +1,60 @@
 @import "tailwindcss";
 
 /* ============================================================
-   FIGHT ZONE — Theme tokens
-   Brand: Black + Crimson (#E11D48) + White (extracted from the logo)
-   A dark "arena" aesthetic for a boxing / gym / coaching brand.
+   FIGHT ZONE — Design tokens (see docs/design-system.md)
+   Brand: black + crimson + white, taken from the logo. The logo's
+   12° shear is the system's signature shape (.slant, .tag-slant).
+   Existing token names (ink, primary, muted…) are kept so every page
+   inherits the system; semantic aliases are layered on top.
    ============================================================ */
 
 :root {
-  --background: #0a0a0a;
-  --foreground: #fafafa;
+  /* Grounds & surfaces (dark arena) */
+  --background: #09090a;
+  --foreground: #f6f5f3;
+  --ink: #09090a;          /* page ground */
+  --ink-soft: #111113;     /* surface: cards, panels */
+  --ink-softer: #19191c;   /* raised: hover rows, inputs */
+  --ink-border: #27272b;   /* hairline */
+  --ink-strong: #3a3a40;   /* emphasised border / dividers on hover */
 
+  /* Light editorial band ("canvas") */
+  --bone: #f1eee8;
+  --bone-ink: #121214;
+  --bone-muted: #5b5a57;
+
+  /* Brand */
   --primary: #e11d48;
-  --primary-hover: #be123c;
+  --primary-hover: #c8143d;
   --primary-dark: #9f1239;
-  --primary-soft: rgba(225, 29, 72, 0.14);
-  --primary-ring: rgba(225, 29, 72, 0.55);
-  /* Brand red fails WCAG AA for small text on dark surfaces (3.8–4.2:1).
-     This lightened tone is used for small primary-colored TEXT only. */
+  --primary-soft: rgba(225, 29, 72, 0.12);
+  --primary-ring: rgba(225, 29, 72, 0.6);
+  /* Brand red is 3.8–4.2:1 on dark: small primary-coloured TEXT uses this. */
   --primary-readable: #fb7185;
 
-  --ink: #0a0a0a;
-  --ink-soft: #111113;
-  --ink-softer: #17171a;
-  --ink-border: #26262b;
+  /* Text */
+  --muted: #a3a3ab;            /* secondary text — 7.5:1 on ground */
+  --muted-foreground: #8c8c94; /* tertiary / captions — 5.6:1 */
 
-  --muted: #a1a1aa;
-  --muted-foreground: #94949c;
+  /* Status (never the brand red — red means "act", not "error") */
+  --success: #34d399;
+  --success-soft: rgba(52, 211, 153, 0.12);
+  --warning: #fbbf24;
+  --warning-soft: rgba(251, 191, 36, 0.12);
+  --info: #7dd3fc;
+  --info-soft: rgba(125, 211, 252, 0.12);
+  --danger: #f87171;
+  --danger-soft: rgba(248, 113, 113, 0.12);
+
+  /* Motion */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-in-out: cubic-bezier(0.65, 0, 0.35, 1);
+  --dur-fast: 140ms;
+  --dur-base: 220ms;
+  --dur-slow: 520ms;
+
+  /* Layout */
+  --header-h: 4rem;
 }
 
 @theme inline {
@@ -39,86 +68,101 @@
   --color-primary-ring: var(--primary-ring);
   --color-primary-readable: var(--primary-readable);
 
-  /* Destructive (danger) actions use the brand rose scale — this theme has
-     no separate red. Maps every bg-/text-/border-destructive utility. */
-  --color-destructive: var(--primary);
-
   --color-ink: var(--ink);
   --color-ink-soft: var(--ink-soft);
   --color-ink-softer: var(--ink-softer);
   --color-ink-border: var(--ink-border);
+  --color-ink-strong: var(--ink-strong);
+
+  --color-bone: var(--bone);
+  --color-bone-ink: var(--bone-ink);
+  --color-bone-muted: var(--bone-muted);
 
   --color-muted: var(--muted);
   --color-muted-foreground: var(--muted-foreground);
+
+  --color-success: var(--success);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-soft: var(--warning-soft);
+  --color-info: var(--info);
+  --color-info-soft: var(--info-soft);
+  --color-danger: var(--danger);
+  --color-danger-soft: var(--danger-soft);
+  /* Destructive actions: a true red, distinct from the brand crimson. */
+  --color-destructive: #dc2626;
 
   --font-sans: var(--font-geist-sans), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, SFMono-Regular, monospace;
   --font-display: var(--font-display-sans), ui-sans-serif, system-ui, sans-serif;
 
-  --animate-fade-up: fade-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+  /* Radius: deliberately tight — athletic, not bubbly. Overrides the
+     Tailwind scale so every existing rounded-* class follows the system. */
+  --radius-sm: 2px;
+  --radius-md: 4px;
+  --radius-lg: 6px;
+  --radius-xl: 8px;
+  --radius-2xl: 12px;
+  --radius-3xl: 16px;
+
+  --shadow-lift: 0 18px 40px -24px rgba(0, 0, 0, 0.9);
+  --shadow-hit: 0 10px 30px -12px rgba(225, 29, 72, 0.55);
+
+  --animate-fade-up: fade-up var(--dur-slow) var(--ease-out) both;
   --animate-marquee: marquee 40s linear infinite;
 }
 
+/* ------------------------------------------------------------
+   Keyframes
+   ------------------------------------------------------------ */
 @keyframes fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(18px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(16px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
 @keyframes marquee {
-  from {
-    transform: translateX(0);
-  }
-  to {
-    transform: translateX(-50%);
-  }
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
 }
-
-@keyframes fz-backdrop-in {
-  from { opacity: 0; }
-  to   { opacity: 1; }
-}
-
+@keyframes fz-backdrop-in { from { opacity: 0; } to { opacity: 1; } }
 @keyframes fz-panel-in {
-  from {
-    opacity: 0;
-    transform: translateY(24px) scale(0.97);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0) scale(1);
-  }
+  from { opacity: 0; transform: translateY(16px) scale(0.98); }
+  to   { opacity: 1; transform: translateY(0) scale(1); }
 }
-
 @keyframes fz-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(12px); }
+  to   { opacity: 1; transform: translateY(0); }
 }
-
-@media (prefers-reduced-motion: reduce) {
-  @keyframes fz-backdrop-in { from { opacity: 1; } to { opacity: 1; } }
-  @keyframes fz-panel-in    { from { opacity: 1; transform: none; } to { opacity: 1; transform: none; } }
-  @keyframes fz-fade-up     { from { opacity: 1; transform: none; } to { opacity: 1; transform: none; } }
+/* Corner talk: crimson bell-wipe across the screen, and its exit. */
+@keyframes fz-ct-wipe {
+  from { transform: translateX(-105%) skewX(-12deg); }
+  to   { transform: translateX(105%) skewX(-12deg); }
+}
+@keyframes fz-ct-out {
+  from { opacity: 1; }
+  to   { opacity: 0; transform: scale(0.99); }
+}
+@keyframes fz-drawer-in {
+  from { transform: translateX(-100%); }
+  to   { transform: translateX(0); }
+}
+/* Hero entrance: a line of type wipes up from behind its own mask. */
+@keyframes fz-rise {
+  from { transform: translateY(105%); }
+  to   { transform: translateY(0); }
+}
+/* Signature slant bar sweeping in (the logo's shear). */
+@keyframes fz-sweep {
+  from { transform: scaleX(0) skewX(-12deg); }
+  to   { transform: scaleX(1) skewX(-12deg); }
 }
 
 /* ------------------------------------------------------------
    Base
    ------------------------------------------------------------ */
-
 html {
   scroll-behavior: smooth;
   -webkit-text-size-adjust: 100%;
+  scroll-padding-top: calc(var(--header-h) + 1rem);
 }
 
 body {
@@ -127,111 +171,221 @@ body {
   font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
 }
 
-::selection {
-  background: var(--primary);
-  color: #fff;
-}
+::selection { background: var(--primary); color: #fff; }
 
 :focus-visible {
   outline: 2px solid var(--primary-ring);
   outline-offset: 2px;
-  border-radius: 4px;
+  border-radius: 2px;
 }
+
+/* Numbers in dashboards and prices line up. */
+.tabular, table { font-variant-numeric: tabular-nums; }
 
 /* ------------------------------------------------------------
-   Scroll reveal
+   Type scale (docs/design-system.md §Typography)
    ------------------------------------------------------------ */
-.reveal {
-  opacity: 0;
-  transform: translateY(20px);
-  transition:
-    opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
-    transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
-  will-change: opacity, transform;
+@utility type-display {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 0.9;
+  letter-spacing: -0.01em;
+  font-size: clamp(3.25rem, 9vw + 0.5rem, 8.5rem);
 }
-
-.reveal.is-visible {
-  opacity: 1;
-  transform: translateY(0);
+@utility type-h1 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 0.98;
+  letter-spacing: -0.005em;
+  font-size: clamp(2.5rem, 4.5vw + 0.75rem, 4.75rem);
 }
-
-@media (prefers-reduced-motion: reduce) {
-  html {
-    scroll-behavior: auto;
-  }
-  .reveal,
-  .reveal.is-visible {
-    opacity: 1;
-    transform: none;
-    transition: none;
-  }
-  *,
-  *::before,
-  *::after {
-    animation-duration: 0.01ms !important;
-    animation-iteration-count: 1 !important;
-    transition-duration: 0.01ms !important;
-  }
+@utility type-h2 {
+  font-family: var(--font-display);
+  font-weight: 700;
+  text-transform: uppercase;
+  line-height: 1;
+  font-size: clamp(2rem, 2.6vw + 1rem, 3.5rem);
 }
+@utility type-h3 {
+  font-family: var(--font-display);
+  font-weight: 600;
+  text-transform: uppercase;
+  line-height: 1.1;
+  letter-spacing: 0.01em;
+  font-size: clamp(1.25rem, 0.6vw + 1.05rem, 1.625rem);
+}
+@utility type-overline {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.22em;
+}
+@utility text-balance { text-wrap: balance; }
+@utility text-pretty { text-wrap: pretty; }
 
 /* ------------------------------------------------------------
-   Utilities
+   Signature shapes (from the logo's 12° shear)
    ------------------------------------------------------------ */
-
-@utility text-balance {
-  text-wrap: balance;
+/* A slanted crimson tag — eyebrows, "round" numbers, live labels. */
+@utility tag-slant {
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.25rem 0.75rem;
+  isolation: isolate;
+  &::before {
+    content: "";
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    background: var(--primary);
+    transform: skewX(-12deg);
+  }
 }
-
-@utility text-pretty {
-  text-wrap: pretty;
+/* A short slanted bar used before eyebrows and as the active-nav mark. */
+@utility slant-bar {
+  display: inline-block;
+  width: 1.5rem;
+  height: 0.375rem;
+  background: var(--primary);
+  transform: skewX(-12deg);
 }
-
+/* Photo/illustration frame cut on the logo's angle. */
+@utility clip-slant {
+  clip-path: polygon(8% 0, 100% 0, 92% 100%, 0 100%);
+}
 @utility grid-pattern {
   background-image:
     linear-gradient(var(--ink-border) 1px, transparent 1px),
     linear-gradient(90deg, var(--ink-border) 1px, transparent 1px);
-  background-size: 42px 42px;
+  background-size: 44px 44px;
 }
 
-@utility clip-slant {
-  clip-path: polygon(0 0, 100% 0, 100% 100%, 0 100%);
+/* Duotone: unifies the mixed illustration library into one poster look
+   (grayscale art printed over crimson/black). Applied to the wrapper. */
+@layer components {
+  .duotone {
+    overflow: hidden;
+    background: var(--ink);
+    isolation: isolate;
+  }
+  .duotone:not(.absolute):not(.fixed) { position: relative; }
+  .duotone img {
+    filter: grayscale(1) contrast(1.15) brightness(0.95);
+    mix-blend-mode: luminosity;
+  }
+  .duotone::after {
+    content: "";
+    position: absolute;
+    inset: 0;
+    pointer-events: none;
+    background: linear-gradient(180deg, rgba(225, 29, 72, 0.5), rgba(9, 9, 10, 0.45));
+    mix-blend-mode: multiply;
+  }
 }
 
-/* Skeleton shimmer */
+/* ------------------------------------------------------------
+   Interaction layer (hover/press feedback everywhere)
+   ------------------------------------------------------------ */
+/* Linked card: lifts 2px, border warms. */
+.lift {
+  transition:
+    transform var(--dur-base) var(--ease-out),
+    border-color var(--dur-base) var(--ease-out),
+    background-color var(--dur-base) var(--ease-out);
+}
+@media (hover: hover) {
+  .lift:hover { transform: translateY(-2px); border-color: var(--ink-strong); }
+  .zoom-img img { transition: transform var(--dur-slow) var(--ease-out); }
+  .zoom-img:hover img, .group:hover .zoom-img img { transform: scale(1.03); }
+}
+/* Underline that draws in from the left. */
+.link-draw {
+  background-image: linear-gradient(currentColor, currentColor);
+  background-size: 0% 1px;
+  background-position: 0 100%;
+  background-repeat: no-repeat;
+  transition: background-size var(--dur-base) var(--ease-out);
+}
+.link-draw:hover, .link-draw:focus-visible { background-size: 100% 1px; }
+
+/* ------------------------------------------------------------
+   Motion: entrance + scroll reveal
+   Content is only hidden once JS has marked <html class="js">, so a
+   page never renders blank without JavaScript.
+   ------------------------------------------------------------ */
+.js .reveal {
+  opacity: 0;
+  transform: translateY(18px);
+  transition:
+    opacity var(--dur-slow) var(--ease-out),
+    transform var(--dur-slow) var(--ease-out);
+}
+.js .reveal.is-visible { opacity: 1; transform: none; }
+
+/* Hero lines: each .rise-line masks a .rise child that slides up once. */
+.rise-line { display: block; overflow: hidden; padding-bottom: 0.04em; }
+.rise-line > span {
+  display: inline-block;
+  animation: fz-rise 0.9s var(--ease-out) both;
+}
+.sweep { transform-origin: left; animation: fz-sweep 0.7s var(--ease-out) both; }
+
+/* Staggered children (lists of cards) when the parent reveals. */
+.js .stagger > * {
+  opacity: 0;
+  transform: translateY(14px);
+  transition: opacity var(--dur-slow) var(--ease-out), transform var(--dur-slow) var(--ease-out);
+}
+.js .stagger.is-visible > * { opacity: 1; transform: none; }
+.js .stagger.is-visible > *:nth-child(2) { transition-delay: 70ms; }
+.js .stagger.is-visible > *:nth-child(3) { transition-delay: 140ms; }
+.js .stagger.is-visible > *:nth-child(4) { transition-delay: 210ms; }
+.js .stagger.is-visible > *:nth-child(n + 5) { transition-delay: 260ms; }
+
+@media (prefers-reduced-motion: reduce) {
+  html { scroll-behavior: auto; }
+  .js .reveal, .js .reveal.is-visible,
+  .js .stagger > *, .js .stagger.is-visible > * {
+    opacity: 1; transform: none; transition: none;
+  }
+  .rise-line > span, .sweep { animation: none; }
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* ------------------------------------------------------------
+   Skeleton shimmer
+   ------------------------------------------------------------ */
+@layer components {
 .skeleton {
   position: relative;
   overflow: hidden;
   background: var(--ink-softer);
 }
-
 .skeleton::after {
   content: "";
   position: absolute;
   inset: 0;
   transform: translateX(-100%);
-  background: linear-gradient(
-    90deg,
-    transparent,
-    rgba(255, 255, 255, 0.06),
-    transparent
-  );
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.05), transparent);
   animation: skeleton-shimmer 1.6s infinite;
 }
-
-@keyframes skeleton-shimmer {
-  100% {
-    transform: translateX(100%);
-  }
 }
+@keyframes skeleton-shimmer { 100% { transform: translateX(100%); } }
 
-/* WCAG AA: brand red (#e11d48) measures 3.8–4.2:1 on dark surfaces — enough
-   for large text but below the 4.5:1 small-text threshold. Every *text* use
-   of the primary token renders in the lightened brand tone instead; bg-,
-   border-, ring- and hover:text-primary variants keep the original brand. */
+/* WCAG AA: small text in the primary colour renders in the readable tone;
+   bg-/border-/ring- variants keep the true brand crimson. */
 @layer utilities {
-  .text-primary {
-    color: var(--primary-readable);
-  }
+  .text-primary { color: var(--primary-readable); }
 }

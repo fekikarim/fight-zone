@@ -1,51 +1,73 @@
 import Link from "next/link";
-import { ArrowRight, CalendarPlus } from "lucide-react";
+import { ArrowRight, CalendarX } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { Reveal } from "@/components/ui/reveal";
-import { Skeleton } from "@/components/ui/skeleton";
-import { EventCard } from "@/components/marketing/event-card";
+import { EmptyState } from "@/components/empty-state";
+import { EventCard, EventCardSkeleton } from "@/components/marketing/event-card";
 import { getPublicEvents, resolveOrFallback } from "@/lib/supabase/queries";
 
 export async function EventsPreview() {
   const events = await resolveOrFallback(() => getPublicEvents({ limit: 3 }), []);
 
   return (
-    <section className="py-20 lg:py-28">
+    <section aria-labelledby="events-h" className="border-t border-ink-border py-20 lg:py-28">
       <Container>
-        <div className="mb-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <Reveal>
             <SectionHeading
-              eyebrow="Events"
-              title="Upcoming at the gym"
-              description="Sparring nights, workshops and competitions — mark your calendar."
+              id="events-h"
+              index="02"
+              eyebrow="Upcoming"
+              title="On the calendar"
+              description="Places are limited and held as soon as you register."
             />
           </Reveal>
-          <Reveal delay={100}>
-            <Button variant="outline" asChild>
-              <Link href="/events">
-                All events
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </Reveal>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
+            <Link href="/events">
+              All events
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
         </div>
 
-        {events.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {events.map((event, i) => (
-              <Reveal key={event.id} delay={i * 80}>
-                <EventCard event={event} />
-              </Reveal>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-ink-border bg-ink-soft/40 px-6 py-14 text-center">
-            <CalendarPlus className="h-10 w-10 text-primary" />
-            <p className="text-muted">No public events scheduled yet — check back soon.</p>
-          </div>
-        )}
+        <div className="mt-12">
+          {events.length > 0 ? (
+            <Reveal variant="stagger" className="grid gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
+              {events.map((event) => (
+                <EventCard key={event.id} event={event} />
+              ))}
+              {events.length < 3 ? (
+                <div className="flex flex-col justify-between gap-6 rounded-lg border border-dashed border-ink-strong p-6 md:col-span-1 lg:col-span-1">
+                  <div>
+                    <p className="type-overline text-[11px] text-muted">More dates soon</p>
+                    <p className="mt-3 font-display text-2xl font-semibold uppercase leading-tight">
+                      Be first to hear about the next event
+                    </p>
+                    <p className="mt-3 text-sm leading-relaxed text-muted">
+                      Members get a notification the moment a new date is published.
+                    </p>
+                  </div>
+                  <Button asChild variant="secondary" className="w-full sm:w-fit">
+                    <Link href="/sign-up">
+                      Create an account
+                      <ArrowRight className="h-4 w-4" aria-hidden />
+                    </Link>
+                  </Button>
+                </div>
+              ) : null}
+            </Reveal>
+          ) : (
+            <EmptyState
+              icon={<CalendarX />}
+              title="No events scheduled yet"
+              description="New dates are announced here first. Create an account and you'll be notified when the next one opens."
+              actionLabel="Create an account"
+              actionHref="/sign-up"
+            />
+          )}
+        </div>
       </Container>
     </section>
   );
@@ -53,20 +75,12 @@ export async function EventsPreview() {
 
 export function EventsPreviewSkeleton() {
   return (
-    <section className="py-20 lg:py-28">
+    <section className="border-t border-ink-border py-20 lg:py-28">
       <Container>
-        <div className="mb-12">
-          <div className="h-12 w-2/3 skeleton rounded" />
-          <div className="mt-3 h-4 w-1/2 skeleton rounded" />
-        </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+        <div className="skeleton h-14 w-2/3 rounded-sm" />
+        <div className="mt-12 grid gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
           {[1, 2, 3].map((i) => (
-            <div key={i} className="rounded-xl border border-ink-border p-5">
-              <Skeleton className="h-6 w-24" />
-              <div className="mt-4 h-6 w-3/4" />
-              <div className="mt-3 h-4 w-full" />
-              <div className="mt-3 h-4 w-2/3" />
-            </div>
+            <EventCardSkeleton key={i} />
           ))}
         </div>
       </Container>

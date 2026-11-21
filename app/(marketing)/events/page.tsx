@@ -1,6 +1,8 @@
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
+import { CalendarX } from "lucide-react";
 import { Reveal } from "@/components/ui/reveal";
+import { EmptyState } from "@/components/empty-state";
 import { EventCard } from "@/components/marketing/event-card";
 import { PageHero } from "@/components/marketing/page-hero";
 import { EventFilters } from "@/components/events/event-filters";
@@ -37,32 +39,41 @@ export default async function EventsPage({ searchParams }: Props) {
     <>
       <PageHero
         eyebrow="Events"
-        title="Calendar of combat"
-        description="Sparring nights, workshops, seminars and competitions hosted by Fight Zone — open to members and visitors alike."
-        image="/components/fit-cartoon-women-training-4096x4096.jpg"
+        title="Training, sparring & competitions"
+        description="Every Fight Zone event in one calendar. Register in a few clicks — your place is held as soon as you do."
       />
       <PreviewModeBanner />
 
-      <section className="py-16 lg:py-24">
+      <section className="py-12 lg:py-16">
         <Container>
-          <div className="mb-8">
-            <EventFilters values={values} categories={categories} />
-          </div>
+          <EventFilters values={values} categories={categories} />
+
+          <p className="mt-6 text-sm text-muted" aria-live="polite">
+            {events.length} {values.when === "past" ? "past" : "upcoming"} {events.length === 1 ? "event" : "events"}
+            {filtered ? " match your filters" : ""}
+          </p>
 
           {events.length > 0 ? (
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Reveal variant="stagger" className="mt-6 grid gap-5 md:grid-cols-2 lg:grid-cols-3 lg:gap-6">
               {events.map((event, i) => (
-                <Reveal key={event.id} delay={(i % 3) * 80}>
-                  <EventCard event={event} />
-                </Reveal>
+                <EventCard key={event.id} event={event} priority={i < 3} />
               ))}
-            </div>
+            </Reveal>
           ) : (
-            <p className="rounded-xl border border-ink-border bg-ink-soft/40 px-6 py-14 text-center text-muted">
-              {filtered
-                ? "No events match these filters — try another search."
-                : values.when === "past" ? "No past events yet." : "No public events scheduled yet — check back soon."}
-            </p>
+            <EmptyState
+              className="mt-6"
+              icon={<CalendarX />}
+              title={filtered ? "No events match" : values.when === "past" ? "No past events yet" : "No events scheduled yet"}
+              description={
+                filtered
+                  ? "Try another type, clear the search or include full events."
+                  : values.when === "past"
+                    ? "Events appear here once they have taken place."
+                    : "New dates are published here first. Members get a notification the moment one opens."
+              }
+              actionLabel={filtered ? "Clear filters" : values.when === "past" ? "See upcoming events" : "Create an account"}
+              actionHref={filtered ? (values.when === "past" ? "/events?when=past" : "/events") : values.when === "past" ? "/events" : "/sign-up"}
+            />
           )}
         </Container>
       </section>

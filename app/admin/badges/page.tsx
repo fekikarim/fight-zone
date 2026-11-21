@@ -42,7 +42,7 @@ export default async function AdminBadgesPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Badges & rewards" description="Badges are earned only from attendance you record. Rewards are optional, capped, single-use and never automatic unless you allow it." />
+      <PageHeader eyebrow="Engage" title="Badges & rewards" description="Badges are earned only from attendance you record. Rewards are optional, capped, single-use and never automatic unless you allow it." />
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[
           ["Outstanding liability", formatTnd(Number(l?.outstanding_value ?? 0)), `${Number(l?.outstanding_count ?? 0)} available reward(s)`],

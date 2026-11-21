@@ -17,6 +17,7 @@ export default async function MemberMessagesPage() {
   return (
     <div className="mx-auto flex w-full max-w-3xl flex-col gap-4">
       <PageHeader
+        eyebrow="Member area"
         title="Coach Seif"
         description="Your private conversation. Only you and Coach Seif can read it. Automatic Fight Zone notices about your registrations and payments appear here too."
       />

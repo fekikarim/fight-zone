@@ -53,7 +53,7 @@ export function SignUpForm({ next }: { next?: string }) {
           {...register("fullName")}
         />
         {errors.fullName ? (
-          <p id="fullName-error" className="text-xs font-medium text-primary">
+          <p id="fullName-error" className="text-xs font-medium text-danger">
             {errors.fullName.message}
           </p>
         ) : null}
@@ -71,7 +71,7 @@ export function SignUpForm({ next }: { next?: string }) {
           {...register("email")}
         />
         {errors.email ? (
-          <p id="email-error" className="text-xs font-medium text-primary">
+          <p id="email-error" className="text-xs font-medium text-danger">
             {errors.email.message}
           </p>
         ) : null}
@@ -88,7 +88,7 @@ export function SignUpForm({ next }: { next?: string }) {
           {...register("password")}
         />
         {errors.password ? (
-          <p id="password-error" className="text-xs font-medium text-primary">
+          <p id="password-error" className="text-xs font-medium text-danger">
             {errors.password.message}
           </p>
         ) : null}
@@ -97,7 +97,7 @@ export function SignUpForm({ next }: { next?: string }) {
       {state.message ? (
         <p
           role="alert"
-          className="rounded-md border border-primary/30 bg-primary-soft px-3 py-2 text-sm text-primary"
+          className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger"
         >
           {state.message}
         </p>

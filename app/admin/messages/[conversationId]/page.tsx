@@ -24,6 +24,7 @@ export default async function AdminMessageThreadPage({ params }: { params: Param
   return (
     <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
       <PageHeader
+        eyebrow="Engage"
         title={member.full_name ?? "Member"}
         back={{ href: "/admin/messages", label: "All conversations" }}
         description={

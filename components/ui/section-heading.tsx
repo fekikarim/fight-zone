@@ -6,37 +6,44 @@ interface SectionHeadingProps extends React.HTMLAttributes<HTMLDivElement> {
   title: string;
   description?: string;
   align?: "left" | "center";
+  /** Optional "round" number shown before the eyebrow (01, 02…). */
+  index?: string;
+  /** Render on the light bone band. */
+  tone?: "dark" | "light";
 }
 
+/** Public section heading: slanted bar + overline, display H2, short lead. */
 export function SectionHeading({
   eyebrow,
   title,
   description,
   align = "left",
+  index,
+  tone = "dark",
   className,
+  id,
   ...props
 }: SectionHeadingProps) {
   return (
     <div
-      className={cn(
-        "flex flex-col gap-3",
-        align === "center" && "items-center text-center",
-        className,
-      )}
+      className={cn("flex flex-col gap-4", align === "center" && "items-center text-center", className)}
       {...props}
     >
       {eyebrow ? (
-        <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-[0.2em] text-primary">
-          <span className="h-px w-6 bg-primary" aria-hidden />
+        <p className={cn("type-overline flex items-center gap-3", tone === "light" ? "text-bone-muted" : "text-muted")}>
+          {index ? <span className="font-display text-sm tracking-[0.1em] text-primary">{index}</span> : null}
+          <span className="slant-bar" aria-hidden />
           {eyebrow}
-          {align === "center" && <span className="h-px w-6 bg-primary" aria-hidden />}
-        </span>
+        </p>
       ) : null}
-      <h2 className="font-display text-3xl font-bold uppercase leading-tight tracking-tight text-balance sm:text-4xl lg:text-5xl">
-        {title}
-      </h2>
+      <h2 id={id} className={cn("type-h2 max-w-3xl text-balance", tone === "light" && "text-bone-ink")}>{title}</h2>
       {description ? (
-        <p className="max-w-2xl text-base leading-relaxed text-muted text-pretty">
+        <p
+          className={cn(
+            "max-w-2xl text-base leading-relaxed text-pretty sm:text-lg",
+            tone === "light" ? "text-bone-muted" : "text-muted",
+          )}
+        >
           {description}
         </p>
       ) : null}

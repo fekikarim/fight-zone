@@ -15,6 +15,7 @@ export default async function AdminMediaPage() {
   return (
     <div className="space-y-8">
       <PageHeader
+        eyebrow="Publish"
         title="Media library"
         description={`${media.length} item${media.length !== 1 ? "s" : ""} · public items appear in the site gallery.`}
         back={{ href: "/admin/content", label: "Back to content" }}

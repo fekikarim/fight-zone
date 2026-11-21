@@ -1,5 +1,5 @@
 import Link from "next/link";
-import { ArrowRight, Newspaper } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { SectionHeading } from "@/components/ui/section-heading";
@@ -8,44 +8,37 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NewsCard } from "@/components/marketing/news-card";
 import { getPublishedNews, resolveOrFallback } from "@/lib/supabase/queries";
 
+/** Editorial block: the latest article large, the next two stacked. Hidden when there is no news. */
 export async function NewsPreview() {
   const articles = await resolveOrFallback(() => getPublishedNews(3), []);
+  if (articles.length === 0) return null;
+  const [lead, ...rest] = articles;
 
   return (
-    <section className="border-t border-ink-border bg-ink-soft/30 py-20 lg:py-28">
+    <section aria-labelledby="news-h" className="border-t border-ink-border py-20 lg:py-28">
       <Container>
-        <div className="mb-12 flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
+        <div className="flex flex-col gap-6 sm:flex-row sm:items-end sm:justify-between">
           <Reveal>
-            <SectionHeading
-              eyebrow="News & Blog"
-              title="From the corner"
-              description="Training insights, event recaps and the fight philosophy of Coach Seif Dridi."
-            />
+            <SectionHeading id="news-h" index="05" eyebrow="News" title="From the corner" />
           </Reveal>
-          <Reveal delay={100}>
-            <Button variant="outline" asChild>
-              <Link href="/news">
-                All articles
-                <ArrowRight className="h-4 w-4" />
-              </Link>
-            </Button>
-          </Reveal>
+          <Button variant="outline" asChild className="w-full sm:w-auto">
+            <Link href="/news">
+              All articles
+              <ArrowRight className="h-4 w-4" aria-hidden />
+            </Link>
+          </Button>
         </div>
 
-        {articles.length > 0 ? (
-          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            {articles.map((article, i) => (
-              <Reveal key={article.id} delay={i * 80}>
-                <NewsCard article={article} />
-              </Reveal>
-            ))}
-          </div>
-        ) : (
-          <div className="flex flex-col items-center gap-4 rounded-xl border border-ink-border bg-ink-soft/40 px-6 py-14 text-center">
-            <Newspaper className="h-10 w-10 text-primary" />
-            <p className="text-muted">No articles published yet — the first one is coming soon.</p>
-          </div>
-        )}
+        <Reveal variant="stagger" className="mt-12 grid gap-5 lg:grid-cols-[minmax(0,1.35fr)_minmax(0,1fr)] lg:gap-6">
+          <NewsCard article={lead} />
+          {rest.length ? (
+            <div className="grid gap-5 lg:gap-6">
+              {rest.map((article) => (
+                <NewsCard key={article.id} article={article} variant="compact" />
+              ))}
+            </div>
+          ) : null}
+        </Reveal>
       </Container>
     </section>
   );
@@ -53,23 +46,15 @@ export async function NewsPreview() {
 
 export function NewsPreviewSkeleton() {
   return (
-    <section className="border-t border-ink-border bg-ink-soft/30 py-20 lg:py-28">
+    <section className="border-t border-ink-border py-20 lg:py-28">
       <Container>
-        <div className="mb-12">
-          <div className="h-12 w-2/3 skeleton rounded" />
-          <div className="mt-3 h-4 w-1/2 skeleton rounded" />
-        </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-          {[1, 2, 3].map((i) => (
-            <div key={i} className="overflow-hidden rounded-xl border border-ink-border">
-              <Skeleton className="aspect-[16/10] w-full rounded-none" />
-              <div className="p-5">
-                <Skeleton className="h-4 w-28" />
-                <div className="mt-2 h-5 w-3/4" />
-                <div className="mt-3 h-4 w-full" />
-              </div>
-            </div>
-          ))}
+        <Skeleton className="h-14 w-1/2" />
+        <div className="mt-12 grid gap-6 lg:grid-cols-[1.35fr_1fr]">
+          <Skeleton className="aspect-[16/11] w-full rounded-lg" />
+          <div className="grid gap-6">
+            <Skeleton className="h-40 w-full rounded-lg" />
+            <Skeleton className="h-40 w-full rounded-lg" />
+          </div>
         </div>
       </Container>
     </section>

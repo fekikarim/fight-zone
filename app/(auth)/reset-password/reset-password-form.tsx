@@ -70,7 +70,7 @@ export function ResetPasswordForm({ code }: ResetPasswordFormProps) {
   if (!verification.ok) {
     return (
       <div className="flex flex-col items-center gap-4 rounded-xl border border-ink-border bg-ink-soft/60 px-6 py-12 text-center">
-        <AlertTriangle className="h-10 w-10 text-primary" />
+        <AlertTriangle className="h-10 w-10 text-warning" />
         <p className="text-sm leading-relaxed text-muted">
           {verification.message}
         </p>
@@ -98,7 +98,7 @@ export function ResetPasswordForm({ code }: ResetPasswordFormProps) {
           {...register("password")}
         />
         {errors.password ? (
-          <p id="password-error" className="text-xs font-medium text-primary">
+          <p id="password-error" className="text-xs font-medium text-danger">
             {errors.password.message}
           </p>
         ) : null}
@@ -107,7 +107,7 @@ export function ResetPasswordForm({ code }: ResetPasswordFormProps) {
       {passwordState.message ? (
         <p
           role="alert"
-          className="rounded-md border border-primary/30 bg-primary-soft px-3 py-2 text-sm text-primary"
+          className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger"
         >
           {passwordState.message}
         </p>

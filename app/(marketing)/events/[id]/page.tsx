@@ -3,12 +3,13 @@ import Link from "next/link";
 import type { Metadata } from "next";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
-import { PageHero } from "@/components/marketing/page-hero";
+import Image from "next/image";
+import { ArrowLeft } from "lucide-react";
 import { EventDetailDisplay } from "@/components/events/event-detail";
 import { getPublicEventById } from "@/lib/supabase/queries";
 import { getCurrentUser } from "@/lib/auth/guards";
-import { resolveEventImage } from "@/lib/events/images";
-import { getEventHref, CASH_PAYMENT_NOTICE } from "@/lib/types/events";
+import { isRemoteImage, resolveEventImage } from "@/lib/events/images";
+import { getEventHref } from "@/lib/types/events";
 import { EventParticipantsRealtime } from "@/components/events/event-participants-realtime";
 import { siteConfig } from "@/lib/site";
 
@@ -46,58 +47,60 @@ export default async function PublicEventDetailPage({ params }: Props) {
 
   return (
     <>
-      <PageHero
-        eyebrow="Event"
-        title={event.title}
-        description={event.description?.slice(0, 120) ?? ""}
-        image={image}
-      />
+      {/* Banner: event artwork in the duotone treatment behind the title. */}
+      <section className="relative isolate overflow-hidden border-b border-ink-border">
+        <div className="duotone absolute inset-0 -z-10">
+          <Image src={image} alt="" fill priority sizes="100vw" unoptimized={isRemoteImage(image)} className="object-cover" />
+        </div>
+        <div className="absolute inset-0 -z-10 bg-gradient-to-t from-background via-background/80 to-background/40" aria-hidden />
+        <Container className="flex min-h-[15rem] items-end pb-6 pt-28 sm:min-h-[18rem]">
+          <Link href="/events" className="group inline-flex min-h-11 items-center gap-1.5 text-sm text-muted transition-colors hover:text-foreground">
+            <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden />
+            All events
+          </Link>
+        </Container>
+      </section>
 
-      <section className="py-16 lg:py-24">
+      <section className="pb-20 pt-10 lg:pb-28">
         <Container>
-          <div className="mx-auto max-w-3xl">
-            {user ? <EventParticipantsRealtime eventId={id} /> : null}
-            <EventDetailDisplay
-              event={event}
-              action={
-                isStaff ? (
-                  <Button asChild size="lg" className="gap-2">
-                    <Link href={`/admin/events/${event.id}`}>Manage this event</Link>
-                  </Button>
-                ) : (
-                  <Button asChild size="lg" className="gap-2">
+          {user ? <EventParticipantsRealtime eventId={id} /> : null}
+          <EventDetailDisplay
+            event={event}
+            action={
+              isStaff ? (
+                <Button asChild size="lg" className="w-full">
+                  <Link href={`/admin/events/${event.id}`}>Manage this event</Link>
+                </Button>
+              ) : (
+                <div className="flex flex-col gap-3">
+                  <Button asChild size="lg" className="w-full">
                     <Link href={user ? getEventHref("member", event.id) : `/sign-in?next=${encodeURIComponent(getEventHref("member", event.id))}`}>
-                      {user ? "Register for this event" : "Log in to register"}
+                      {user ? "Register for this event" : "Sign in to register"}
                     </Link>
                   </Button>
-                )
-              }
-            />
-
-            <div className="mt-8 grid gap-6 sm:grid-cols-2">
-              <div className="rounded-xl border border-ink-border bg-ink-soft/40 p-5">
-                <p className="text-xs font-semibold uppercase tracking-widest text-muted">
-                  Hosted by
-                </p>
-                <p className="mt-2 font-display text-lg font-bold uppercase tracking-tight">
-                  {siteConfig.coach.name}
-                </p>
-                <p className="mt-1 text-sm text-muted">{siteConfig.coach.role}</p>
+                  {!user ? (
+                    <p className="text-center text-xs text-muted">
+                      New here?{" "}
+                      <Link href={`/sign-up?next=${encodeURIComponent(getEventHref("member", event.id))}`} className="link-draw font-semibold text-foreground">
+                        Create a free account
+                      </Link>
+                    </p>
+                  ) : null}
+                </div>
+              )
+            }
+            asideExtra={
+              <div className="flex items-center gap-4 rounded-lg border border-ink-border px-5 py-4">
+                <span className="flex h-11 w-11 shrink-0 items-center justify-center bg-primary font-display text-sm font-bold text-white [clip-path:polygon(12%_0,100%_0,88%_100%,0_100%)]">
+                  SD
+                </span>
+                <div>
+                  <p className="type-overline text-[10px] text-muted-foreground">Hosted by</p>
+                  <p className="font-display text-lg font-semibold uppercase leading-tight">{siteConfig.coach.name}</p>
+                </div>
               </div>
-            </div>
-
-            <div className="mt-6 rounded-xl border border-ink-border bg-ink-soft/40 p-5 text-sm leading-relaxed text-muted">
-              <p className="font-display text-base font-semibold uppercase tracking-tight text-foreground">
-                Registration & payment
-              </p>
-              <p className="mt-2">
-                Signing up is free and takes a minute.{" "}
-                {event.is_free
-                  ? "This event is free — just show up at the gym."
-                  : `The ${event.price_tnd ?? 0} TND fee applies. ${CASH_PAYMENT_NOTICE} No online payments.`}
-              </p>
-            </div>
-          </div>
+            }
+          />
         </Container>
       </section>
     </>

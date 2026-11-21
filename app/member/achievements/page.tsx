@@ -27,7 +27,7 @@ export default async function AchievementsPage() {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Achievements" description="Badges you unlock by showing up. Every event Coach Seif records as attended counts." />
+      <PageHeader eyebrow="Member area" title="Achievements" description="Badges you unlock by showing up. Every event Coach Seif records as attended counts." />
 
       <section className="grid gap-4 rounded-2xl border border-ink-border bg-gradient-to-br from-primary/15 via-ink-soft/40 to-transparent p-5 sm:grid-cols-3 sm:p-6">
         <div>

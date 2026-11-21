@@ -2,10 +2,11 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { ArrowLeft, CalendarDays, User } from "lucide-react";
+import { ArrowLeft } from "lucide-react";
 import { Container } from "@/components/ui/container";
-import { Separator } from "@/components/ui/separator";
-import { DEFAULT_NEWS_IMAGE } from "@/components/marketing/news-card";
+import { RichText } from "@/lib/cms/rich-text";
+import { isRemoteImage } from "@/lib/events/images";
+import { DEFAULT_NEWS_IMAGE, NewsCard } from "@/components/marketing/news-card";
 import { getNewsBySlug, getPublishedNews } from "@/lib/supabase/queries";
 import { formatDate } from "@/lib/utils";
 import { newsCategoryLabel } from "@/lib/types/content";
@@ -42,96 +43,76 @@ export default async function NewsArticlePage({ params }: NewsArticlePageProps) 
 
   const related = await getPublishedNews(3);
 
+  const more = related.filter((a) => a.slug !== article.slug).slice(0, 2);
+  const cover = article.cover_image_url || DEFAULT_NEWS_IMAGE;
+
   return (
     <>
-      <section className="border-b border-ink-border bg-ink-soft/40 pt-32 pb-10 sm:pt-40">
-        <Container className="flex flex-col gap-6">
+      <header className="border-b border-ink-border pb-10 pt-28 sm:pt-36">
+        <Container className="max-w-4xl">
           <Link
             href="/news"
-            className="inline-flex w-fit items-center gap-2 text-sm font-medium text-muted transition-colors hover:text-primary"
+            className="group inline-flex min-h-11 w-fit items-center gap-2 text-sm text-muted transition-colors hover:text-foreground"
           >
-            <ArrowLeft className="h-4 w-4" />
-            Back to news
+            <ArrowLeft className="h-4 w-4 transition-transform duration-200 group-hover:-translate-x-0.5" aria-hidden />
+            All news
           </Link>
-          <div className="max-w-3xl">
-            <div className="flex flex-wrap items-center gap-3">
-              <span className="rounded-full border border-primary/25 bg-primary/10 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-widest text-primary">
-                {newsCategoryLabel[article.category] ?? article.category}
-              </span>
-              {article.published_at ? (
-                <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
-                  <CalendarDays className="h-4 w-4" />
-                  {formatDate(article.published_at)}
-                </span>
-              ) : null}
-              {article.author_name ? (
-                <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-muted">
-                  <User className="h-4 w-4" />
-                  {article.author_name}
-                </span>
-              ) : null}
-            </div>
-            <h1 className="mt-4 font-display text-3xl font-bold uppercase leading-tight tracking-tight text-balance sm:text-5xl">
-              {article.title}
-            </h1>
-          </div>
+          <p className="type-overline mt-6 flex flex-wrap items-center gap-x-3 gap-y-1 text-muted">
+            <span className="slant-bar h-1 w-4" aria-hidden />
+            <span className="text-primary">{newsCategoryLabel[article.category] ?? article.category}</span>
+            {article.published_at ? (
+              <time dateTime={article.published_at}>
+                {formatDate(article.published_at, { month: "long", day: "numeric", year: "numeric" })}
+              </time>
+            ) : null}
+          </p>
+          <h1 className="type-h1 mt-5 text-balance">{article.title}</h1>
+          {article.excerpt ? (
+            <p className="mt-6 max-w-2xl text-lg leading-relaxed text-foreground/75 text-pretty sm:text-xl">{article.excerpt}</p>
+          ) : null}
+          {article.author_name ? (
+            <p className="mt-6 text-sm text-muted">
+              By <span className="font-semibold text-foreground">{article.author_name}</span>
+            </p>
+          ) : null}
         </Container>
-      </section>
+      </header>
 
-      <article className="py-10 lg:py-14">
-        <Container className="max-w-4xl">
-          <div className="relative mb-10 aspect-[16/8] overflow-hidden rounded-2xl border border-ink-border">
+      <article className="pb-20 pt-10 lg:pb-28">
+        <Container className="max-w-5xl">
+          <div className={`${article.cover_image_url ? "" : "duotone "}relative mb-12 aspect-[16/8] overflow-hidden rounded-lg border border-ink-border`}>
             <Image
-              src={article.cover_image_url || DEFAULT_NEWS_IMAGE}
-              alt={article.title}
+              src={cover}
+              alt=""
               fill
-              sizes="(min-width: 1024px) 896px, 100vw"
+              sizes="(min-width: 1024px) 1024px, 100vw"
+              unoptimized={isRemoteImage(cover)}
               className="object-cover"
               priority
             />
           </div>
-
+        </Container>
+        <Container className="max-w-[44rem]">
           {article.content ? (
-            <div className="prose prose-invert max-w-none prose-headings:font-display prose-headings:uppercase prose-headings:tracking-wide prose-p:text-muted prose-p:leading-relaxed prose-a:text-primary hover:prose-a:text-primary">
-              {article.content.split("\n\n").map((paragraph, i) => (
-                <p key={i}>{paragraph}</p>
-              ))}
-            </div>
+            <RichText
+              text={article.content}
+              className="text-[17px] leading-[1.75] text-foreground/85 [&_h2]:mt-12 [&_h2]:text-2xl [&_p]:my-5 sm:text-lg"
+            />
           ) : (
             <p className="text-muted">This article is being prepared.</p>
           )}
-
-          <Separator className="my-12" />
-
-          {related.length > 0 ? (
-            <div>
-              <h2 className="mb-6 font-display text-2xl font-bold uppercase tracking-wide">
-                More from the corner
-              </h2>
-              <div className="grid gap-4 sm:grid-cols-3">
-                {related
-                  .filter((a) => a.slug !== article.slug)
-                  .slice(0, 3)
-                  .map((item) => (
-                    <Link
-                      key={item.id}
-                      href={`/news/${item.slug}`}
-                      className="group rounded-lg border border-ink-border bg-ink-soft/50 p-4 transition-colors hover:border-primary/40"
-                    >
-                      <p className="font-display text-base font-semibold uppercase leading-snug group-hover:text-primary">
-                        {item.title}
-                      </p>
-                      {item.published_at ? (
-                        <p className="mt-2 text-xs uppercase tracking-widest text-muted-foreground">
-                          {formatDate(item.published_at)}
-                        </p>
-                      ) : null}
-                    </Link>
-                  ))}
-              </div>
-            </div>
-          ) : null}
         </Container>
+
+        {more.length > 0 ? (
+          <Container className="mt-20 max-w-5xl border-t border-ink-border pt-12">
+            <h2 className="type-h3 mb-6">More from the corner</h2>
+            <div className="grid gap-5 md:grid-cols-2">
+              {more.map((item) => (
+                <NewsCard key={item.id} article={item} variant="compact" />
+              ))}
+            </div>
+          </Container>
+        ) : null}
       </article>
     </>
   );

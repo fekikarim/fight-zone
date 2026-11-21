@@ -1,118 +1,114 @@
+import Image from "next/image";
 import Link from "next/link";
-import { CalendarDays, Clock, MapPin, Users } from "lucide-react";
-import { Card, CardContent, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { ArrowUpRight, MapPin, Users } from "lucide-react";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { cn, formatDate } from "@/lib/utils";
-import { resolveEventImage } from "@/lib/events/images";
-import { eventTypeLabel, getEventHref } from "@/lib/types/events";
+import { isRemoteImage, resolveEventImage } from "@/lib/events/images";
+import { eventTypeLabel, getEventDisplayState, getEventHref } from "@/lib/types/events";
 import type { EventDetail, EventSummary } from "@/lib/types/events";
 
 export type EventItem = EventDetail | EventSummary;
 
-export function EventCard({ event, href }: { event: EventItem; href?: string }) {
-  const isPrivateCoaching =
-    "is_private_coaching" in event
-      ? event.is_private_coaching
-      : !event.is_public && event.max_participants === 1;
-  const isIndividual =
-    "event_format" in event && event.event_format != null
-      ? event.event_format === "INDIVIDUAL"
-      : isPrivateCoaching;
+function placesLine(event: EventItem): { text: string; tone: "muted" | "low" | "full" } | null {
+  if (event.max_participants == null) return null;
+  const taken = "participant_count" in event ? event.participant_count : 0;
+  const left = Math.max(0, event.max_participants - taken);
+  if (left === 0) return { text: event.waitlist_enabled ? "Full · waitlist open" : "Fully booked", tone: "full" };
+  return { text: `${left} of ${event.max_participants} places left`, tone: left <= 3 ? "low" : "muted" };
+}
 
+/**
+ * Event "fight card": duotone frame with a slanted date stamp, then title,
+ * place, seats and price. Status comes from the shared display state, so it
+ * reads the same here as on the detail page and in the portals.
+ */
+export function EventCard({ event, href, priority }: { event: EventItem; href?: string; priority?: boolean }) {
+  const isPrivate = "is_private" in event ? event.is_private : !event.is_public;
   const image = resolveEventImage({
     image_url: event.image_url,
     event_type: event.event_type,
-    is_private_coaching: isPrivateCoaching,
+    is_private_coaching: isPrivate && event.max_participants === 1,
   });
-
-  const participantCount = "participant_count" in event ? event.participant_count : 0;
-  const spotsLeft =
-    event.max_participants != null
-      ? Math.max(0, event.max_participants - participantCount)
-      : null;
-  const isLow = spotsLeft !== null && spotsLeft > 0 && spotsLeft <= 3;
-  const isFull = spotsLeft !== null && spotsLeft === 0;
+  const places = placesLine(event);
+  const state = "spots_left" in event ? getEventDisplayState(event) : null;
+  const price = event.is_free || !event.price_tnd ? "Free" : `${Number(event.price_tnd).toLocaleString("en-US", { maximumFractionDigits: 3 })} TND`;
 
   return (
-    <Link href={href ?? getEventHref("public", event.id)} className="group block h-full">
-      <Card className="flex h-full flex-col overflow-hidden transition-all duration-300 hover:-translate-y-1 hover:border-primary/40 hover:shadow-lg hover:shadow-primary/10">
-        <div className="relative aspect-[16/10] bg-ink-softer">
-          <div
-            className="absolute inset-0 bg-cover bg-center transition-transform duration-500 group-hover:scale-105"
-            style={{ backgroundImage: `url(${image})` }}
-            aria-hidden
-          />
-          <div
-            className="absolute inset-0 bg-gradient-to-t from-ink/60 via-transparent to-transparent"
-            aria-hidden
-          />
-          <div className="absolute inset-x-0 top-0 flex items-start justify-between gap-2 p-4">
-            <span className="flex flex-wrap gap-1.5">
-              <Badge className="backdrop-blur-sm">
-                {eventTypeLabel[event.event_type] ?? event.event_type}
-              </Badge>
-              <Badge variant="neutral" className="backdrop-blur-sm">
-                {isIndividual ? "Individual" : "Collective"}
-              </Badge>
+    <Link
+      href={href ?? getEventHref("public", event.id)}
+      className="group lift flex h-full flex-col overflow-hidden rounded-lg border border-ink-border bg-ink-soft focus-visible:ring-2 focus-visible:ring-primary-ring"
+    >
+      <div className="zoom-img duotone relative aspect-[16/10] overflow-hidden">
+        <Image
+          src={image}
+          alt=""
+          fill
+          priority={priority}
+          unoptimized={isRemoteImage(image)}
+          sizes="(min-width: 1024px) 33vw, (min-width: 640px) 50vw, 100vw"
+          className="object-cover"
+        />
+        <div className="absolute left-4 top-4 z-10 flex items-stretch text-white">
+          <span className="tag-slant flex-col !items-start !gap-0 px-3.5 py-1.5 leading-none">
+            <span className="text-[10px] font-semibold uppercase tracking-[0.18em] text-white/85">
+              {formatDate(event.start_at, { month: "short" })}
             </span>
-            <Badge
-              variant={event.is_free ? "neutral" : "solid"}
-              className="backdrop-blur-sm"
-            >
-              {event.is_free || !event.price_tnd ? "Free" : `${Number(event.price_tnd)} TND`}
-            </Badge>
-          </div>
-        </div>
-
-        <CardContent className="flex flex-1 flex-col gap-3 p-5">
-          <span className="inline-flex items-center gap-2 text-xs font-semibold uppercase tracking-widest text-primary">
-            <CalendarDays className="h-3.5 w-3.5" />
-            {formatDate(event.start_at, {
-              weekday: "short",
-              month: "short",
-              day: "numeric",
-              hour: "numeric",
-              minute: "2-digit",
-            })}
+            <span className="font-display text-3xl font-bold">{formatDate(event.start_at, { day: "numeric" })}</span>
           </span>
+        </div>
+        <span className="absolute bottom-4 right-4 z-10 rounded-sm bg-ink/85 px-2.5 py-1 font-display text-sm font-semibold uppercase tracking-wide text-foreground backdrop-blur-sm">
+          {price}
+        </span>
+      </div>
 
-          <CardTitle className="line-clamp-2 text-lg">{event.title}</CardTitle>
-
-          {event.description ? (
-            <p className="line-clamp-3 text-sm leading-relaxed text-muted">
-              {event.description}
-            </p>
+      <div className="flex flex-1 flex-col gap-3 p-5">
+        <div className="flex items-center justify-between gap-2">
+          <p className="type-overline text-[11px] text-muted">
+            {eventTypeLabel[event.event_type] ?? event.event_type}
+            <span className="text-muted-foreground"> · {formatDate(event.start_at, { weekday: "short", hour: "numeric", minute: "2-digit" })}</span>
+          </p>
+          {state && state !== "open" ? <StatusBadge kind="display" status={state} /> : null}
+        </div>
+        <h3 className="flex items-start justify-between gap-3 font-display text-xl font-semibold uppercase leading-tight tracking-[0.01em] text-balance">
+          <span className="line-clamp-2">{event.title}</span>
+          <ArrowUpRight
+            className="mt-1 h-5 w-5 shrink-0 text-muted transition-[transform,color] duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5 group-hover:text-primary"
+            aria-hidden
+          />
+        </h3>
+        <div className="mt-auto flex flex-col gap-1.5 pt-1 text-sm text-muted">
+          {event.location ? (
+            <span className="inline-flex items-center gap-2">
+              <MapPin className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              <span className="truncate">{event.location}</span>
+            </span>
           ) : null}
-
-          <div className="mt-auto flex flex-col gap-2 pt-2 text-sm text-muted">
-            {event.end_at ? (
-              <span className="inline-flex items-center gap-2">
-                <Clock className="h-4 w-4 text-primary" />
-                Ends {formatDate(event.end_at, { hour: "numeric", minute: "2-digit" })}
-              </span>
-            ) : null}
-            {event.location ? (
-              <span className="inline-flex items-center gap-2">
-                <MapPin className="h-4 w-4 text-primary" />
-                {event.location}
-              </span>
-            ) : null}
-            {spotsLeft !== null ? (
-              <span
-                className={cn(
-                  "inline-flex items-center gap-2",
-                  isFull ? "text-destructive" : isLow ? "text-amber-300" : "text-muted",
-                )}
-              >
-                <Users className="h-4 w-4 text-primary" />
-                {isFull
-                  ? "Fully booked"
-                  : `${spotsLeft} ${spotsLeft === 1 ? "spot" : "spots"} left`}
-              </span>
-            ) : null}
-          </div>
-        </CardContent>
-      </Card>
+          {places ? (
+            <span
+              className={cn(
+                "inline-flex items-center gap-2",
+                places.tone === "full" ? "text-danger" : places.tone === "low" ? "text-warning" : undefined,
+              )}
+            >
+              <Users className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+              {places.text}
+            </span>
+          ) : null}
+        </div>
+      </div>
     </Link>
+  );
+}
+
+export function EventCardSkeleton() {
+  return (
+    <div className="flex flex-col overflow-hidden rounded-lg border border-ink-border bg-ink-soft">
+      <div className="skeleton aspect-[16/10]" />
+      <div className="space-y-3 p-5">
+        <div className="skeleton h-3 w-1/3 rounded-sm" />
+        <div className="skeleton h-6 w-4/5 rounded-sm" />
+        <div className="skeleton h-4 w-1/2 rounded-sm" />
+      </div>
+    </div>
   );
 }

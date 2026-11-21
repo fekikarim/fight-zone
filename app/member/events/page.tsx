@@ -3,13 +3,11 @@ import Link from "next/link";
 import { CalendarDays, CalendarPlus, ChevronRight, Lock, MapPin } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge } from "@/components/ui/status-badge";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { getMemberRegisteredEvents, getPublicEvents } from "@/lib/supabase/queries";
 import {
-  eventPaymentStatusLabel,
   priceLabel,
-  registrationStatusLabel,
-  attendanceStatusLabel,
   type EventDetail,
   type MemberRegistration,
 } from "@/lib/types/events";
@@ -65,7 +63,7 @@ export default async function MemberEventsPage({ searchParams }: Props) {
 
   return (
     <Container className="flex max-w-none flex-col gap-6 px-0">
-      <PageHeader title="Events" description="Your registrations, payments and what's coming up." />
+      <PageHeader eyebrow="Member area" title="Events" description="Your registrations, payments and what's coming up." />
 
       <nav aria-label="Event lists" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:px-0">
         {TABS.map((t) => (
@@ -74,8 +72,8 @@ export default async function MemberEventsPage({ searchParams }: Props) {
             href={`/member/events?tab=${t.key}`}
             aria-current={tab === t.key ? "page" : undefined}
             className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-xs font-medium transition-colors",
-              tab === t.key ? "border-primary bg-primary text-white" : "border-ink-border text-muted hover:text-foreground",
+              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3.5 text-[13px] font-semibold transition-colors",
+              tab === t.key ? "border-foreground bg-foreground text-ink" : "border-ink-border text-muted hover:text-foreground",
             )}
           >
             {t.label}
@@ -154,16 +152,14 @@ function EventRow({ event, registration }: { event: EventDetail; registration?: 
         </p>
         {registration ? (
           <div className="flex flex-wrap gap-1.5 pt-0.5">
-            <Badge variant={registration.registration_status === "CONFIRMED" ? "default" : "outline"}>
-              {registrationStatusLabel[registration.registration_status]}
-            </Badge>
+            <StatusBadge kind="registration" status={registration.registration_status} />
             {registration.payment_status !== "NOT_REQUIRED" ? (
-              <Badge variant={needsPayment ? "solid" : "neutral"}>{eventPaymentStatusLabel[registration.payment_status]}</Badge>
+              <StatusBadge kind="payment" status={registration.payment_status} />
             ) : null}
             {registration.attendance_status !== "UNMARKED" ? (
-              <Badge variant="neutral">{attendanceStatusLabel[registration.attendance_status]}</Badge>
+              <StatusBadge kind="attendance" status={registration.attendance_status} />
             ) : null}
-            {event.status === "CANCELLED" ? <Badge variant="outline">Event cancelled</Badge> : null}
+            {event.status === "CANCELLED" ? <Badge variant="danger" dot>Event cancelled</Badge> : null}
           </div>
         ) : null}
       </div>

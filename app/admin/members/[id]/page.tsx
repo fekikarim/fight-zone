@@ -46,6 +46,7 @@ export default async function AdminMemberDetailPage({ params }: { params: Promis
   return (
     <div className="space-y-8">
       <PageHeader
+        eyebrow="Operate"
         title={p.full_name ?? "Member"}
         back={{ href: "/admin/members", label: "All members" }}
         description={

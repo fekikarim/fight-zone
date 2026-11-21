@@ -7,14 +7,14 @@ import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { DailyMotivationGate } from "@/components/motivation/daily-motivation-gate";
 
 const memberNav = [
-  { href: "/member", label: "Overview" },
-  { href: "/member/schedule", label: "Schedule" },
-  { href: "/member/events", label: "Events" },
-  { href: "/member/achievements", label: "Achievements" },
-  { href: "/member/reviews", label: "My Reviews" },
-  { href: "/member/messages", label: "Messages" },
-  { href: "/member/notifications", label: "Notifications" },
-  { href: "/member/profile", label: "Profile" },
+  { href: "/member", label: "Overview", group: "Training" },
+  { href: "/member/events", label: "Events", group: "Training" },
+  { href: "/member/schedule", label: "Schedule", group: "Training" },
+  { href: "/member/achievements", label: "Achievements", group: "Training" },
+  { href: "/member/messages", label: "Messages", group: "Connect" },
+  { href: "/member/notifications", label: "Notifications", group: "Connect" },
+  { href: "/member/reviews", label: "My reviews", group: "Connect" },
+  { href: "/member/profile", label: "Profile", group: "Account" },
 ];
 
 export default async function MemberLayout({ children }: { children: ReactNode }) {

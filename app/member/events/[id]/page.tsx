@@ -29,10 +29,11 @@ export default async function MemberEventDetailPage({ params }: Props) {
   const [registration, paymentSettings] = await Promise.all([getMemberEventRegistration(id), getPaymentSettings()]);
 
   return (
-    <Container className="flex max-w-3xl flex-col gap-6 px-0">
-      <PageHeader title="Event" back={{ href: "/member/events", label: "Back to events" }} />
+    <Container className="flex max-w-none flex-col gap-6 px-0">
+      <PageHeader eyebrow="Event" title={event.title} back={{ href: "/member/events", label: "Back to events" }} />
       <EventDetailDisplay
         event={event}
+        showTitle={false}
         action={
           <MemberRegistrationPanel
             event={event}

@@ -17,7 +17,7 @@ export default async function MessageSettingsPage() {
   const rows = ((data ?? []) as TemplateRow[]).sort((a, b) => ORDER.indexOf(a.key) - ORDER.indexOf(b.key));
   return (
     <div className="mx-auto max-w-3xl space-y-6">
-      <PageHeader title="Automatic messages" back={{ href: "/admin/settings", label: "Settings" }}
+      <PageHeader eyebrow="Insight" title="Automatic messages" back={{ href: "/admin/settings", label: "Settings" }}
         description="Fight Zone sends these to members by itself, labelled “Fight Zone · automatic message” in their conversation with you. Click a button like “+ Event name” to insert the member's real details — they are filled in automatically." />
       <div className="space-y-4">{rows.map((t) => <MessageTemplateForm key={t.key} template={t} />)}</div>
     </div>

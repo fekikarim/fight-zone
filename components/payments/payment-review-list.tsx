@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Check, ExternalLink, FileText, X } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { EmptyState } from "@/components/empty-state";
 import { Badge } from "@/components/ui/badge";
 import { FormDialog } from "@/components/ui/form-dialog";
 import { fieldClass } from "@/components/ui/form-feedback";
@@ -43,9 +44,11 @@ export function PaymentReviewList({ items, highlight, reviewable }: { items: Pay
 
   if (!items.length) {
     return (
-      <p className="rounded-xl border border-dashed border-ink-border bg-ink-soft/40 px-5 py-12 text-center text-sm text-muted">
-        {reviewable ? "No payment proofs waiting for review. 🎉" : "Nothing here yet."}
-      </p>
+      <EmptyState
+        icon={<FileText />}
+        title={reviewable ? "No proofs waiting" : "Nothing here yet"}
+        description={reviewable ? "When a member uploads a bank-transfer receipt it appears here for you to check." : "Reviewed proofs will be listed here."}
+      />
     );
   }
 
@@ -56,28 +59,31 @@ export function PaymentReviewList({ items, highlight, reviewable }: { items: Pay
           const mismatch = Math.round(it.amount_declared * 1000) !== Math.round(it.amount_due * 1000);
           return (
             <li key={it.id} id={`submission-${it.id}`}
-              className={cn("rounded-xl border bg-ink-soft/30 p-4 sm:p-5", highlight === it.id ? "border-primary ring-1 ring-primary/40" : "border-ink-border")}>
+              className={cn("rounded-lg border bg-ink-soft p-4 sm:p-5", highlight === it.id ? "border-primary ring-1 ring-primary/40" : "border-ink-border")}>
               <div className="flex flex-col gap-4 md:flex-row md:items-start">
                 <a href={`/api/payment-proofs/${it.id}`} target="_blank" rel="noopener noreferrer"
-                  className="flex h-28 w-full shrink-0 items-center justify-center gap-2 rounded-lg border border-ink-border bg-ink text-sm text-muted transition-colors hover:border-primary/50 hover:text-foreground md:w-40"
+                  className="group flex h-32 w-full shrink-0 flex-col items-center justify-center gap-2 rounded-md border border-dashed border-ink-strong bg-ink text-sm text-muted transition-colors hover:border-foreground/50 hover:text-foreground md:w-44"
                   aria-label={`Open proof from ${it.member_name ?? "member"} in a new tab`}>
                   <FileText className="h-6 w-6" aria-hidden />
                   <span className="inline-flex items-center gap-1">Open proof <ExternalLink className="h-3.5 w-3.5" aria-hidden /></span>
                 </a>
                 <div className="min-w-0 flex-1 space-y-2">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
-                    <p className="font-semibold">{it.member_name ?? "Member"} <span className="text-sm font-normal text-muted">· {it.member_email}</span></p>
+                    <p className="flex flex-wrap items-center gap-2 font-semibold">
+                      {it.member_name ?? "Member"} <span className="text-sm font-normal text-muted">· {it.member_email}</span>
+                      {reviewable ? <Badge variant="warning" dot>Awaiting your review</Badge> : null}
+                    </p>
                     <span className="text-xs text-muted">Sent {formatDate(it.created_at, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
                   </div>
-                  <Link href={`/admin/events/${it.event_id}`} className="block truncate text-sm text-primary hover:underline">
+                  <Link href={`/admin/events/${it.event_id}`} className="link-draw block w-fit max-w-full truncate text-sm text-foreground/85">
                     {it.event_title} · {formatDate(it.event_start, { month: "short", day: "numeric" })}
                   </Link>
-                  <dl className="grid grid-cols-2 gap-2 text-sm sm:grid-cols-3">
-                    <div><dt className="text-xs text-muted">Declared</dt><dd className="font-medium">{formatTnd(it.amount_declared)}</dd></div>
-                    <div><dt className="text-xs text-muted">Amount due</dt><dd className="font-medium">{formatTnd(it.amount_due)}</dd></div>
-                    <div className="col-span-2 sm:col-span-1"><dt className="text-xs text-muted">Reference</dt><dd className="truncate">{it.transfer_reference ?? "—"}</dd></div>
+                  <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-md border border-ink-border bg-ink-border text-sm sm:grid-cols-3">
+                    <div className="bg-ink-soft px-3 py-2.5"><dt className="type-overline text-[10px] text-muted-foreground">Declared</dt><dd className="mt-0.5 font-display text-lg font-bold tabular">{formatTnd(it.amount_declared)}</dd></div>
+                    <div className="bg-ink-soft px-3 py-2.5"><dt className="type-overline text-[10px] text-muted-foreground">Amount due</dt><dd className="mt-0.5 font-display text-lg font-bold tabular">{formatTnd(it.amount_due)}</dd></div>
+                    <div className="col-span-2 bg-ink-soft px-3 py-2.5 sm:col-span-1"><dt className="type-overline text-[10px] text-muted-foreground">Reference</dt><dd className="mt-0.5 truncate">{it.transfer_reference ?? "—"}</dd></div>
                   </dl>
-                  {mismatch ? <Badge variant="outline">Declared amount differs from amount due</Badge> : null}
+                  {mismatch ? <Badge variant="warning" dot>Declared amount differs from amount due</Badge> : null}
                   {it.member_note ? <p className="rounded-md bg-ink-soft px-3 py-2 text-sm text-muted">“{it.member_note}”</p> : null}
                   {it.rejection_reason ? <p className="text-sm text-muted">Rejected: {it.rejection_reason}</p> : null}
                   {reviewable ? (

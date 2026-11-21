@@ -1,73 +1,47 @@
 import { Suspense } from "react";
 import { Hero } from "@/components/marketing/sections/hero";
-import {
-  StatsStrip,
-  StatsStripSkeleton,
-} from "@/components/marketing/sections/stats";
-import {
-  AboutPreview,
-  AboutPreviewSkeleton,
-} from "@/components/marketing/sections/about-preview";
-import {
-  ServicesPreview,
-  ServicesPreviewSkeleton,
-} from "@/components/marketing/sections/services-preview";
-import {
-  PalmaresPreview,
-  PalmaresPreviewSkeleton,
-} from "@/components/marketing/sections/palmares-preview";
-import {
-  GalleryPreview,
-  GalleryPreviewSkeleton,
-} from "@/components/marketing/sections/gallery-preview";
-import {
-  EventsPreview,
-  EventsPreviewSkeleton,
-} from "@/components/marketing/sections/events-preview";
-import {
-  NewsPreview,
-  NewsPreviewSkeleton,
-} from "@/components/marketing/sections/news-preview";
-import {
-  TestimonialsSection,
-  TestimonialsSectionSkeleton,
-} from "@/components/marketing/sections/testimonials-section";
-import {
-  TransformationsPreview,
-  TransformationsPreviewSkeleton,
-} from "@/components/marketing/sections/transformations-preview";
+import { Disciplines } from "@/components/marketing/sections/disciplines";
+import { EventsPreview, EventsPreviewSkeleton } from "@/components/marketing/sections/events-preview";
+import { HowItWorks } from "@/components/marketing/sections/how-it-works";
+import { AboutPreview, AboutPreviewSkeleton } from "@/components/marketing/sections/about-preview";
+import { PalmaresPreview } from "@/components/marketing/sections/palmares-preview";
+import { GalleryPreview } from "@/components/marketing/sections/gallery-preview";
+import { NewsPreview, NewsPreviewSkeleton } from "@/components/marketing/sections/news-preview";
+import { TestimonialsSection } from "@/components/marketing/sections/testimonials-section";
+import { TransformationsPreview } from "@/components/marketing/sections/transformations-preview";
 import { CtaBanner } from "@/components/marketing/sections/cta";
 
+/**
+ * Homepage. Every data-driven section renders real records only and hides
+ * itself when there is nothing to show (no invented stats, programs or
+ * testimonials).
+ */
 export default function HomePage() {
   return (
     <>
       <Hero />
-      <Suspense fallback={<StatsStripSkeleton />}>
-        <StatsStrip />
+      <Disciplines />
+      <Suspense fallback={<EventsPreviewSkeleton />}>
+        <EventsPreview />
       </Suspense>
+      <HowItWorks />
       <Suspense fallback={<AboutPreviewSkeleton />}>
         <AboutPreview />
       </Suspense>
-      <Suspense fallback={<ServicesPreviewSkeleton />}>
-        <ServicesPreview />
-      </Suspense>
-      <Suspense fallback={<PalmaresPreviewSkeleton />}>
+      <Suspense fallback={null}>
         <PalmaresPreview />
       </Suspense>
-      <Suspense fallback={<GalleryPreviewSkeleton />}>
-        <GalleryPreview />
+      <Suspense fallback={null}>
+        <TransformationsPreview />
       </Suspense>
-      <Suspense fallback={<EventsPreviewSkeleton />}>
-        <EventsPreview />
+      <Suspense fallback={null}>
+        <TestimonialsSection />
       </Suspense>
       <Suspense fallback={<NewsPreviewSkeleton />}>
         <NewsPreview />
       </Suspense>
-      <Suspense fallback={<TestimonialsSectionSkeleton />}>
-        <TestimonialsSection />
-      </Suspense>
-      <Suspense fallback={<TransformationsPreviewSkeleton />}>
-        <TransformationsPreview />
+      <Suspense fallback={null}>
+        <GalleryPreview />
       </Suspense>
       <CtaBanner />
     </>

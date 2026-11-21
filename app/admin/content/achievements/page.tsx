@@ -17,6 +17,7 @@ export default async function AdminAchievementsPage() {
   return (
     <div className="space-y-8">
       <PageHeader
+        eyebrow="Publish"
         title="Achievements"
         description={`${achievements.length} record${achievements.length !== 1 ? "s" : ""} · shown on the About page palmares.`}
         back={{ href: "/admin/content", label: "Back to content" }}

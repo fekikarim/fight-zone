@@ -12,13 +12,10 @@ import {
   MessageSquare,
   Bell,
   User,
-  Home,
-  Info,
   Newspaper,
-  ExternalLink,
+  ArrowUpRight,
   Menu,
   X,
-  Globe,
   CalendarDays,
   FileText,
   LayoutGrid,
@@ -41,6 +38,8 @@ export interface DashboardNavLink {
   label: string;
   /** Optional count rendered as a pill (e.g. unread messages). */
   badge?: number;
+  /** Sidebar group heading this item belongs to. */
+  group?: string;
 }
 
 interface DashboardShellProps {
@@ -55,37 +54,32 @@ interface DashboardShellProps {
 }
 
 /** Pages that clear each feed's indicator (shared seen-key per feed). */
-const NEWS_HREFS = ["/news"];
 const EVENTS_HREFS = ["/events", "/member/events"];
 
-const MEMBER_NAV_ICONS: Record<string, ReactNode> = {
-  "/member": <LayoutDashboard className="h-4 w-4 shrink-0" />,
-  "/member/schedule": <CalendarClock className="h-4 w-4 shrink-0" />,
-  "/member/events": <Trophy className="h-4 w-4 shrink-0" />,
-  "/member/achievements": <Medal className="h-4 w-4 shrink-0" />,
-  "/member/reviews": <Star className="h-4 w-4 shrink-0" />,
-  "/member/messages": <MessageSquare className="h-4 w-4 shrink-0" />,
-  "/member/notifications": <Bell className="h-4 w-4 shrink-0" />,
-  "/member/profile": <User className="h-4 w-4 shrink-0" />,
+const ICON = "h-[18px] w-[18px] shrink-0";
+const NAV_ICONS: Record<string, ReactNode> = {
+  "/member": <LayoutDashboard className={ICON} />,
+  "/member/schedule": <CalendarClock className={ICON} />,
+  "/member/events": <Trophy className={ICON} />,
+  "/member/achievements": <Medal className={ICON} />,
+  "/member/reviews": <Star className={ICON} />,
+  "/member/messages": <MessageSquare className={ICON} />,
+  "/member/notifications": <Bell className={ICON} />,
+  "/member/profile": <User className={ICON} />,
+  "/admin": <LayoutDashboard className={ICON} />,
+  "/admin/events": <Trophy className={ICON} />,
+  "/admin/calendar": <CalendarDays className={ICON} />,
+  "/admin/payments": <Wallet className={ICON} />,
+  "/admin/members": <Users className={ICON} />,
+  "/admin/reports": <BarChart3 className={ICON} />,
+  "/admin/badges": <Medal className={ICON} />,
+  "/admin/settings": <Settings className={ICON} />,
+  "/admin/news": <Newspaper className={ICON} />,
+  "/admin/reviews": <Star className={ICON} />,
+  "/admin/messages": <MessageSquare className={ICON} />,
+  "/admin/notifications": <Bell className={ICON} />,
+  "/admin/content": <FileText className={ICON} />,
 };
-
-const ADMIN_NAV_ICONS: Record<string, ReactNode> = {
-  "/admin": <LayoutDashboard className="h-4 w-4 shrink-0" />,
-  "/admin/events": <Trophy className="h-4 w-4 shrink-0" />,
-  "/admin/calendar": <CalendarDays className="h-4 w-4 shrink-0" />,
-  "/admin/payments": <Wallet className="h-4 w-4 shrink-0" />,
-  "/admin/members": <Users className="h-4 w-4 shrink-0" />,
-  "/admin/reports": <BarChart3 className="h-4 w-4 shrink-0" />,
-  "/admin/badges": <Medal className="h-4 w-4 shrink-0" />,
-  "/admin/settings": <Settings className="h-4 w-4 shrink-0" />,
-  "/admin/news": <Newspaper className="h-4 w-4 shrink-0" />,
-  "/admin/reviews": <Star className="h-4 w-4 shrink-0" />,
-  "/admin/messages": <MessageSquare className="h-4 w-4 shrink-0" />,
-  "/admin/notifications": <Bell className="h-4 w-4 shrink-0" />,
-  "/admin/content": <FileText className="h-4 w-4 shrink-0" />,
-};
-
-const NAV_ICONS: Record<string, ReactNode> = { ...MEMBER_NAV_ICONS, ...ADMIN_NAV_ICONS };
 
 /** Up to four destinations in the mobile bottom bar (the rest live under "More"). */
 const MOBILE_NAV_PRIMARY = [
@@ -95,67 +89,9 @@ const MOBILE_NAV_PRIMARY = [
   "/member/notifications",
   "/admin",
   "/admin/events",
-  "/admin/calendar",
+  "/admin/payments",
   "/admin/messages",
 ];
-
-const PUBLIC_NAV = [
-  { href: "/", label: "Home", icon: <Home className="h-4 w-4 shrink-0" /> },
-  { href: "/about", label: "About", icon: <Info className="h-4 w-4 shrink-0" /> },
-  { href: "/news", label: "News", icon: <Newspaper className="h-4 w-4 shrink-0" /> },
-  { href: "/events", label: "Events", icon: <Trophy className="h-4 w-4 shrink-0" /> },
-];
-
-function SidebarNavItem({
-  href,
-  label,
-  badge,
-  icon,
-  active,
-  external,
-  onClick,
-  trailing,
-}: {
-  href: string;
-  label: string;
-  badge?: number;
-  icon?: ReactNode;
-  active?: boolean;
-  external?: boolean;
-  onClick?: () => void;
-  trailing?: ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      target={external ? "_blank" : undefined}
-      rel={external ? "noopener noreferrer" : undefined}
-      onClick={onClick}
-      className={cn(
-        "group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150",
-        active
-          ? "bg-primary/15 text-primary"
-          : "text-zinc-400 hover:bg-ink-soft/60 hover:text-white",
-      )}
-    >
-      <span className={cn("transition-colors", active ? "text-primary" : "text-zinc-500 group-hover:text-zinc-300")}>
-        {icon}
-      </span>
-      <span className="flex-1 truncate">{label}</span>
-      {trailing}
-      {badge ? (
-        <span
-          className="ml-auto flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold leading-none text-ink-base"
-          aria-label={`${badge} unread`}
-        >
-          {badge > 99 ? "99+" : badge}
-        </span>
-      ) : external ? (
-        <ExternalLink className="h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" aria-hidden />
-      ) : null}
-    </Link>
-  );
-}
 
 function isActiveNav(pathname: string, href: string, nav: DashboardNavLink[]): boolean {
   if (pathname === href) return true;
@@ -169,103 +105,149 @@ function isActiveNav(pathname: string, href: string, nav: DashboardNavLink[]): b
   );
 }
 
+function CountPill({ value, className }: { value: number; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-bold leading-none text-white tabular",
+        className,
+      )}
+    >
+      {value > 99 ? "99+" : value}
+      <span className="sr-only"> new</span>
+    </span>
+  );
+}
+
+function SidebarNavItem({
+  item,
+  icon,
+  active,
+  onClick,
+  trailing,
+}: {
+  item: DashboardNavLink;
+  icon?: ReactNode;
+  active?: boolean;
+  onClick?: () => void;
+  trailing?: ReactNode;
+}) {
+  return (
+    <Link
+      href={item.href}
+      onClick={onClick}
+      aria-current={active ? "page" : undefined}
+      className={cn(
+        "group relative flex min-h-10 items-center gap-3 rounded-md px-3 text-sm font-medium transition-colors duration-150",
+        active ? "bg-white/[0.06] text-foreground" : "text-muted hover:bg-white/[0.03] hover:text-foreground",
+      )}
+    >
+      <span
+        aria-hidden
+        className={cn(
+          "absolute -left-3 top-1/2 h-5 w-1 -translate-y-1/2 -skew-x-12 bg-primary transition-transform duration-200 ease-[cubic-bezier(0.22,1,0.36,1)]",
+          active ? "scale-y-100" : "scale-y-0",
+        )}
+      />
+      <span className={cn("transition-colors", active ? "text-primary" : "text-muted-foreground group-hover:text-foreground")}>
+        {icon}
+      </span>
+      <span className="flex-1 truncate">{item.label}</span>
+      {trailing}
+      {item.badge ? <CountPill value={item.badge} /> : null}
+    </Link>
+  );
+}
+
 function SidebarContent({
   nav,
   pathname,
   onLinkClick,
   userId,
   freshness,
+  isStaff,
 }: {
   nav: DashboardNavLink[];
   pathname: string;
   onLinkClick?: () => void;
   userId: string | null;
   freshness?: DashboardShellProps["freshness"];
+  isStaff: boolean;
 }) {
-  const dotFor = (href: string) => {
-    if (href === "/member/events") {
-      return (
-        <FreshnessDot
-          kind="events"
-          hrefs={EVENTS_HREFS}
-          userId={userId}
-          initial={freshness?.events ?? null}
-        />
-      );
-    }
-    if (href === "/news") {
-      return (
-        <FreshnessDot
-          kind="news"
-          hrefs={NEWS_HREFS}
-          userId={userId}
-          initial={freshness?.news ?? null}
-        />
-      );
-    }
-    return null;
-  };
+  const dotFor = (href: string) =>
+    href === "/member/events" ? (
+      <FreshnessDot kind="events" hrefs={EVENTS_HREFS} userId={userId} initial={freshness?.events ?? null} />
+    ) : null;
+
+  // Preserve the order in which groups first appear.
+  const groups: { name: string; items: DashboardNavLink[] }[] = [];
+  for (const item of nav) {
+    const name = item.group ?? "";
+    const existing = groups.find((g) => g.name === name);
+    if (existing) existing.items.push(item);
+    else groups.push({ name, items: [item] });
+  }
+
   return (
     <div className="flex h-full flex-col">
-      {/* Member Nav */}
-      <div className="flex-1 overflow-y-auto">
-        <div className="px-3 pb-2 pt-4">
-          <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-            My Dashboard
-          </p>
-          <nav className="flex flex-col gap-0.5">
-            {nav.map((item) => (
-              <SidebarNavItem
-                key={item.href}
-                href={item.href}
-                label={item.label}
-                badge={item.badge}
-                icon={NAV_ICONS[item.href] ?? <LayoutGrid className="h-4 w-4 shrink-0" />}
-                active={isActiveNav(pathname, item.href, nav)}
-                onClick={onLinkClick}
-                trailing={dotFor(item.href)}
-              />
-            ))}
-          </nav>
-        </div>
-
-        {/* Divider */}
-        <div className="mx-4 my-3 border-t border-ink-border/60" />
-
-        {/* Public Nav */}
-        <div className="px-3 pb-4">
-          <p className="mb-1.5 px-3 text-[10px] font-bold uppercase tracking-widest text-zinc-600">
-            Explore Fight Zone
-          </p>
-          <nav className="flex flex-col gap-0.5">
-            {PUBLIC_NAV.map((item) => (
-              <SidebarNavItem
-                key={item.href}
-                href={item.href}
-                label={item.label}
-                icon={item.icon}
-                active={pathname === item.href}
-                onClick={onLinkClick}
-                trailing={dotFor(item.href)}
-              />
-            ))}
-          </nav>
-        </div>
+      <div className="flex-1 overflow-y-auto px-4 py-5">
+        <p className="type-overline mb-5 flex items-center gap-2 px-3 text-[10px] text-muted-foreground">
+          <span className="slant-bar h-1 w-3" aria-hidden />
+          {isStaff ? "Coach console" : "Member area"}
+        </p>
+        <nav aria-label={isStaff ? "Admin" : "Member"} className="flex flex-col gap-5">
+          {groups.map((group) => (
+            <div key={group.name || "main"} className="flex flex-col gap-0.5">
+              {group.name ? (
+                <p className="mb-1 px-3 text-[11px] font-semibold uppercase tracking-[0.14em] text-muted-foreground/80">
+                  {group.name}
+                </p>
+              ) : null}
+              {group.items.map((item) => (
+                <SidebarNavItem
+                  key={item.href}
+                  item={item}
+                  icon={NAV_ICONS[item.href] ?? <LayoutGrid className={ICON} />}
+                  active={isActiveNav(pathname, item.href, nav)}
+                  onClick={onLinkClick}
+                  trailing={dotFor(item.href)}
+                />
+              ))}
+            </div>
+          ))}
+        </nav>
       </div>
 
-      {/* Site link footer */}
-      <div className="border-t border-ink-border/60 p-3">
+      <div className="border-t border-ink-border p-4">
         <Link
           href="/"
-          className="group flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-zinc-600 transition-colors hover:text-zinc-300"
           onClick={onLinkClick}
+          className="group flex min-h-10 items-center gap-3 rounded-md px-3 text-sm text-muted transition-colors hover:bg-white/[0.03] hover:text-foreground"
         >
-          <Globe className="h-3.5 w-3.5 shrink-0" />
-          <span>fight-zone.app</span>
-          <ExternalLink className="ml-auto h-3 w-3 opacity-0 transition-opacity group-hover:opacity-50" />
+          <ArrowUpRight className="h-4 w-4 shrink-0 transition-transform duration-200 group-hover:-translate-y-0.5 group-hover:translate-x-0.5" aria-hidden />
+          View public site
         </Link>
       </div>
     </div>
+  );
+}
+
+function Avatar({ initials, avatarUrl, className }: { initials: string; avatarUrl?: string | null; className?: string }) {
+  return (
+    <span
+      className={cn(
+        "relative flex shrink-0 items-center justify-center overflow-hidden rounded-full bg-primary-soft text-xs font-bold text-primary ring-1 ring-primary/30",
+        className,
+      )}
+      aria-hidden
+    >
+      {avatarUrl ? (
+        // eslint-disable-next-line @next/next/no-img-element -- small avatar, already sized by storage
+        <img src={avatarUrl} alt="" className="h-full w-full object-cover" />
+      ) : (
+        initials
+      )}
+    </span>
   );
 }
 
@@ -273,14 +255,25 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
   const pathname = usePathname();
   const [drawerOpen, setDrawerOpen] = useState(false);
 
-  // Prevent body scroll when drawer is open
+  // Close the drawer on navigation (adjust state during render).
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
+    setDrawerOpen(false);
+  }
+
+  // Lock body scroll while the drawer is open; Escape closes it.
   useEffect(() => {
-    if (drawerOpen) {
-      document.body.style.overflow = "hidden";
-    } else {
+    if (!drawerOpen) return;
+    document.body.style.overflow = "hidden";
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") setDrawerOpen(false);
+    };
+    document.addEventListener("keydown", onKey);
+    return () => {
       document.body.style.overflow = "";
-    }
-    return () => { document.body.style.overflow = ""; };
+      document.removeEventListener("keydown", onKey);
+    };
   }, [drawerOpen]);
 
   const initials = (user.fullName ?? user.email)
@@ -292,147 +285,126 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
     .toUpperCase();
 
   const isActive = (href: string) => isActiveNav(pathname, href, nav);
-
   const primaryMobileNav = nav.filter((item) => MOBILE_NAV_PRIMARY.includes(item.href));
-
   const isStaff = user.roles.some((r) => r === "ADMIN" || r === "COACH");
+  const notificationsHref = isStaff ? "/admin/notifications" : "/member/notifications";
+  const unreadNotifications = nav.find((n) => n.href === notificationsHref)?.badge ?? 0;
+  const homeHref = isStaff ? "/admin" : "/member";
 
   return (
-    <div className="flex min-h-dvh flex-col">
+    <div className="flex min-h-dvh">
       <LiveUpdates userId={user.id} role={isStaff ? "staff" : "member"} />
-      {/* ─── Top Header ──────────────────────────────────────────── */}
-      <header className="sticky top-0 z-40 border-b border-ink-border bg-background/90 backdrop-blur-md">
-        <div className="flex h-16 items-center justify-between gap-4 px-4 sm:px-6 lg:px-8">
-          <div className="flex items-center gap-3">
-            {/* Mobile hamburger */}
-            <button
-              type="button"
-              onClick={() => setDrawerOpen(true)}
-              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-ink-soft hover:text-white md:hidden"
-              aria-label="Open navigation"
-              aria-expanded={drawerOpen}
-            >
-              <Menu className="h-5 w-5" />
-            </button>
-            <Logo variant="full" className="[&_img]:!h-8" />
-          </div>
 
-          <div className="flex items-center gap-3">
-            {/* Quick public nav links — desktop only */}
-            <nav className="hidden items-center gap-1 lg:flex" aria-label="Public pages">
-              {PUBLIC_NAV.slice(0, 4).map((item) => (
-                <Link
-                  key={item.href}
-                  href={item.href}
-                  className={cn(
-                    "flex items-center gap-1.5 rounded-md px-2.5 py-1.5 text-xs font-medium transition-colors",
-                    pathname === item.href
-                      ? "text-primary"
-                      : "text-zinc-500 hover:text-white",
-                  )}
-                >
-                  {item.label}
-                </Link>
-              ))}
-            </nav>
-
-            <div className="h-5 w-px bg-ink-border hidden lg:block" />
-
-            <div className="hidden items-center gap-3 sm:flex">
-              <span className="flex h-8 w-8 items-center justify-center rounded-full bg-primary text-xs font-bold text-ink-base">
-                {initials}
-              </span>
-              <div className="hidden flex-col leading-tight xl:flex">
-                <span className="text-sm font-medium text-white">{user.fullName ?? "Member"}</span>
-                <span className="text-xs text-muted">{user.email}</span>
-              </div>
-            </div>
-            <SignOutButton />
-          </div>
+      {/* ─── Desktop sidebar (full height) ─────────────────────────── */}
+      <aside className="sticky top-0 hidden h-dvh w-[248px] shrink-0 flex-col border-r border-ink-border bg-ink md:flex">
+        <div className="flex h-16 shrink-0 items-center border-b border-ink-border px-5">
+          <Logo variant="full" href={homeHref} />
         </div>
-      </header>
+        <SidebarContent nav={nav} pathname={pathname} userId={user.id} freshness={freshness} isStaff={isStaff} />
+      </aside>
 
-      <div className="flex flex-1">
-        {/* ─── Desktop Sidebar ─────────────────────────────────────── */}
-        <aside className="hidden w-56 shrink-0 border-r border-ink-border bg-ink-soft/20 md:block">
-          <div className="sticky top-16 h-[calc(100dvh-4rem)] overflow-y-auto">
-            <SidebarContent nav={nav} pathname={pathname} userId={user.id} freshness={freshness} />
+      <div className="flex min-w-0 flex-1 flex-col">
+        {/* ─── Top bar ──────────────────────────────────────────────── */}
+        <header className="sticky top-0 z-40 border-b border-ink-border bg-background/90 backdrop-blur-md">
+          <div className="flex h-16 items-center justify-between gap-3 px-4 sm:px-6 lg:px-10">
+            <div className="flex items-center gap-2 md:hidden">
+              <button
+                type="button"
+                onClick={() => setDrawerOpen(true)}
+                className="flex h-11 w-11 items-center justify-center rounded-md text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground"
+                aria-label="Open navigation"
+                aria-expanded={drawerOpen}
+                aria-controls="dashboard-drawer"
+              >
+                <Menu className="h-5 w-5" aria-hidden />
+              </button>
+              <Logo variant="icon" href={homeHref} />
+            </div>
+            <p className="hidden text-sm text-muted md:block">
+              {isStaff ? "Coach console" : "Welcome back"}
+              {user.fullName ? <span className="text-foreground">, {user.fullName.split(" ")[0]}</span> : null}
+            </p>
+
+            <div className="flex items-center gap-1.5 sm:gap-3">
+              <Link
+                href={notificationsHref}
+                aria-label={unreadNotifications ? `Notifications (${unreadNotifications} unread)` : "Notifications"}
+                className="relative flex h-11 w-11 items-center justify-center rounded-md text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground"
+              >
+                <Bell className="h-5 w-5" aria-hidden />
+                {unreadNotifications ? (
+                  <span className="absolute right-2 top-2 h-2.5 w-2.5 rounded-full bg-primary ring-2 ring-background" aria-hidden />
+                ) : null}
+              </Link>
+              <Link
+                href={isStaff ? "/admin/settings" : "/member/profile"}
+                className="hidden items-center gap-3 rounded-md py-1.5 pl-1.5 pr-3 transition-colors hover:bg-white/[0.04] sm:flex"
+              >
+                <Avatar initials={initials} avatarUrl={user.avatarUrl} className="h-8 w-8" />
+                <span className="hidden flex-col leading-tight xl:flex">
+                  <span className="text-sm font-medium text-foreground">{user.fullName ?? "Member"}</span>
+                  <span className="text-xs text-muted-foreground">{isStaff ? "Coach" : "Member"}</span>
+                </span>
+              </Link>
+              <SignOutButton />
+            </div>
           </div>
-        </aside>
+        </header>
 
-        {/* ─── Main Content ─────────────────────────────────────────── */}
         {/* Bottom padding clears the fixed mobile nav (+ iPhone home indicator). */}
-        <main className="min-w-0 flex-1 px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-8 md:pb-10 lg:px-8">
+        <main
+          id="main"
+          className="mx-auto w-full max-w-[1320px] min-w-0 flex-1 px-4 pt-6 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:px-6 sm:pt-8 md:pb-12 lg:px-10"
+        >
           {children}
         </main>
       </div>
 
-      {/* ─── Mobile Drawer Overlay ────────────────────────────────── */}
+      {/* ─── Mobile drawer ─────────────────────────────────────────── */}
       {drawerOpen && (
-        <div
-          className="fixed inset-0 z-50 md:hidden"
-          role="dialog"
-          aria-modal="true"
-          aria-label="Navigation menu"
-        >
-          {/* Backdrop */}
+        <div id="dashboard-drawer" className="fixed inset-0 z-50 md:hidden" role="dialog" aria-modal="true" aria-label="Navigation menu">
           <div
-            className="absolute inset-0 bg-ink-base/80 backdrop-blur-sm"
+            className="absolute inset-0 bg-black/70 animate-[fz-backdrop-in_200ms_ease-out_both]"
             onClick={() => setDrawerOpen(false)}
+            aria-hidden
           />
-
-          {/* Drawer panel */}
-          <div
-            className={cn(
-              "absolute left-0 top-0 flex h-full w-72 flex-col border-r border-ink-border bg-ink-base shadow-2xl",
-              "animate-in slide-in-from-left duration-300 ease-out",
-            )}
-          >
-            {/* Drawer header */}
+          <div className="absolute left-0 top-0 flex h-full w-[min(20rem,86vw)] flex-col border-r border-ink-border bg-ink shadow-2xl animate-[fz-drawer-in_280ms_var(--ease-out)_both]">
             <div className="flex h-16 shrink-0 items-center justify-between border-b border-ink-border px-4">
-              <Logo variant="full" className="[&_img]:!h-7" />
+              <Logo variant="full" href={homeHref} />
               <button
                 type="button"
                 onClick={() => setDrawerOpen(false)}
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-400 transition-colors hover:bg-ink-soft hover:text-white"
+                className="flex h-11 w-11 items-center justify-center rounded-md text-muted transition-colors hover:bg-white/[0.05] hover:text-foreground"
                 aria-label="Close navigation"
               >
-                <X className="h-4 w-4" />
+                <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
-
-            {/* User info in drawer */}
-            <div className="flex items-center gap-3 border-b border-ink-border px-4 py-3">
-              <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-primary text-xs font-bold text-ink-base">
-                {initials}
-              </span>
+            <div className="flex items-center gap-3 border-b border-ink-border px-5 py-4">
+              <Avatar initials={initials} avatarUrl={user.avatarUrl} className="h-10 w-10" />
               <div className="flex min-w-0 flex-col leading-tight">
-                <span className="truncate text-sm font-semibold text-white">
-                  {user.fullName ?? "Member"}
-                </span>
+                <span className="truncate text-sm font-semibold text-foreground">{user.fullName ?? "Member"}</span>
                 <span className="truncate text-xs text-muted">{user.email}</span>
               </div>
             </div>
-
-            {/* Nav content */}
-            <div className="flex-1 overflow-y-auto">
-              <SidebarContent nav={nav} pathname={pathname} onLinkClick={() => setDrawerOpen(false)} userId={user.id} freshness={freshness} />
-            </div>
-
-            {/* Sign out */}
-            <div className="border-t border-ink-border p-3">
-            <div className="w-full [&>form]:w-full [&_button]:w-full">
-              <SignOutButton />
-            </div>
+            <div className="min-h-0 flex-1">
+              <SidebarContent
+                nav={nav}
+                pathname={pathname}
+                onLinkClick={() => setDrawerOpen(false)}
+                userId={user.id}
+                freshness={freshness}
+                isStaff={isStaff}
+              />
             </div>
           </div>
         </div>
       )}
 
-      {/* ─── Mobile Bottom Nav (primary routes only) ─────────────── */}
+      {/* ─── Mobile bottom tab bar ─────────────────────────────────── */}
       <nav
-        aria-label="Primary navigation"
-        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-ink-border bg-ink-base/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
+        aria-label="Primary"
+        className="fixed inset-x-0 bottom-0 z-30 flex border-t border-ink-border bg-ink/95 pb-[env(safe-area-inset-bottom)] backdrop-blur-md md:hidden"
       >
         {primaryMobileNav.map((item) => {
           const active = isActive(item.href);
@@ -442,33 +414,33 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
               href={item.href}
               aria-current={active ? "page" : undefined}
               className={cn(
-                "relative flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 transition-colors",
-                active ? "text-primary" : "text-zinc-500 hover:text-zinc-300",
+                "relative flex min-h-16 flex-1 flex-col items-center justify-center gap-1 px-1 transition-colors",
+                active ? "text-foreground" : "text-muted-foreground hover:text-foreground",
               )}
             >
-              <span className={cn("transition-colors", active ? "text-primary" : "text-zinc-500")}>
-                {NAV_ICONS[item.href]}
-              </span>
-              <span className="max-w-16 truncate text-[10px] font-medium">
-                {item.label === "My Bookings" ? "Bookings" : item.label}
-              </span>
-              {item.badge ? (
-                <span className="absolute left-1/2 top-1.5 ml-1.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-white">
-                  {item.badge > 9 ? "9+" : item.badge}
-                </span>
-              ) : null}
+              <span
+                aria-hidden
+                className={cn(
+                  "absolute top-0 h-[3px] w-8 -skew-x-12 bg-primary transition-transform duration-200",
+                  active ? "scale-x-100" : "scale-x-0",
+                )}
+              />
+              <span className={active ? "text-primary" : undefined}>{NAV_ICONS[item.href]}</span>
+              <span className="max-w-16 truncate text-[11px] font-medium">{item.label}</span>
+              {item.badge ? <CountPill value={item.badge} className="absolute left-1/2 top-2 ml-1.5 h-4 min-w-4 px-1 text-[9px]" /> : null}
             </Link>
           );
         })}
-        {/* More button opens drawer */}
         <button
           type="button"
           onClick={() => setDrawerOpen(true)}
-          className="flex min-h-14 flex-1 flex-col items-center justify-center gap-1 px-1 py-2.5 text-zinc-500 transition-colors hover:text-zinc-300"
+          className="flex min-h-16 flex-1 flex-col items-center justify-center gap-1 px-1 text-muted-foreground transition-colors hover:text-foreground"
           aria-label="More navigation options"
+          aria-expanded={drawerOpen}
+          aria-controls="dashboard-drawer"
         >
-          <Menu className="h-4 w-4" />
-          <span className="text-[10px] font-medium">More</span>
+          <Menu className={ICON} aria-hidden />
+          <span className="text-[11px] font-medium">More</span>
         </button>
       </nav>
     </div>

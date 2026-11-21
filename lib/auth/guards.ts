@@ -4,6 +4,7 @@ import { cache } from "react";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { AuthenticationError, ForbiddenError, logError } from "@/lib/errors";
+import { avatarUrl as resolveAvatarUrl } from "@/lib/avatar";
 
 export interface CurrentUser {
   id: string;
@@ -87,7 +88,7 @@ export const getCurrentUser = cache(async (): Promise<CurrentUser | null> => {
     id: user.id,
     email: user.email ?? profile?.email ?? "",
     fullName: profile?.full_name ?? null,
-    avatarUrl: profile?.avatar_url ?? null,
+    avatarUrl: resolveAvatarUrl(profile?.avatar_url),
     roles,
   };
 });

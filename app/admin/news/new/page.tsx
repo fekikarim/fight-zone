@@ -11,6 +11,7 @@ export default function AdminNewsNewPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <PageHeader
+        eyebrow="Publish"
         title="New article"
         description="Write a news post or blog article."
         back={{ href: "/admin/news", label: "Back to articles" }}

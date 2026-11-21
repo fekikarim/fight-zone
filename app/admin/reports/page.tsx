@@ -39,7 +39,7 @@ export default async function AdminReportsPage({ searchParams }: Props) {
 
   return (
     <div className="space-y-8">
-      <PageHeader title="Reports" description="Registrations, attendance and income for a period. Income lists only payments you recorded or confirmed — never estimates." />
+      <PageHeader eyebrow="Insight" title="Reports" description="Registrations, attendance and income for a period. Income lists only payments you recorded or confirmed — never estimates." />
 
       <form className="flex flex-col gap-3 rounded-xl border border-ink-border bg-ink-soft/40 p-4 sm:flex-row sm:items-end">
         <div className="space-y-1">

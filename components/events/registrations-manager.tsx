@@ -6,15 +6,14 @@ import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { Banknote, Check, FileSearch, Mail, Phone, UserX, X } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
+import { StatusBadge, statusTone } from "@/components/ui/status-badge";
 import { Button } from "@/components/ui/button";
 import { FormDialog } from "@/components/ui/form-dialog";
 import { fieldClass } from "@/components/ui/form-feedback";
 import { decideRegistration, recordAttendance, recordInPersonPayment, type EventActionState } from "@/lib/actions/events";
 import {
-  attendanceStatusLabel,
   eventPaymentStatusLabel,
   formatTnd,
-  registrationStatusLabel,
   type EventParticipant,
   type RegistrationStatus,
 } from "@/lib/types/events";
@@ -103,8 +102,8 @@ export function RegistrationsManager({ participants, eventStarted, eventId }: Pr
       <div role="tablist" aria-label="Filter registrations" className="-mx-4 flex gap-2 overflow-x-auto px-4 pb-1 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:px-0">
         {FILTERS.filter((f) => f.key === "ALL" || counts[f.key]).map((f) => (
           <button key={f.key} type="button" role="tab" aria-selected={filter === f.key} onClick={() => setFilter(f.key)}
-            className={cn("inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-xs font-medium",
-              filter === f.key ? "border-primary bg-primary text-white" : "border-ink-border text-muted hover:text-foreground")}>
+            className={cn("inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3.5 text-[13px] font-semibold transition-colors",
+              filter === f.key ? "border-foreground bg-foreground text-ink" : "border-ink-border text-muted hover:text-foreground")}>
             {f.label} <span className="opacity-75">{counts[f.key] ?? 0}</span>
           </button>
         ))}
@@ -134,16 +133,14 @@ export function RegistrationsManager({ participants, eventStarted, eventId }: Pr
                   <span>Registered {formatDate(p.joined_at, { month: "short", day: "numeric", hour: "numeric", minute: "2-digit" })}</span>
                 </p>
                 <div className="flex flex-wrap gap-1.5 pt-1">
-                  <Badge variant={p.registration_status === "CONFIRMED" ? "default" : "outline"}>
-                    {registrationStatusLabel[p.registration_status]}
-                  </Badge>
+                  <StatusBadge kind="registration" status={p.registration_status} />
                   {p.payment_status !== "NOT_REQUIRED" ? (
-                    <Badge variant={p.payment_status === "PAID" ? "solid" : "neutral"}>
+                    <Badge variant={statusTone({ kind: "payment", status: p.payment_status }).tone} dot>
                       {eventPaymentStatusLabel[p.payment_status]} · {formatTnd(p.amount_due_tnd)}
                     </Badge>
-                  ) : <Badge variant="neutral">Free</Badge>}
+                  ) : <StatusBadge kind="payment" status="NOT_REQUIRED" />}
                   {p.attendance_status !== "UNMARKED" ? (
-                    <Badge variant="neutral">{attendanceStatusLabel[p.attendance_status]}</Badge>
+                    <StatusBadge kind="attendance" status={p.attendance_status} />
                   ) : null}
                 </div>
                 {p.payment_method && !["PAID", "NOT_REQUIRED", "WAIVED"].includes(p.payment_status) ? (

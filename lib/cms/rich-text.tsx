@@ -30,6 +30,25 @@ function inline(text: string, key: string): ReactNode[] {
   return out;
 }
 
+/** Stable anchor id for a "## Heading" line (used by tables of contents). */
+export function headingId(raw: string): string {
+  return raw
+    .replace(/^#{2,3}\s+/, "")
+    .toLowerCase()
+    .normalize("NFKD")
+    .replace(/[^a-z0-9]+/g, "-")
+    .replace(/^-+|-+$/g, "")
+    .slice(0, 60);
+}
+
+/** Level-2 headings of a document, in order (for a table of contents). */
+export function extractHeadings(text: string): { id: string; label: string }[] {
+  return text
+    .split("\n")
+    .filter((l) => /^##\s+/.test(l) && !/^###/.test(l))
+    .map((l) => ({ id: headingId(l), label: l.replace(/^##\s+/, "").replace(/\*\*/g, "").trim() }));
+}
+
 export function RichText({ text, className }: { text: string; className?: string }) {
   const paragraphs = text
     .replace(/\r/g, "")
@@ -46,7 +65,7 @@ export function RichText({ text, className }: { text: string; className?: string
           const level = lines[0].startsWith("###") ? 3 : 2;
           const content = inline(lines[0].replace(/^#{2,3}\s+/, ""), `h${pi}`);
           return level === 2
-            ? <h2 key={pi} className="mt-8 mb-3 font-display text-xl font-bold uppercase tracking-tight first:mt-0">{content}</h2>
+            ? <h2 key={pi} id={headingId(lines[0])} className="mt-10 mb-3 scroll-mt-28 font-display text-2xl font-bold uppercase leading-tight tracking-tight first:mt-0">{content}</h2>
             : <h3 key={pi} className="mt-6 mb-2 text-base font-semibold">{content}</h3>;
         }
         if (lines.length > 1 && lines.every((l) => /^\|.*\|$/.test(l.trim()))) {

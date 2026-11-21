@@ -26,6 +26,7 @@ export default async function AdminNewsEditPage({ params }: PageProps) {
   return (
     <div className="mx-auto max-w-2xl space-y-8">
       <PageHeader
+        eyebrow="Publish"
         title="Edit article"
         description={`Last updated ${formatDate(article.updated_at, { year: "numeric", month: "short", day: "numeric" })}`}
         back={{ href: "/admin/news", label: "Back to articles" }}

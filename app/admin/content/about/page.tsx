@@ -20,6 +20,7 @@ export default async function AdminAboutEditorPage() {
   return (
     <div className="space-y-6">
       <PageHeader
+        eyebrow="Publish"
         title="About page"
         back={{ href: "/admin/content", label: "Back to content" }}
         description="Build your About page from blocks. Save drafts freely — visitors only see what you publish."

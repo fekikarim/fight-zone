@@ -2,7 +2,6 @@ import Link from "next/link";
 import { Clock, Mail, MapPin, MessageCircle, Phone } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { Container } from "@/components/ui/container";
-import { Separator } from "@/components/ui/separator";
 import { siteConfig } from "@/lib/site";
 import { getSiteSettings } from "@/lib/settings/queries";
 
@@ -50,107 +49,101 @@ export async function Footer() {
     .filter(([k]) => k in SOCIAL_ICONS)
     .map(([k, href]) => ({ href, ...SOCIAL_ICONS[k] }));
   const hasContact = settings.contact_email || settings.contact_phone || settings.whatsapp || settings.address || settings.working_hours;
+  const linkCls = "link-draw w-fit text-sm text-muted transition-colors hover:text-foreground";
+  const colTitle = "type-overline mb-1 text-foreground";
   return (
-    <footer className="border-t border-ink-border bg-ink-soft/40">
-      <Container className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
-        <div className="flex flex-col gap-4">
-          <Logo variant="full" className="h-10" />
+    <footer className="relative overflow-hidden border-t border-ink-border bg-ink">
+      <Container className="grid gap-10 pb-12 pt-16 sm:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1fr_1.2fr] lg:gap-12">
+        <div className="flex flex-col gap-5">
+          <Logo variant="full" />
           <p className="max-w-xs text-sm leading-relaxed text-muted">
-            Professional boxing, kickboxing and fitness coaching with Coach Seif
-            Dridi. Train hard, fight smart.
+            Boxing, kickboxing and fitness coaching with Coach Seif Dridi in Tunisia. Register for
+            events, follow your progress and talk to your coach in one place.
           </p>
-          <div className="flex items-center gap-2">
-            {socialLinks.map(({ href, label, icon: Icon }) => (
-              <a
-                key={label}
-                href={href}
-                target="_blank"
-                rel="noopener noreferrer"
-                aria-label={label}
-                className="inline-flex h-9 w-9 items-center justify-center rounded-md border border-ink-border text-muted transition-colors hover:border-primary hover:text-primary"
-              >
-                <Icon className="h-4 w-4" />
-              </a>
-            ))}
-          </div>
+          {socialLinks.length ? (
+            <div className="flex items-center gap-2">
+              {socialLinks.map(({ href, label, icon: Icon }) => (
+                <a
+                  key={label}
+                  href={href}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  aria-label={`Fight Zone on ${label}`}
+                  className="inline-flex h-11 w-11 items-center justify-center rounded-md border border-ink-strong text-muted transition-[color,border-color,transform] duration-200 hover:-translate-y-0.5 hover:border-foreground/60 hover:text-foreground"
+                >
+                  <Icon className="h-4 w-4" />
+                </a>
+              ))}
+            </div>
+          ) : null}
         </div>
 
-        <div className="flex flex-col gap-3">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
-            Explore
-          </h2>
+        <nav aria-label="Explore" className="flex flex-col gap-3">
+          <h2 className={colTitle}>Explore</h2>
           {siteConfig.nav.public.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm text-muted transition-colors hover:text-primary"
-            >
+            <Link key={link.href} href={link.href} className={linkCls}>
               {link.label}
             </Link>
           ))}
-        </div>
+          <Link href="/faq" className={linkCls}>FAQ</Link>
+        </nav>
+
+        <nav aria-label="Members" className="flex flex-col gap-3">
+          <h2 className={colTitle}>Members</h2>
+          <Link href="/member" className={linkCls}>Member area</Link>
+          <Link href="/member/events" className={linkCls}>My events</Link>
+          <Link href="/sign-in" className={linkCls}>Sign in</Link>
+          <Link href="/sign-up" className={linkCls}>Create an account</Link>
+        </nav>
 
         <div className="flex flex-col gap-3">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
-            Members
-          </h2>
-          <Link href="/member" className="text-sm text-muted transition-colors hover:text-primary">
-            Member area
-          </Link>
-          <Link href="/sign-in" className="text-sm text-muted transition-colors hover:text-primary">
-            Sign in
-          </Link>
-          <Link href="/sign-up" className="text-sm text-muted transition-colors hover:text-primary">
-            Join the gym
-          </Link>
-        </div>
-
-        <div className="flex flex-col gap-3">
-          <h2 className="font-display text-sm font-semibold uppercase tracking-widest text-foreground">
-            Contact
-          </h2>
+          <h2 className={colTitle}>Contact</h2>
           {settings.contact_email ? (
-            <a href={`mailto:${settings.contact_email}`} className="inline-flex items-center gap-2 break-all text-sm text-muted transition-colors hover:text-primary">
-              <Mail className="h-4 w-4 shrink-0" aria-hidden />{settings.contact_email}
+            <a href={`mailto:${settings.contact_email}`} className="inline-flex items-center gap-2 break-all text-sm text-muted transition-colors hover:text-foreground">
+              <Mail className="h-4 w-4 shrink-0 text-primary" aria-hidden />{settings.contact_email}
             </a>
           ) : null}
           {settings.contact_phone ? (
-            <a href={`tel:${settings.contact_phone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-primary">
-              <Phone className="h-4 w-4 shrink-0" aria-hidden />{settings.contact_phone}
+            <a href={`tel:${settings.contact_phone.replace(/[^\d+]/g, "")}`} className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-foreground">
+              <Phone className="h-4 w-4 shrink-0 text-primary" aria-hidden />{settings.contact_phone}
             </a>
           ) : null}
           {settings.whatsapp ? (
-            <a href={`https://wa.me/${settings.whatsapp.replace(/[^\d]/g, "")}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-primary">
-              <MessageCircle className="h-4 w-4 shrink-0" aria-hidden />WhatsApp
+            <a href={`https://wa.me/${settings.whatsapp.replace(/[^\d]/g, "")}`} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-sm text-muted transition-colors hover:text-foreground">
+              <MessageCircle className="h-4 w-4 shrink-0 text-primary" aria-hidden />WhatsApp
             </a>
           ) : null}
           {settings.address ? (
-            <span className="inline-flex items-start gap-2 text-sm text-muted"><MapPin className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{settings.address}</span>
+            <span className="inline-flex items-start gap-2 text-sm text-muted"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />{settings.address}</span>
           ) : null}
           {settings.working_hours ? (
-            <span className="inline-flex items-start gap-2 whitespace-pre-line text-sm text-muted"><Clock className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />{settings.working_hours}</span>
+            <span className="inline-flex items-start gap-2 whitespace-pre-line text-sm text-muted"><Clock className="mt-0.5 h-4 w-4 shrink-0 text-primary" aria-hidden />{settings.working_hours}</span>
           ) : null}
           {!hasContact ? (
-            <Link href="/contact" className="text-sm text-muted transition-colors hover:text-primary">Send us a message</Link>
+            <Link href="/contact" className={linkCls}>Send Coach Seif a message</Link>
           ) : null}
         </div>
       </Container>
 
-      <Separator />
-
-      <Container className="flex flex-col items-center justify-between gap-3 py-6 sm:flex-row">
-        <p className="text-xs text-muted-foreground">
-          © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
-        </p>
-        <nav aria-label="Legal" className="flex gap-4 text-xs text-muted-foreground">
-          <Link href="/faq" className="hover:text-primary">FAQ</Link>
-          <Link href="/privacy" className="hover:text-primary">Privacy</Link>
-          <Link href="/terms" className="hover:text-primary">Terms</Link>
-        </nav>
-        <p className="font-display text-xs uppercase tracking-[0.3em] text-muted-foreground">
-          Train · Fight · Win
+      {/* Closing wordmark — set in the display face across the full width. */}
+      <Container aria-hidden className="select-none">
+        <p className="font-display text-[clamp(4.5rem,17vw,15rem)] font-bold uppercase leading-[0.8] tracking-tight text-ink-softer">
+          Fight Zone
         </p>
       </Container>
+
+      <div className="border-t border-ink-border">
+        <Container className="flex flex-col items-start justify-between gap-3 py-6 sm:flex-row sm:items-center">
+          <p className="text-xs text-muted-foreground">
+            © {new Date().getFullYear()} {siteConfig.name}. All rights reserved.
+          </p>
+          <nav aria-label="Legal" className="flex gap-5 text-xs text-muted-foreground">
+            <Link href="/privacy" className="link-draw hover:text-foreground">Privacy</Link>
+            <Link href="/terms" className="link-draw hover:text-foreground">Terms</Link>
+            <Link href="/contact" className="link-draw hover:text-foreground">Contact</Link>
+          </nav>
+        </Container>
+      </div>
     </footer>
   );
 }

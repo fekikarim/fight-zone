@@ -1,43 +1,34 @@
 import Link from "next/link";
-import { ArrowRight, Flame } from "lucide-react";
+import { ArrowRight } from "lucide-react";
 import { Container } from "@/components/ui/container";
 import { Button } from "@/components/ui/button";
 import { Reveal } from "@/components/ui/reveal";
 
+/** Closing statement: one oversized line in the display face, two actions. */
 export function CtaBanner() {
   return (
-    <section className="relative overflow-hidden py-20 lg:py-28">
-      <div className="absolute inset-0 bg-gradient-to-br from-primary via-primary-dark to-ink" aria-hidden />
-      <div className="absolute inset-0 grid-pattern opacity-10" aria-hidden />
-
+    <section aria-labelledby="cta-h" className="relative overflow-hidden bg-primary py-20 text-white lg:py-28">
+      <div
+        className="pointer-events-none absolute -right-20 top-0 h-full w-1/2 -skew-x-12 bg-black/15"
+        aria-hidden
+      />
       <Container className="relative">
         <Reveal>
-          <div className="mx-auto flex max-w-2xl flex-col items-center gap-6 text-center">
-            <span className="inline-flex h-14 w-14 items-center justify-center rounded-full bg-white/10 backdrop-blur">
-              <Flame className="h-7 w-7 text-white" />
-            </span>
-            <h2 className="font-display text-4xl font-bold uppercase leading-tight tracking-tight text-white sm:text-5xl">
-              Ready to step into the ring?
-            </h2>
-            <p className="text-base leading-relaxed text-white/80 sm:text-lg">
-              Join Fight Zone and start training with Coach Seif Dridi. Your first
-              session could change everything.
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row">
-              <Button size="lg" variant="white" asChild>
-                <Link href="/sign-up">
-                  Join the gym
-                  <ArrowRight className="h-5 w-5" />
-                </Link>
-              </Button>
-              <Button
-                size="lg"
-                className="border border-white/30 bg-transparent text-white hover:bg-white/10"
-                asChild
-              >
-                <Link href="/contact">Book a session</Link>
-              </Button>
-            </div>
+          <h2 id="cta-h" className="type-display max-w-5xl text-balance">
+            Your next round starts here.
+          </h2>
+        </Reveal>
+        <Reveal delay={100}>
+          <div className="mt-10 flex flex-col gap-3 sm:flex-row sm:items-center">
+            <Button size="lg" variant="white" asChild>
+              <Link href="/sign-up">
+                Create a free account
+                <ArrowRight className="h-5 w-5" aria-hidden />
+              </Link>
+            </Button>
+            <Button size="lg" variant="ghost" className="text-white hover:bg-white/10 hover:text-white" asChild>
+              <Link href="/contact">Ask Coach Seif a question</Link>
+            </Button>
           </div>
         </Reveal>
       </Container>

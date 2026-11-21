@@ -20,6 +20,7 @@ export default async function AdminNewsPage() {
     <div className="space-y-8">
       <PreviewEntryBar returnTo="/news" subject="articles" />
       <PageHeader
+        eyebrow="Publish"
         title="News & Articles"
         description={`${articles.length} article${articles.length !== 1 ? "s" : ""}`}
         actions={

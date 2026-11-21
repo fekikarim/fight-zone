@@ -17,7 +17,7 @@ const geistMono = Geist_Mono({
 const displayFont = Oswald({
   variable: "--font-display-sans",
   subsets: ["latin"],
-  weight: ["400", "500", "600", "700"],
+  weight: ["500", "600", "700"],
   display: "swap",
 });
 
@@ -66,7 +66,7 @@ export const metadata: Metadata = {
 };
 
 export const viewport: Viewport = {
-  themeColor: "#0a0a0a",
+  themeColor: "#09090a",
   colorScheme: "dark",
   width: "device-width",
   initialScale: 1,
@@ -83,8 +83,20 @@ export default function RootLayout({
     <html
       lang="en"
       className={`${geistSans.variable} ${geistMono.variable} ${displayFont.variable} h-full antialiased`}
+      suppressHydrationWarning
     >
+      <head>
+        {/* Marks JS as available before paint so scroll-reveal content is
+            only hidden when it can actually be revealed (no-JS = visible). */}
+        <script dangerouslySetInnerHTML={{ __html: "document.documentElement.classList.add('js')" }} />
+      </head>
       <body className="min-h-full flex flex-col">
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:fixed focus:left-4 focus:top-4 focus:z-[100] focus:bg-primary focus:px-4 focus:py-2 focus:text-sm focus:font-semibold focus:text-white"
+        >
+          Skip to content
+        </a>
         {children}
         <AppToaster />
       </body>

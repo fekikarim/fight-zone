@@ -12,6 +12,8 @@ import {
 import { AlertCircle, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { FIELD_BASE } from "@/components/ui/field-styles";
+export { FIELD_BASE };
 
 import type { FieldErrors } from "@/lib/validations/form-errors";
 
@@ -28,7 +30,7 @@ export interface ActionFormState {
 export function FieldError({ id, message }: { id: string; message?: string }) {
   if (!message) return null;
   return (
-    <p id={id} role="alert" className="flex items-start gap-1.5 text-xs font-medium text-red-400">
+    <p id={id} role="alert" className="flex items-start gap-1.5 text-xs font-medium text-danger">
       <AlertCircle className="mt-px h-3.5 w-3.5 shrink-0" aria-hidden />
       {message}
     </p>
@@ -43,10 +45,10 @@ export function FormAlert({ tone, message }: { tone: "error" | "success"; messag
     <div
       role={tone === "error" ? "alert" : "status"}
       className={cn(
-        "flex items-start gap-2 rounded-lg border px-4 py-3 text-sm",
+        "flex items-start gap-2.5 rounded-md border px-4 py-3 text-sm animate-[fz-fade-up_240ms_var(--ease-out)_both]",
         tone === "error"
-          ? "border-red-500/40 bg-red-500/10 text-red-300"
-          : "border-emerald-500/40 bg-emerald-500/10 text-emerald-300",
+          ? "border-danger/35 bg-danger-soft text-red-200"
+          : "border-success/35 bg-success-soft text-emerald-200",
       )}
     >
       <Icon className="mt-0.5 h-4 w-4 shrink-0" aria-hidden />
@@ -58,10 +60,8 @@ export function FormAlert({ tone, message }: { tone: "error" | "success"; messag
 /** Shared input styling with an invalid state. */
 export function fieldClass(invalid?: boolean, extra?: string) {
   return cn(
-    "w-full rounded-lg border bg-ink-soft/40 px-3 py-2.5 text-base text-foreground placeholder:text-zinc-500 transition-colors sm:text-sm",
-    "focus-visible:border-primary focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-primary-ring",
-    "disabled:cursor-not-allowed disabled:opacity-60",
-    invalid ? "border-red-500/70" : "border-ink-border",
+    FIELD_BASE,
+    invalid ? "border-danger/70" : "border-ink-border",
     extra,
   );
 }

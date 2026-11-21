@@ -47,9 +47,9 @@ export function NotificationFilters({ unreadCount }: NotificationFiltersProps) {
             aria-selected={isActive}
             onClick={() => setFilter(f.value)}
             className={cn(
-              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-full border px-4 text-xs font-medium transition-colors",
+              "inline-flex h-9 shrink-0 items-center gap-1.5 rounded-md border px-3.5 text-[13px] font-semibold transition-colors",
               isActive
-                ? "border-primary bg-primary text-white"
+                ? "border-foreground bg-foreground text-ink"
                 : "border-ink-border bg-transparent text-muted hover:border-primary/50 hover:text-foreground",
             )}
           >
