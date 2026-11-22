@@ -5,6 +5,7 @@ import { usePathname, useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { createClient } from "@/lib/supabase/client";
 import { getResourceHref, type NotificationRow } from "@/lib/types/notifications";
+import { localPushOff, showLocalNotification } from "@/lib/push/client";
 
 /**
  * Platform-wide live layer (mounted once in the dashboard shell).
@@ -40,8 +41,12 @@ export function LiveUpdates({ userId, role }: { userId: string; role: "member" |
             const n = payload.new as NotificationRow;
             const onThread = n.type === "MESSAGE" && n.resource_id && pathRef.current.includes(n.resource_id);
             const memberThread = n.type === "MESSAGE" && role === "member" && pathRef.current.startsWith("/member/messages");
+            const href = getResourceHref(role, n.resource_type, n.resource_id);
+            // Tab in the background: raise a real device notification instead.
+            if (document.visibilityState === "hidden" && "Notification" in window && Notification.permission === "granted" && !localPushOff()) {
+              void showLocalNotification(n.title, n.content, href ?? (role === "staff" ? "/admin/notifications" : "/member/notifications"), n.id);
+            }
             if (!onThread && !memberThread) {
-              const href = getResourceHref(role, n.resource_type, n.resource_id);
               toast(n.title, {
                 description: n.content ?? undefined,
                 action: href ? { label: "Open", onClick: () => router.push(href) } : undefined,

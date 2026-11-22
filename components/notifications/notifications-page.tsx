@@ -4,6 +4,7 @@ import { parseNotificationFilter } from "@/lib/validations/notifications";
 import { NotificationList } from "@/components/notifications/notification-list";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
+import { PushToggle } from "@/components/notifications/push-toggle";
 
 interface NotificationsPageProps {
   role: "member" | "staff";
@@ -30,6 +31,7 @@ export async function NotificationsPage({ role, searchParams }: NotificationsPag
             : "You're all caught up."
         }
       />
+      <PushToggle />
       <Suspense fallback={<NotificationsSkeleton />}>
         <NotificationList
           // Remount on new server data (filter change, mark read) so the

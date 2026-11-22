@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import { Geist, Geist_Mono, Oswald } from "next/font/google";
 import { siteConfig } from "@/lib/site";
 import { AppToaster } from "@/components/ui/app-toaster";
+import { NavProgress } from "@/components/nav-progress";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -97,6 +98,7 @@ export default function RootLayout({
         >
           Skip to content
         </a>
+        <NavProgress />
         {children}
         <AppToaster />
       </body>

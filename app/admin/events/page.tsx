@@ -13,6 +13,7 @@ import { FIELD_BASE } from "@/components/ui/field-styles";
 import { getAdminEvents } from "@/lib/supabase/queries";
 import { getEventDisplayState } from "@/lib/types/events";
 import { cn, requestTime } from "@/lib/utils";
+import { LiveForm } from "@/components/ui/live-form";
 
 export const metadata: Metadata = {
   title: "Manage Events",
@@ -69,12 +70,12 @@ export default async function AdminEventsPage({ searchParams }: Props) {
           label="Filter events"
           tabs={FILTERS.map((f) => ({ href: `/admin/events?show=${f.key}${q ? `&q=${encodeURIComponent(q)}` : ""}`, label: f.label, active: show === f.key }))}
         />
-        <form className="sm:w-64" role="search">
+        <LiveForm className="sm:w-64" role="search" action="/admin/events">
           <input type="hidden" name="show" value={show} />
           <label htmlFor="event-search" className="sr-only">Search events</label>
           <input id="event-search" name="q" type="search" defaultValue={q} placeholder="Search by title"
             className={cn(FIELD_BASE, "h-12 rounded-full border-white/[0.08] px-5")} />
-        </form>
+        </LiveForm>
       </div>
 
       {visible.length > 0 ? (

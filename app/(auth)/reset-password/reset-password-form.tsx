@@ -12,9 +12,9 @@ import {
   type AuthActionState,
 } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
-import { Label } from "@/components/ui/label";
+import { AuthField } from "@/components/auth/auth-field";
+import { Lock } from "lucide-react";
 import { Spinner } from "@/components/ui/spinner";
-import { PasswordInput } from "@/components/auth/password-input";
 
 interface ResetPasswordFormProps {
   code: string | undefined;
@@ -87,22 +87,16 @@ export function ResetPasswordForm({ code }: ResetPasswordFormProps) {
       className="flex flex-col gap-5"
       noValidate
     >
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">New password</Label>
-        <PasswordInput
-          id="password"
-          placeholder="At least 8 characters"
-          autoComplete="new-password"
-          aria-invalid={errors.password ? true : undefined}
-          aria-describedby={errors.password ? "password-error" : undefined}
-          {...register("password")}
-        />
-        {errors.password ? (
-          <p id="password-error" className="text-xs font-medium text-danger">
-            {errors.password.message}
-          </p>
-        ) : null}
-      </div>
+      <AuthField
+        id="password"
+        label="New password"
+        icon={Lock}
+        password
+        placeholder="At least 8 characters"
+        autoComplete="new-password"
+        error={errors.password?.message}
+        {...register("password")}
+      />
 
       {passwordState.message ? (
         <p
@@ -113,7 +107,7 @@ export function ResetPasswordForm({ code }: ResetPasswordFormProps) {
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={isUpdating}>
+      <Button type="submit" size="lg" className="h-[54px] rounded-2xl text-base shadow-[var(--shadow-hit)]" disabled={isUpdating}>
         {isUpdating ? (
           <>
             <Spinner size="sm" />

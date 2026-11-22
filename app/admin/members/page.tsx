@@ -11,6 +11,7 @@ import { PageHeader } from "@/components/dashboard/page-header";
 import { UserAvatar } from "@/components/messages/user-avatar";
 import { Badge } from "@/components/ui/badge";
 import { formatDate } from "@/lib/utils";
+import { LiveForm } from "@/components/ui/live-form";
 
 export const metadata: Metadata = { title: "Members" };
 
@@ -32,12 +33,12 @@ export default async function AdminMembersPage({ searchParams }: Props) {
   return (
     <div className="space-y-6">
       <PageHeader eyebrow="Operate" title="Members" description={`${total} member${total === 1 ? "" : "s"} · profiles, registrations, payments and badges.`} />
-      <form role="search" className="relative sm:max-w-md">
+      <LiveForm role="search" action="/admin/members" className="relative sm:max-w-md">
         <Search className="pointer-events-none absolute left-4 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" aria-hidden />
         <label htmlFor="member-search" className="sr-only">Search members</label>
         <input id="member-search" name="q" type="search" defaultValue={q} placeholder="Name, email or phone"
           className={cn(FIELD_BASE, "h-12 rounded-full border-white/[0.08] pl-11")} />
-      </form>
+      </LiveForm>
       {items.length ? (
         <ul className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
           {items.map((m) => (

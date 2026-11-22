@@ -7,10 +7,9 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { signInSchema, type SignInInput } from "@/lib/validations/auth";
 import { signIn, type AuthActionState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { PasswordInput } from "@/components/auth/password-input";
+import { AuthField } from "@/components/auth/auth-field";
+import { AlertCircle, ArrowRight, Lock, Mail } from "lucide-react";
 
 const initialState: AuthActionState = { ok: false };
 
@@ -20,9 +19,10 @@ export function SignInForm({ next }: { next?: string }) {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    formState: { errors, dirtyFields },
   } = useForm<SignInInput>({
     resolver: zodResolver(signInSchema),
+    mode: "onTouched",
     defaultValues: { email: "", password: "" },
   });
 
@@ -37,72 +37,45 @@ export function SignInForm({ next }: { next?: string }) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-col gap-5"
-      noValidate
-    >
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="you@example.com"
-          autoComplete="email"
-          aria-invalid={errors.email ? true : undefined}
-          aria-describedby={errors.email ? "email-error" : undefined}
-          {...register("email")}
-        />
-        {errors.email ? (
-          <p id="email-error" className="text-xs font-medium text-danger">
-            {errors.email.message}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <div className="flex items-center justify-between">
-          <Label htmlFor="password">Password</Label>
-          <Link
-            href="/forgot-password"
-            className="text-xs font-medium text-primary transition-colors hover:text-primary-hover"
-          >
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+      <AuthField
+        id="email"
+        label="Email"
+        icon={Mail}
+        type="email"
+        inputMode="email"
+        enterKeyHint="next"
+        placeholder="you@example.com"
+        autoComplete="email"
+        error={errors.email?.message}
+        valid={Boolean(dirtyFields.email)}
+        {...register("email")}
+      />
+      <AuthField
+        id="password"
+        label="Password"
+        icon={Lock}
+        password
+        enterKeyHint="go"
+        placeholder="Your password"
+        autoComplete="current-password"
+        error={errors.password?.message}
+        aside={
+          <Link href="/forgot-password" className="text-xs font-semibold text-primary-readable transition-colors hover:text-primary-hover">
             Forgot password?
           </Link>
-        </div>
-        <PasswordInput
-          id="password"
-          placeholder="••••••••"
-          autoComplete="current-password"
-          aria-invalid={errors.password ? true : undefined}
-          aria-describedby={errors.password ? "password-error" : undefined}
-          {...register("password")}
-        />
-        {errors.password ? (
-          <p id="password-error" className="text-xs font-medium text-danger">
-            {errors.password.message}
-          </p>
-        ) : null}
-      </div>
+        }
+        {...register("password")}
+      />
 
       {state.message ? (
-        <p
-          role="alert"
-          className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger"
-        >
-          {state.message}
+        <p role="alert" className="flex animate-[fz-fade-up_200ms_var(--ease-out)_both] items-start gap-2.5 rounded-2xl border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {state.message}
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={isPending}>
-        {isPending ? (
-          <>
-            <Spinner size="sm" />
-            Signing in…
-          </>
-        ) : (
-          "Sign in"
-        )}
+      <Button type="submit" size="lg" disabled={isPending} className="h-[54px] rounded-2xl text-base shadow-[var(--shadow-hit)]">
+        {isPending ? (<><Spinner size="sm" /> Signing in…</>) : (<>Sign in <ArrowRight className="h-[18px] w-[18px]" aria-hidden /></>)}
       </Button>
     </form>
   );

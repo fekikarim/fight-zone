@@ -208,3 +208,12 @@ The "Talk to Coach Seif" panel in `app/(marketing)/contact/page.tsx` was mostly 
 - **Fast-track card:** "Open your Messages" for members, "Create a free account" for visitors; plus the privacy note.
 - **Responsive:** no horizontal scroll at 320px; on desktop the panel now roughly matches the form's height.
 - **Screenshots:** 40–41.
+
+## 17. Loader, auth, live search, speed and push
+
+- **Loader** (`components/brand-loader.tsx`): glowing ring, pulsing mark, wordmark and a sweeping slanted bar; appears only after 160ms so quick pages never flash it. Used by `app/loading.tsx` and the auth routes. `NavProgress` adds a slim crimson bar that starts on the click and finishes when the page renders.
+- **Auth (phones):** brand hero with a rounded sheet over it; `AuthField` inputs (icon, 52px, 16px text, live ✓ / inline error), password strength meter on sign-up, bigger buttons. Applies to sign-in, sign-up, forgot and reset password.
+- **Live search:** `components/ui/live-form.tsx` applies filters as you type (220ms debounce) or change a select/date/checkbox, via `router.replace` in a transition — no button, no reload, keeps focus, URL stays shareable. Used on events, members, admin events, messages inbox and reports. (FAQ and notification chips were already live.)
+- **Speed:** router cache (`staleTimes`: 30s dynamic / 5 min static) so revisits and back are instant, full prefetch for the dock tabs, and the progress bar for instant click feedback.
+- **Push:** see `docs/push-notifications.md`. Migration `20261122000000_v1_web_push.sql` applied to the LOCAL database only; production needs your go-ahead plus VAPID keys.
+- **Screenshots:** 42–45.

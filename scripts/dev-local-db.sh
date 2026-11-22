@@ -11,4 +11,12 @@ export SUPABASE_SERVICE_ROLE_KEY="$SERVICE_ROLE_KEY"
 export NEXT_PUBLIC_SITE_URL="http://localhost:${PORT:-3100}"
 export RESEND_API_KEY=""
 export AI_MOTIVATION_ENABLED="false"
+# Local-only Web Push keys (generated once, git-ignored) + webhook secret.
+if [ ! -f .local-push.env ]; then
+  KEYS=$(npx web-push generate-vapid-keys --json)
+  PUB=$(echo "$KEYS" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).publicKey))')
+  PRIV=$(echo "$KEYS" | node -e 'let s="";process.stdin.on("data",d=>s+=d).on("end",()=>console.log(JSON.parse(s).privateKey))')
+  printf 'NEXT_PUBLIC_VAPID_PUBLIC_KEY=%s\nVAPID_PRIVATE_KEY=%s\nVAPID_SUBJECT=mailto:local@fightzone.test\nPUSH_WEBHOOK_SECRET=%s\n' "$PUB" "$PRIV" "$(node -e 'console.log(require("crypto").randomBytes(24).toString("hex"))')" > .local-push.env
+fi
+set -a; . ./.local-push.env; set +a
 exec npx next dev -p "${PORT:-3100}"

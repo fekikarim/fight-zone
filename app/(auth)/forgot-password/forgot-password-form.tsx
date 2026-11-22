@@ -7,8 +7,7 @@ import { Mail } from "lucide-react";
 import { forgotPasswordSchema, type ForgotPasswordInput } from "@/lib/validations/auth";
 import { forgotPassword, type AuthActionState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { AuthField } from "@/components/auth/auth-field";
 import { Spinner } from "@/components/ui/spinner";
 
 const initialState: AuthActionState = { ok: false };
@@ -48,23 +47,17 @@ export function ForgotPasswordForm() {
       className="flex flex-col gap-5"
       noValidate
     >
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="you@example.com"
-          autoComplete="email"
-          aria-invalid={errors.email ? true : undefined}
-          aria-describedby={errors.email ? "email-error" : undefined}
-          {...register("email")}
-        />
-        {errors.email ? (
-          <p id="email-error" className="text-xs font-medium text-danger">
-            {errors.email.message}
-          </p>
-        ) : null}
-      </div>
+      <AuthField
+        id="email"
+        label="Email"
+        icon={Mail}
+        type="email"
+        inputMode="email"
+        placeholder="you@example.com"
+        autoComplete="email"
+        error={errors.email?.message}
+        {...register("email")}
+      />
 
       {state.message ? (
         <p
@@ -75,7 +68,7 @@ export function ForgotPasswordForm() {
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={isPending}>
+      <Button type="submit" size="lg" className="h-[54px] rounded-2xl text-base shadow-[var(--shadow-hit)]" disabled={isPending}>
         {isPending ? (
           <>
             <Spinner size="sm" />

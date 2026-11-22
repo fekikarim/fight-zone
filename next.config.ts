@@ -35,6 +35,11 @@ const securityHeaders = [
 
 const nextConfig: NextConfig = {
   poweredByHeader: false,
+  experimental: {
+    // Keep visited pages in the client router cache so going back / revisiting
+    // a tab is instant. LiveUpdates + server actions still refresh real data.
+    staleTimes: { dynamic: 30, static: 300 },
+  },
   images: {
     // Coach-uploaded covers live in Supabase Storage (public bucket).
     remotePatterns: [

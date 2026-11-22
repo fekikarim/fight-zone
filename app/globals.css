@@ -167,6 +167,20 @@
   to   { transform: scaleX(1) skewX(-12deg); }
 }
 
+/* Brand loader: ring spin, logo pulse, slanted bar sweep, delayed reveal. */
+@keyframes fz-spin { to { transform: rotate(360deg); } }
+@keyframes fz-pulse-glow {
+  0%, 100% { transform: scale(1); filter: drop-shadow(0 0 0 rgba(225, 29, 72, 0)); }
+  50% { transform: scale(1.06); filter: drop-shadow(0 0 22px rgba(225, 29, 72, 0.55)); }
+}
+@keyframes fz-bar-run {
+  0% { transform: translateX(-120%) skewX(-12deg); }
+  100% { transform: translateX(320%) skewX(-12deg); }
+}
+@keyframes fz-loader-in { from { opacity: 0; transform: scale(0.96); } to { opacity: 1; transform: scale(1); } }
+/* Route progress bar: eases toward 90% while loading, then snaps full and fades. */
+@keyframes fz-nav-grow { from { transform: scaleX(0.04); } to { transform: scaleX(0.9); } }
+
 /* ------------------------------------------------------------
    Base
    ------------------------------------------------------------ */

@@ -10,6 +10,7 @@ import { Button } from "@/components/ui/button";
 import { eventStatusLabel, formatTnd } from "@/lib/types/events";
 import { formatDate, requestTime } from "@/lib/utils";
 import { DateInput } from "@/components/ui/date-input";
+import { LiveForm } from "@/components/ui/live-form";
 
 export const metadata: Metadata = { title: "Reports" };
 
@@ -42,7 +43,7 @@ export default async function AdminReportsPage({ searchParams }: Props) {
     <div className="space-y-8">
       <PageHeader eyebrow="Insight" title="Reports" description="Registrations, attendance and income for a period. Income lists only payments you recorded or confirmed — never estimates." />
 
-      <form className="flex flex-col gap-3 rounded-xl border border-ink-border bg-ink-soft/40 p-4 sm:flex-row sm:items-end">
+      <LiveForm action="/admin/reports" className="flex flex-col gap-3 rounded-xl border border-ink-border bg-ink-soft/40 p-4 sm:flex-row sm:items-end">
         <div className="space-y-1">
           <label htmlFor="from" className="text-xs text-muted">From</label>
           <DateInput id="from" name="from" defaultValue={range.fromDay} className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft px-3 text-base sm:text-sm" />
@@ -51,8 +52,8 @@ export default async function AdminReportsPage({ searchParams }: Props) {
           <label htmlFor="to" className="text-xs text-muted">To</label>
           <DateInput id="to" name="to" defaultValue={range.toDay} className="h-11 w-full rounded-lg border border-ink-border bg-ink-soft px-3 text-base sm:text-sm" />
         </div>
-        <Button type="submit">Apply</Button>
-      </form>
+        <noscript><Button type="submit">Apply</Button></noscript>
+      </LiveForm>
 
       <dl className="grid grid-cols-2 gap-3 lg:grid-cols-4">
         {[

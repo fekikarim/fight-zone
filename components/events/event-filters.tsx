@@ -4,6 +4,7 @@ import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { FIELD_BASE } from "@/components/ui/field-styles";
 import { Select } from "@/components/ui/select";
+import { LiveForm } from "@/components/ui/live-form";
 
 const TYPES = [
   { value: "", label: "All" },
@@ -54,7 +55,7 @@ export function EventFilters({ values, categories }: { values: EventFilterValues
           </Link>
         </nav>
 
-        <form role="search" action="/events" className="flex flex-col gap-2 sm:flex-row lg:max-w-2xl lg:flex-1 lg:justify-end">
+        <LiveForm role="search" action="/events" className="flex flex-col gap-2 sm:flex-row lg:max-w-2xl lg:flex-1 lg:justify-end">
           {values.type ? <input type="hidden" name="type" value={values.type} /> : null}
           {isPast ? <input type="hidden" name="when" value="past" /> : null}
           <div className="relative flex-1">
@@ -77,8 +78,8 @@ export function EventFilters({ values, categories }: { values: EventFilterValues
               Places left
             </label>
           ) : null}
-          <Button type="submit" className="h-11 shrink-0">Search</Button>
-        </form>
+          <noscript><Button type="submit" className="h-11 shrink-0">Search</Button></noscript>
+        </LiveForm>
       </div>
 
       <nav aria-label="Event type" className="-mx-4 flex gap-1 overflow-x-auto border-b border-ink-border px-4 sm:mx-0 sm:px-0">

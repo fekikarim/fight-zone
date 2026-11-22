@@ -31,11 +31,11 @@ export default async function SignUpPage({ searchParams }: { searchParams: Promi
 
       <SignUpForm next={next || undefined} />
 
-      <p className="border-t border-ink-border pt-6 text-sm text-muted">
+      <p className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-sm text-muted">
         Already a member?{" "}
         <Link
           href={next ? `/sign-in?next=${encodeURIComponent(next)}` : "/sign-in"}
-          className="link-draw font-semibold text-foreground"
+          className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-white/[0.07] px-4 font-semibold text-foreground transition-colors hover:bg-white/[0.12]"
         >
           Sign in
         </Link>

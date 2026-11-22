@@ -6,10 +6,10 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { signUpSchema, type SignUpInput } from "@/lib/validations/auth";
 import { signUp, type AuthActionState } from "@/lib/actions/auth";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Spinner } from "@/components/ui/spinner";
-import { PasswordInput } from "@/components/auth/password-input";
+import Link from "next/link";
+import { AuthField, PasswordStrength } from "@/components/auth/auth-field";
+import { AlertCircle, ArrowRight, Lock, Mail, User } from "lucide-react";
 
 const initialState: AuthActionState = { ok: false };
 
@@ -19,11 +19,14 @@ export function SignUpForm({ next }: { next?: string }) {
   const {
     register,
     handleSubmit,
-    formState: { errors },
+    watch,
+    formState: { errors, dirtyFields },
   } = useForm<SignUpInput>({
     resolver: zodResolver(signUpSchema),
+    mode: "onTouched",
     defaultValues: { fullName: "", email: "", password: "" },
   });
+  const password = watch("password");
 
   const onSubmit = (values: SignUpInput) => {
     const formData = new FormData();
@@ -37,82 +40,59 @@ export function SignUpForm({ next }: { next?: string }) {
   };
 
   return (
-    <form
-      onSubmit={handleSubmit(onSubmit)}
-      className="flex flex-col gap-5"
-      noValidate
-    >
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="fullName">Full name</Label>
-        <Input
-          id="fullName"
-          placeholder="Your full name"
-          autoComplete="name"
-          aria-invalid={errors.fullName ? true : undefined}
-          aria-describedby={errors.fullName ? "fullName-error" : undefined}
-          {...register("fullName")}
-        />
-        {errors.fullName ? (
-          <p id="fullName-error" className="text-xs font-medium text-danger">
-            {errors.fullName.message}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="email">Email</Label>
-        <Input
-          id="email"
-          type="email"
-          placeholder="you@example.com"
-          autoComplete="email"
-          aria-invalid={errors.email ? true : undefined}
-          aria-describedby={errors.email ? "email-error" : undefined}
-          {...register("email")}
-        />
-        {errors.email ? (
-          <p id="email-error" className="text-xs font-medium text-danger">
-            {errors.email.message}
-          </p>
-        ) : null}
-      </div>
-
-      <div className="flex flex-col gap-2">
-        <Label htmlFor="password">Password</Label>
-        <PasswordInput
+    <form onSubmit={handleSubmit(onSubmit)} className="flex flex-col gap-5" noValidate>
+      <AuthField
+        id="fullName"
+        label="Full name"
+        icon={User}
+        enterKeyHint="next"
+        autoCapitalize="words"
+        placeholder="Your full name"
+        autoComplete="name"
+        error={errors.fullName?.message}
+        valid={Boolean(dirtyFields.fullName)}
+        {...register("fullName")}
+      />
+      <AuthField
+        id="email"
+        label="Email"
+        icon={Mail}
+        type="email"
+        inputMode="email"
+        enterKeyHint="next"
+        placeholder="you@example.com"
+        autoComplete="email"
+        error={errors.email?.message}
+        valid={Boolean(dirtyFields.email)}
+        {...register("email")}
+      />
+      <div className="flex flex-col gap-3">
+        <AuthField
           id="password"
+          label="Password"
+          icon={Lock}
+          password
+          enterKeyHint="go"
           placeholder="At least 8 characters"
           autoComplete="new-password"
-          aria-invalid={errors.password ? true : undefined}
-          aria-describedby={errors.password ? "password-error" : undefined}
+          error={errors.password?.message}
           {...register("password")}
         />
-        {errors.password ? (
-          <p id="password-error" className="text-xs font-medium text-danger">
-            {errors.password.message}
-          </p>
-        ) : null}
+        <PasswordStrength value={password ?? ""} />
       </div>
 
       {state.message ? (
-        <p
-          role="alert"
-          className="rounded-md border border-danger/30 bg-danger-soft px-3 py-2.5 text-sm text-danger"
-        >
-          {state.message}
+        <p role="alert" className="flex animate-[fz-fade-up_200ms_var(--ease-out)_both] items-start gap-2.5 rounded-2xl border border-danger/30 bg-danger-soft px-4 py-3 text-sm text-danger">
+          <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" aria-hidden /> {state.message}
         </p>
       ) : null}
 
-      <Button type="submit" size="lg" disabled={isPending}>
-        {isPending ? (
-          <>
-            <Spinner size="sm" />
-            Creating account…
-          </>
-        ) : (
-          "Create account"
-        )}
+      <Button type="submit" size="lg" disabled={isPending} className="h-[54px] rounded-2xl text-base shadow-[var(--shadow-hit)]">
+        {isPending ? (<><Spinner size="sm" /> Creating account…</>) : (<>Create account <ArrowRight className="h-[18px] w-[18px]" aria-hidden /></>)}
       </Button>
+      <p className="text-center text-xs leading-relaxed text-muted-foreground">
+        By creating an account you agree to our <Link href="/terms" className="underline-offset-2 hover:text-foreground hover:underline">Terms</Link> and <Link href="/privacy" className="underline-offset-2 hover:text-foreground hover:underline">Privacy Policy</Link>.
+      </p>
     </form>
   );
 }

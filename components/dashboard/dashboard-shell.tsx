@@ -27,6 +27,7 @@ import {
 } from "lucide-react";
 import { Logo } from "@/components/logo";
 import { signOut } from "@/lib/actions/auth";
+import { PushPrompt } from "@/components/notifications/push-prompt";
 import { LiveUpdates } from "@/components/dashboard/live-updates";
 import { FreshnessDot } from "@/components/content/freshness-dot";
 import type { ContentMarker } from "@/lib/supabase/queries";
@@ -274,6 +275,7 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
               <Link
                 key={item.href}
                 href={item.href}
+                prefetch
                 aria-current={active ? "page" : undefined}
                 className={cn(DOCK_ITEM, active ? "bg-primary text-white shadow-[var(--shadow-hit)]" : "text-muted hover:bg-white/[0.06] hover:text-foreground")}
               >
@@ -305,6 +307,8 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
           </button>
         </div>
       </nav>
+
+      <PushPrompt hidden={chatRoute || moreOpen} />
 
       {/* ─── More sheet ───────────────────────────────────────────── */}
       {moreOpen ? (

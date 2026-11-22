@@ -31,13 +31,13 @@ export default async function SignInPage({ searchParams }: { searchParams: Promi
 
       <SignInForm next={next || undefined} />
 
-      <p className="border-t border-ink-border pt-6 text-sm text-muted">
-        Don&apos;t have an account?{" "}
+      <p className="flex items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-white/[0.03] px-4 py-3.5 text-sm text-muted">
+        New to Fight Zone?{" "}
         <Link
           href={next ? `/sign-up?next=${encodeURIComponent(next)}` : "/sign-up"}
-          className="link-draw font-semibold text-foreground"
+          className="inline-flex h-9 shrink-0 items-center whitespace-nowrap rounded-full bg-white/[0.07] px-4 font-semibold text-foreground transition-colors hover:bg-white/[0.12]"
         >
-          Create an account
+          Create account
         </Link>
       </p>
     </div>
