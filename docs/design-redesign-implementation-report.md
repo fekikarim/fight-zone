@@ -217,3 +217,9 @@ The "Talk to Coach Seif" panel in `app/(marketing)/contact/page.tsx` was mostly 
 - **Speed:** router cache (`staleTimes`: 30s dynamic / 5 min static) so revisits and back are instant, full prefetch for the dock tabs, and the progress bar for instant click feedback.
 - **Push:** see `docs/push-notifications.md`. Migration `20261122000000_v1_web_push.sql` applied to the LOCAL database only; production needs your go-ahead plus VAPID keys.
 - **Screenshots:** 42–45.
+
+## 18. Phone safe areas (installed app)
+
+- **Scrims:** a solid-to-clear band behind the status bar / Dynamic Island and another above the home-indicator strip, so scrolling content never shows through the clock or the gesture bar (the installed iOS app uses a translucent status bar).
+- **Landscape / notches:** top bar, page and dock now add the left/right `safe-area-inset` padding.
+- **Dock:** on phones it slides away while you scroll down and returns on scroll up, near the top or bottom, and on navigation (not on chat screens, where it's already hidden; respects reduced motion).

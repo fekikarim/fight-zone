@@ -119,6 +119,7 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
   const pathname = usePathname();
   const [moreOpen, setMoreOpen] = useState(false);
   const [menuOpen, setMenuOpen] = useState(false);
+  const [dockHidden, setDockHidden] = useState(false);
   const menuRef = useRef<HTMLDivElement>(null);
   const isStaff = user.roles.some((r) => r === "ADMIN" || r === "COACH");
   const homeHref = isStaff ? "/admin" : "/member";
@@ -138,10 +139,33 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
   const moreActive = rest.some((n) => isActiveNav(pathname, n.href, nav));
   const moreBadge = rest.reduce((sum, n) => sum + (n.badge ?? 0), 0);
 
+  // Phones: the dock slides away while scrolling down (more room to read) and
+  // returns on scroll up, near the top/bottom, or when the page changes.
+  useEffect(() => {
+    let last = window.scrollY;
+    let ticking = false;
+    const onScroll = () => {
+      if (ticking) return;
+      ticking = true;
+      requestAnimationFrame(() => {
+        const y = window.scrollY;
+        const delta = y - last;
+        const nearEnd = window.innerHeight + y >= document.documentElement.scrollHeight - 96;
+        if (y < 80 || nearEnd || delta < -6) setDockHidden(false);
+        else if (delta > 10) setDockHidden(true);
+        if (Math.abs(delta) > 6) last = y;
+        ticking = false;
+      });
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
+
   // Close overlays on navigation.
   const [prevPath, setPrevPath] = useState(pathname);
   if (prevPath !== pathname) {
     setPrevPath(pathname);
+    setDockHidden(false);
     setMoreOpen(false);
     setMenuOpen(false);
   }
@@ -188,8 +212,25 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
       {/* Ambient arena light */}
       <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,rgba(225,29,72,0.16),transparent_70%)]" />
 
+      {/* Safe-area scrims: content never shows through the status bar / Dynamic Island
+          or the home-indicator strip (phones; PWA status bar is translucent). */}
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none fixed inset-x-0 top-0 z-[35] h-[calc(env(safe-area-inset-top)+14px)] bg-[linear-gradient(to_bottom,#09090a_calc(100%-14px),transparent)] lg:hidden",
+          chatRoute && "hidden",
+        )}
+      />
+      <div
+        aria-hidden
+        className={cn(
+          "pointer-events-none fixed inset-x-0 bottom-0 z-[35] h-[calc(env(safe-area-inset-bottom)+28px)] bg-[linear-gradient(to_top,#09090a_calc(env(safe-area-inset-bottom)+4px),transparent)] lg:hidden",
+          chatRoute && "hidden",
+        )}
+      />
+
       {/* ─── Floating top bar ─────────────────────────────────────── */}
-      <header className={cn("fixed inset-x-0 top-0 z-40 px-3 pt-[max(0.75rem,env(safe-area-inset-top))] sm:px-5", chatRoute && "hidden lg:block")}>
+      <header className={cn("fixed inset-x-0 top-0 z-40 pl-[max(0.75rem,env(safe-area-inset-left))] pr-[max(0.75rem,env(safe-area-inset-right))] pt-[max(0.75rem,env(safe-area-inset-top))] sm:pl-[max(1.25rem,env(safe-area-inset-left))] sm:pr-[max(1.25rem,env(safe-area-inset-right))]", chatRoute && "hidden lg:block")}>
         <div className="mx-auto flex h-14 max-w-[1200px] items-center justify-between gap-3 rounded-2xl border border-white/[0.08] bg-ink/70 pl-3 pr-1.5 shadow-[0_10px_40px_-20px_rgba(0,0,0,0.9)] backdrop-blur-xl sm:pl-4">
           <div className="flex min-w-0 items-center gap-3">
             <Logo variant="icon" href={homeHref} />
@@ -259,7 +300,7 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
       <main
         id="main"
         className={cn(
-          "mx-auto w-full max-w-[1200px] px-4 pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-[calc(5.5rem+env(safe-area-inset-top))] sm:px-6 sm:pt-28",
+          "mx-auto w-full max-w-[1200px] pl-[max(1rem,env(safe-area-inset-left))] pr-[max(1rem,env(safe-area-inset-right))] pb-[calc(7.5rem+env(safe-area-inset-bottom))] pt-[calc(5.5rem+env(safe-area-inset-top))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pt-28",
           chatRoute && "max-lg:p-0",
         )}
       >
@@ -269,7 +310,11 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
       {/* ─── Floating dock ────────────────────────────────────────── */}
       <nav
         aria-label="Primary"
-        className={cn("fixed inset-x-0 bottom-0 z-40 flex justify-center px-2 min-[360px]:px-3 pb-[max(0.75rem,env(safe-area-inset-bottom))]", chatRoute && "max-lg:hidden")}
+        className={cn(
+          "fixed inset-x-0 bottom-0 z-40 flex justify-center pl-[max(0.5rem,env(safe-area-inset-left))] pr-[max(0.5rem,env(safe-area-inset-right))] pb-[max(0.75rem,env(safe-area-inset-bottom))] transition-transform duration-300 ease-[cubic-bezier(0.22,1,0.36,1)] motion-reduce:transition-none min-[360px]:pl-[max(0.75rem,env(safe-area-inset-left))] min-[360px]:pr-[max(0.75rem,env(safe-area-inset-right))]",
+          chatRoute && "max-lg:hidden",
+          dockHidden && "max-lg:translate-y-[calc(100%+1rem)]",
+        )}
       >
         <div className="flex w-full max-w-[460px] items-stretch gap-0.5 rounded-[28px] border border-white/[0.08] bg-ink/75 p-1 min-[360px]:p-1.5 shadow-[0_20px_50px_-15px_rgba(0,0,0,0.95)] backdrop-blur-xl sm:gap-1 lg:w-auto lg:max-w-none">
           {dock.map((item) => {
