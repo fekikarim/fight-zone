@@ -14,7 +14,7 @@ If push isn't configured, a hidden tab still raises a local notification via the
 1. Generate keys once: `npx web-push generate-vapid-keys`
 2. Netlify env vars: `NEXT_PUBLIC_VAPID_PUBLIC_KEY`, `VAPID_PRIVATE_KEY`, `VAPID_SUBJECT` (`mailto:…`). Redeploy
    (the public key is inlined at build time). `PUSH_WEBHOOK_SECRET` is optional — the secret now lives in the database.
-3. Migrations `20261122000000_v1_web_push.sql` and `20261124000000_v1_push_timeout.sql` (after a backup).
+3. Migrations `20261122000000_v1_web_push.sql`, `20261124000000_v1_push_timeout.sql` and `20261124000100_v1_push_grants.sql` (after a backup). The grants one is essential on hosted Supabase: without it every device save fails with `42501 permission denied`.
 4. Switch it on (SQL editor) — the secret is generated inside the database and never leaves it:
    ```sql
    insert into public.push_config(key, value) values
@@ -33,6 +33,10 @@ Open **Notifications** (or **More**) → "Notifications on this device":
 - **Send me a test notification** waits ~6 s (close the app / switch away meanwhile), then pushes for real and reports
   how many devices accepted it and what the push service answered.
 Registration failures are also logged on the server (`domain: push, op: client-register`).
+
+## Staying in sync
+- Open tabs/apps: Supabase Realtime updates counts and lists instantly; they also refresh on focus, network-back, back/forward-cache restore, and whenever the service worker reports a push.
+- Closed app: the push itself arrives, and the service worker sets the app-icon badge to the unread total.
 
 ## Unread indicator outside the page
 `components/dashboard/tab-badge.tsx` puts a red bubble with the unread count on the browser-tab icon, prefixes the tab

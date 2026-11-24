@@ -26,6 +26,9 @@ self.addEventListener("push", (event) => {
       renotify: Boolean(data.tag),
       silent: focused,
     });
+    // Home-screen / dock icon badge, even though the app is closed.
+    try { if (data.badge && self.navigator && self.navigator.setAppBadge) await self.navigator.setAppBadge(data.badge); } catch { /* unsupported */ }
+    // Open tabs refresh their data right away (they may have been asleep).
     clients.forEach((c) => c.postMessage({ type: "fz-push", url, title }));
     if (focused) {
       await sleep(5000);

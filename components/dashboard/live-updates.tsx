@@ -30,7 +30,9 @@ export function LiveUpdates({ userId, role }: { userId: string; role: "member" |
     const supabase = createClient();
     const refresh = () => {
       if (timer.current) window.clearTimeout(timer.current);
-      timer.current = window.setTimeout(() => router.refresh(), 500);
+      // Background tabs get their timers throttled — refresh at once there.
+      if (document.visibilityState === "hidden") router.refresh();
+      else timer.current = window.setTimeout(() => router.refresh(), 400);
     };
     let channel: ReturnType<typeof supabase.channel> | null = null;
     try {
@@ -62,8 +64,19 @@ export function LiveUpdates({ userId, role }: { userId: string; role: "member" |
     // Missed events (sleep, network drop): refresh counts when the tab returns.
     const onVisible = () => document.visibilityState === "visible" && refresh();
     document.addEventListener("visibilitychange", onVisible);
+    // Wake-ups: network back, window focused, page restored from the back/forward cache.
+    window.addEventListener("online", refresh);
+    window.addEventListener("focus", refresh);
+    window.addEventListener("pageshow", refresh);
+    // The service worker tells open tabs when a push arrived (they may have been asleep).
+    const onWorker = (e: MessageEvent) => { if (e.data?.type === "fz-push") refresh(); };
+    navigator.serviceWorker?.addEventListener("message", onWorker);
     return () => {
       document.removeEventListener("visibilitychange", onVisible);
+      window.removeEventListener("online", refresh);
+      window.removeEventListener("focus", refresh);
+      window.removeEventListener("pageshow", refresh);
+      navigator.serviceWorker?.removeEventListener("message", onWorker);
       if (timer.current) window.clearTimeout(timer.current);
       if (channel) void supabase.removeChannel(channel);
     };

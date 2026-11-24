@@ -56,12 +56,16 @@ export async function sendPushForNotification(n: PushNotificationInput): Promise
   const role = staff ? "staff" : "member";
   const url = getResourceHref(role, n.resource_type, n.resource_id) ?? (staff ? "/admin/notifications" : "/member/notifications");
 
+  // Unread total (includes this one) → app-icon badge even while the app is closed.
+  const { count: unread } = await admin.from("notifications").select("id", { count: "exact", head: true }).eq("user_id", n.user_id).eq("is_read", false);
+
   const payload = JSON.stringify({
     title: n.title,
     body: n.content ?? "",
     url,
     tag: n.id,
     type: n.type,
+    badge: Math.max(1, unread ?? 1),
   });
 
   let sent = 0;
