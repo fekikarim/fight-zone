@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { removePushSubscription, savePushSubscription } from "@/lib/actions/push";
+import { removePushSubscription, reportPushClientError, savePushSubscription, sendTestPush } from "@/lib/actions/push";
 
 export type PushState = "loading" | "unsupported" | "needs-install" | "denied" | "off" | "on" | "error";
 
@@ -34,29 +34,46 @@ export function localPushOff(): boolean {
   try { return localStorage.getItem(OFF_KEY) === "1"; } catch { return false; }
 }
 
-type SubscribeResult = { ok: true } | { ok: false; message: string };
+type SubscribeResult = { ok: true } | { ok: false; message: string; detail: string };
+
+function fail(step: string, err: unknown, message: string): SubscribeResult {
+  const name = err instanceof Error ? err.name : "Error";
+  const detail = `${step}: ${name}${err instanceof Error && err.message ? ` — ${err.message}` : ""}`.slice(0, 220);
+  void reportPushClientError({
+    step, name, message: err instanceof Error ? err.message : String(err),
+    standalone: isStandalone(), permission: typeof Notification !== "undefined" ? Notification.permission : "n/a",
+    hasKey: Boolean(VAPID), ua: navigator.userAgent,
+  }).catch(() => {});
+  return { ok: false, message, detail };
+}
 
 /** Make sure this device has a valid, saved push subscription. */
 async function subscribe(reg: ServiceWorkerRegistration): Promise<SubscribeResult> {
-  if (!VAPID) return { ok: false, message: "Push isn't switched on for this site yet (missing server key)." };
+  if (!VAPID) return fail("key", new Error("NEXT_PUBLIC_VAPID_PUBLIC_KEY is not in this build"), "Push isn't switched on for this site yet (missing key in the app build).");
   const key = b64ToBytes(VAPID);
+  let sub: PushSubscription | null;
   try {
-    let sub = await reg.pushManager.getSubscription();
+    sub = await reg.pushManager.getSubscription();
     // A subscription made with a different key can never receive our pushes.
     if (sub && !sameKey(sub.options?.applicationServerKey, key)) {
       await sub.unsubscribe();
       sub = null;
     }
     sub ??= await reg.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: key });
+  } catch (e) {
+    const blocked = e instanceof Error && e.name === "NotAllowedError";
+    return fail("subscribe", e, blocked ? "Notifications are blocked for this site." : "Your browser couldn't connect to its push service. Check your connection, then try again (some browsers, e.g. Brave, need “Use Google services for push messaging” turned on).");
+  }
+  try {
     const res = await savePushSubscription({
       endpoint: sub.endpoint,
       p256dh: toB64(sub.getKey("p256dh")),
       auth: toB64(sub.getKey("auth")),
       userAgent: navigator.userAgent.slice(0, 280),
     });
-    return res.ok ? { ok: true } : { ok: false, message: res.message ?? "Could not save this device." };
+    return res.ok ? { ok: true } : fail("save", new Error(res.message ?? "rejected"), res.message ?? "Could not save this device.");
   } catch (e) {
-    return { ok: false, message: e instanceof Error && e.name === "NotAllowedError" ? "Notifications are blocked for this site." : "Your browser couldn't register for notifications. Try again." };
+    return fail("save", e, "Could not save this device. Check your connection and try again.");
   }
 }
 
@@ -64,6 +81,7 @@ async function subscribe(reg: ServiceWorkerRegistration): Promise<SubscribeResul
 export function usePushNotifications() {
   const [state, setState] = useState<PushState>("loading");
   const [message, setMessage] = useState<string | null>(null);
+  const [detail, setDetail] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
@@ -77,9 +95,9 @@ export function usePushNotifications() {
           const result = await subscribe(await registration()); // keeps the device row fresh
           if (cancelled) return;
           if (result.ok) setState("on");
-          else { setMessage(result.message); setState("error"); }
-        } catch {
-          if (!cancelled) { setMessage("Could not start notifications on this device."); setState("error"); }
+          else { setMessage(result.message); setDetail(result.detail); setState("error"); }
+        } catch (e) {
+          if (!cancelled) { setMessage("Could not start the notification service on this device."); setDetail(`worker: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200)); setState("error"); }
         }
         return;
       }
@@ -97,9 +115,10 @@ export function usePushNotifications() {
       try { localStorage.removeItem(OFF_KEY); } catch { /* ignore */ }
       const result = await subscribe(await registration());
       if (result.ok) setState("on");
-      else { setMessage(result.message); setState("error"); }
-    } catch {
+      else { setMessage(result.message); setDetail(result.detail); setState("error"); }
+    } catch (e) {
       setMessage("Could not turn on notifications. Try again.");
+      setDetail(`enable: ${e instanceof Error ? e.message : String(e)}`.slice(0, 200));
       setState("error");
     } finally {
       setBusy(false);
@@ -123,7 +142,18 @@ export function usePushNotifications() {
     }
   }, []);
 
-  return { state, message, busy, enable, disable };
+  /** Real end-to-end test: the server waits ~6s, then pushes to every enabled device. */
+  const sendTest = useCallback(async (): Promise<string> => {
+    const res = await sendTestPush();
+    if (!res.ok || !res.result) return res.message ?? "Test failed.";
+    const r = res.result;
+    if (r.devices === 0) return "No device is registered for your account yet. Turn notifications off and on again.";
+    if (r.sent === r.devices) return `Sent to ${r.sent} device${r.sent === 1 ? "" : "s"}. If nothing appeared, check this device's system notification settings (and Focus / Do Not Disturb).`;
+    const f = r.failures[0];
+    return `Delivered to ${r.sent} of ${r.devices}. ${f ? `${f.host} said ${f.status ?? "error"}: ${f.message}` : ""}${r.removed ? " An outdated device was removed — reopen the app to register it again." : ""}`;
+  }, []);
+
+  return { state, message, detail, busy, enable, disable, sendTest };
 }
 
 /** Show an OS notification through the service worker (works on mobile too). */

@@ -29,7 +29,9 @@ import { Logo } from "@/components/logo";
 import { signOut } from "@/lib/actions/auth";
 import { PushPrompt } from "@/components/notifications/push-prompt";
 import { InstallAppCard } from "@/components/notifications/install-app-card";
+import { PushToggle } from "@/components/notifications/push-toggle";
 import { LiveUpdates } from "@/components/dashboard/live-updates";
+import { TabBadge } from "@/components/dashboard/tab-badge";
 import { FreshnessDot } from "@/components/content/freshness-dot";
 import type { ContentMarker } from "@/lib/supabase/queries";
 import type { CurrentUser } from "@/lib/auth/guards";
@@ -181,6 +183,7 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
   return (
     <div className="app-shell relative min-h-dvh">
       <LiveUpdates userId={user.id} role={isStaff ? "staff" : "member"} />
+      <TabBadge count={unread} />
 
       {/* Ambient arena light */}
       <div aria-hidden className="pointer-events-none fixed inset-x-0 top-0 -z-10 h-[520px] bg-[radial-gradient(60%_60%_at_50%_0%,rgba(225,29,72,0.16),transparent_70%)]" />
@@ -323,7 +326,10 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
-            <InstallAppCard className="mb-5" />
+            <div className="mb-5 flex flex-col gap-3">
+              <InstallAppCard />
+              <PushToggle />
+            </div>
             <div className="flex flex-col gap-6">
               {groups.map((g) => (
                 <section key={g.name}>

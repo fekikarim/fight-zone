@@ -2,7 +2,10 @@
 
 import { z } from "zod";
 import { createClient } from "@/lib/supabase/server";
+import { randomUUID } from "node:crypto";
 import { getCurrentUser } from "@/lib/auth/guards";
+import { sendPushForNotification, type PushResult } from "@/lib/push/send";
+import { logError } from "@/lib/errors";
 
 const subscriptionSchema = z.object({
   endpoint: z.string().url().max(1000),
@@ -36,4 +39,33 @@ export async function removePushSubscription(endpoint: string): Promise<{ ok: bo
   const supabase = await createClient();
   const { error } = await supabase.from("push_subscriptions").delete().eq("endpoint", endpoint).eq("user_id", user.id);
   return { ok: !error };
+}
+
+/**
+ * "Send me a test": waits a few seconds (so you can close the app or switch
+ * away first), then pushes a real notification to every device you enabled.
+ */
+export async function sendTestPush(): Promise<{ ok: boolean; message?: string; result?: PushResult }> {
+  const user = await getCurrentUser();
+  if (!user) return { ok: false, message: "You need to sign in." };
+  await new Promise((r) => setTimeout(r, 6500));
+  const result = await sendPushForNotification({
+    id: randomUUID(),
+    user_id: user.id,
+    type: "SYSTEM",
+    title: "Fight Zone test",
+    content: "It works — you'll get alerts like this, even when the app is closed.",
+    resource_type: null,
+    resource_id: null,
+  });
+  return { ok: true, result };
+}
+
+/** Client-side registration failures, so they show up in the server logs. */
+export async function reportPushClientError(info: { step: string; name?: string; message?: string; standalone?: boolean; permission?: string; hasKey?: boolean; ua?: string }) {
+  const user = await getCurrentUser();
+  logError("Push registration failed on a device", new Error(`${info.step}: ${info.name ?? ""} ${info.message ?? ""}`.slice(0, 300)), {
+    domain: "push", op: "client-register", userId: user?.id,
+    standalone: info.standalone, permission: info.permission, hasKey: info.hasKey, ua: (info.ua ?? "").slice(0, 160),
+  });
 }

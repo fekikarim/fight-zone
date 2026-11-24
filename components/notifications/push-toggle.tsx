@@ -1,12 +1,21 @@
 "use client";
 
-import { BellOff, BellRing, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { BellOff, BellRing, Loader2, Send } from "lucide-react";
 import { usePushNotifications } from "@/lib/push/client";
 import { cn } from "@/lib/utils";
 
 /** Device-notification switch for the notification pages. */
 export function PushToggle() {
-  const { state, message, busy, enable, disable } = usePushNotifications();
+  const { state, message, detail, busy, enable, disable, sendTest } = usePushNotifications();
+  const [testing, setTesting] = useState(false);
+  const [testResult, setTestResult] = useState<string | null>(null);
+  const runTest = async () => {
+    setTesting(true);
+    setTestResult("Close the app or switch to another app now — the test arrives in a few seconds…");
+    try { setTestResult(await sendTest()); } catch { setTestResult("The test could not run. Try again."); }
+    setTesting(false);
+  };
   if (state === "loading" || state === "unsupported") return null;
 
   const on = state === "on";
@@ -15,7 +24,8 @@ export function PushToggle() {
   const install = state === "needs-install";
 
   return (
-    <div className="flex items-center gap-3.5 rounded-2xl border border-white/[0.08] bg-ink-soft px-4 py-3.5">
+    <div className="rounded-2xl border border-white/[0.08] bg-ink-soft">
+    <div className="flex items-center gap-3.5 px-4 py-3.5">
       <span className={cn("flex h-10 w-10 shrink-0 items-center justify-center rounded-full", on ? "bg-primary text-white" : "bg-white/[0.06] text-muted")}>
         {on ? <BellRing className="h-[18px] w-[18px]" aria-hidden /> : <BellOff className="h-[18px] w-[18px]" aria-hidden />}
       </span>
@@ -48,6 +58,16 @@ export function PushToggle() {
           </span>
         </button>
       )}
+    </div>
+    {failed && detail ? <p className="border-t border-white/[0.06] px-4 py-2.5 font-mono text-[11px] leading-snug text-muted-foreground">{detail}</p> : null}
+    {on ? (
+      <div className="flex flex-col gap-2 border-t border-white/[0.06] px-4 py-3">
+        <button type="button" onClick={() => void runTest()} disabled={testing} className="inline-flex h-10 items-center justify-center gap-2 self-start rounded-full bg-white/[0.07] px-4 text-sm font-semibold transition-colors hover:bg-white/[0.12] disabled:opacity-60">
+          {testing ? <Loader2 className="h-4 w-4 animate-spin" aria-hidden /> : <Send className="h-4 w-4" aria-hidden />} Send me a test notification
+        </button>
+        {testResult ? <p role="status" className="text-xs leading-snug text-muted">{testResult}</p> : null}
+      </div>
+    ) : null}
     </div>
   );
 }

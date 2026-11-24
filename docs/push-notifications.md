@@ -27,6 +27,17 @@ If push isn't configured, a hidden tab still raises a local notification via the
 
 Remove the two `push_config` rows to switch push off.
 
+## Checking a device
+Open **Notifications** (or **More**) → "Notifications on this device":
+- the switch turns alerts on/off for that device; an **error line** appears if registration failed (with the technical reason);
+- **Send me a test notification** waits ~6 s (close the app / switch away meanwhile), then pushes for real and reports
+  how many devices accepted it and what the push service answered.
+Registration failures are also logged on the server (`domain: push, op: client-register`).
+
+## Unread indicator outside the page
+`components/dashboard/tab-badge.tsx` puts a red bubble with the unread count on the browser-tab icon, prefixes the tab
+title with `(3)`, and sets the installed app's home-screen badge (`navigator.setAppBadge`).
+
 ## When does an alert arrive?
 | Situation | Works? |
 |---|---|

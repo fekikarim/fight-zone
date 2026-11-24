@@ -6,7 +6,7 @@ import { usePushNotifications } from "@/lib/push/client";
 import { cn } from "@/lib/utils";
 
 const DISMISS_KEY = "fz:push-prompt-dismissed";
-const WEEK = 7 * 24 * 3600 * 1000;
+const WEEK = 24 * 3600 * 1000; // ask again after a day
 
 /** One-time, polite ask to turn on device notifications (never on page load). */
 export function PushPrompt({ hidden }: { hidden?: boolean }) {
