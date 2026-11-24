@@ -51,6 +51,7 @@ export const metadata: Metadata = {
     description: siteConfig.description,
   },
   manifest: "/favicon/site.webmanifest",
+  appleWebApp: { capable: true, title: "Fight Zone", statusBarStyle: "black-translucent" },
   icons: {
     icon: [
       { url: "/favicon/favicon-32x32.png", sizes: "32x32", type: "image/png" },

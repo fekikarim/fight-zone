@@ -5,6 +5,7 @@ import { NotificationList } from "@/components/notifications/notification-list";
 import { PageHeader } from "@/components/dashboard/page-header";
 import { Skeleton } from "@/components/ui/skeleton";
 import { PushToggle } from "@/components/notifications/push-toggle";
+import { InstallAppCard } from "@/components/notifications/install-app-card";
 
 interface NotificationsPageProps {
   role: "member" | "staff";
@@ -31,6 +32,7 @@ export async function NotificationsPage({ role, searchParams }: NotificationsPag
             : "You're all caught up."
         }
       />
+      <InstallAppCard />
       <PushToggle />
       <Suspense fallback={<NotificationsSkeleton />}>
         <NotificationList

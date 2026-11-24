@@ -1,9 +1,9 @@
 {
-  "name": "Fight Zone — Train. Fight. Win.",
+  "name": "Fight Zone \u2014 Train. Fight. Win.",
   "short_name": "Fight Zone",
-  "description": "Fight Zone — professional boxing, kickboxing and fitness coaching with Coach Seif Dridi.",
+  "description": "Fight Zone \u2014 professional boxing, kickboxing and fitness coaching with Coach Seif Dridi.",
   "lang": "en",
-  "start_url": "/",
+  "start_url": "/member?source=pwa",
   "scope": "/",
   "display": "standalone",
   "orientation": "portrait-primary",
@@ -21,6 +21,43 @@
       "sizes": "512x512",
       "type": "image/png",
       "purpose": "any"
+    }
+  ],
+  "id": "/",
+  "display_override": [
+    "standalone",
+    "minimal-ui"
+  ],
+  "prefer_related_applications": false,
+  "categories": [
+    "sports",
+    "health",
+    "fitness"
+  ],
+  "shortcuts": [
+    {
+      "name": "Messages",
+      "short_name": "Messages",
+      "url": "/member/messages?source=pwa",
+      "icons": [
+        {
+          "src": "/favicon/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
+    },
+    {
+      "name": "Events",
+      "short_name": "Events",
+      "url": "/member/events?source=pwa",
+      "icons": [
+        {
+          "src": "/favicon/android-chrome-192x192.png",
+          "sizes": "192x192",
+          "type": "image/png"
+        }
+      ]
     }
   ]
 }

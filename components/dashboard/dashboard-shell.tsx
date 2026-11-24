@@ -28,6 +28,7 @@ import {
 import { Logo } from "@/components/logo";
 import { signOut } from "@/lib/actions/auth";
 import { PushPrompt } from "@/components/notifications/push-prompt";
+import { InstallAppCard } from "@/components/notifications/install-app-card";
 import { LiveUpdates } from "@/components/dashboard/live-updates";
 import { FreshnessDot } from "@/components/content/freshness-dot";
 import type { ContentMarker } from "@/lib/supabase/queries";
@@ -322,6 +323,7 @@ export function DashboardShell({ user, nav, children, freshness }: DashboardShel
                 <X className="h-5 w-5" aria-hidden />
               </button>
             </div>
+            <InstallAppCard className="mb-5" />
             <div className="flex flex-col gap-6">
               {groups.map((g) => (
                 <section key={g.name}>

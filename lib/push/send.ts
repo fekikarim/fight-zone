@@ -70,7 +70,8 @@ export async function sendPushForNotification(n: PushNotificationInput): Promise
         sent += 1;
       } catch (error) {
         const status = (error as { statusCode?: number }).statusCode;
-        if (status === 404 || status === 410) dead.push(s.id);
+        // 404/410 = gone; 401/403 = made with another VAPID key (client re-subscribes on next load).
+        if (status === 404 || status === 410 || status === 401 || status === 403) dead.push(s.id);
         else logError("Web push delivery failed", error, { domain: "push", op: "send", userId: n.user_id });
       }
     }),

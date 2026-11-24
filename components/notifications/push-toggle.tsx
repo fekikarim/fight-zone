@@ -6,10 +6,11 @@ import { cn } from "@/lib/utils";
 
 /** Device-notification switch for the notification pages. */
 export function PushToggle() {
-  const { state, busy, enable, disable } = usePushNotifications();
+  const { state, message, busy, enable, disable } = usePushNotifications();
   if (state === "loading" || state === "unsupported") return null;
 
   const on = state === "on";
+  const failed = state === "error";
   const blocked = state === "denied";
   const install = state === "needs-install";
 
@@ -22,13 +23,18 @@ export function PushToggle() {
         <p className="text-sm font-semibold">Notifications on this device</p>
         <p className="text-xs text-muted">
           {on ? "You'll get alerts even when the app is closed."
+            : failed ? (message ?? "Something went wrong turning notifications on.")
             : blocked ? "Blocked in your browser — allow notifications for this site in its settings."
             : install ? "On iPhone, add Fight Zone to your Home Screen first, then enable them here."
             : "Messages, payments and event updates, straight to your device."}
         </p>
       </div>
       {install || blocked ? null : (
-        <button
+        failed ? (
+          <button type="button" disabled={busy} onClick={() => void enable()} className="h-10 shrink-0 rounded-full bg-primary px-4 text-sm font-semibold text-white disabled:opacity-60">
+            Retry
+          </button>
+        ) : <button
           type="button"
           role="switch"
           aria-checked={on}
