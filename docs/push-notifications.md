@@ -34,6 +34,16 @@ Open **Notifications** (or **More**) → "Notifications on this device":
   how many devices accepted it and what the push service answered.
 Registration failures are also logged on the server (`domain: push, op: client-register`).
 
+## Reading the server logs
+Netlify function logs (domain `push`): `client-register` = a device failed to register; `device-received` = the push reached a
+device and was shown (`level info`) or could NOT be shown (`level error`, with the browser's error). Delivery accepted by
+Apple/Google but no `device-received` line means the push never reached the device (offline, notifications off in the OS, or
+the browser was quit).
+
+## Gotcha (fixed 2026-11-24)
+The Notifications spec forbids `silent: true` together with `renotify: true` (TypeError). The first worker did that whenever
+the app was in the foreground, so the alert was lost. Never combine them.
+
 ## Staying in sync
 - Open tabs/apps: Supabase Realtime updates counts and lists instantly; they also refresh on focus, network-back, back/forward-cache restore, and whenever the service worker reports a push.
 - Closed app: the push itself arrives, and the service worker sets the app-icon badge to the unread total.
